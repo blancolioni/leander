@@ -1,0 +1,25 @@
+project_name = Leander
+source_dir = src
+source_dir = src/core
+source_dir = src/driver
+source_dir = src/environment
+source_dir = src/kinds
+source_dir = src/parser
+source_dir = src/primitives
+source_dir = src/trees
+source_dir = src/types
+source_dir = src/unifier
+source_dir = src/values
+depend = { project = SK version = any }
+depend = { project = GCS version = any }
+main_unit = leander-driver
+exec_name = leander
+config_dir = config
+path_unit = { unit = Leander.Paths path = src/leander-paths.ads }
+builder_option = "-g"
+builder_option = "-k"
+compiler_option = "-g"
+compiler_option = "-gnatwa"
+compiler_option = "-gnatyabcefhiklmnoprst"
+compiler_option = "-gnat2012"
+linker_option = "-g"
