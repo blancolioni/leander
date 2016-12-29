@@ -141,6 +141,27 @@ package body Leander.Syntax.Expressions is
       Node.Exps.Append (Expression);
    end Add_Case_Alternate;
 
+   ---------------------------
+   -- Application_Arguments --
+   ---------------------------
+
+   function Application_Arguments
+     (Tree : Syntax_Tree)
+      return Array_Of_Syntax_Trees
+   is
+   begin
+      if Tree.Get_Expression.all not in Application_Node'Class then
+         return Empty_Tree_Constant;
+      else
+         declare
+            App : Application_Node renames
+                    Application_Node (Tree.Get_Expression.all);
+         begin
+            return Application_Arguments (App.Left) & App.Right;
+         end;
+      end if;
+   end Application_Arguments;
+
    -----------
    -- Apply --
    -----------
@@ -227,6 +248,27 @@ package body Leander.Syntax.Expressions is
    begin
       return Create (Node);
    end Literal;
+
+   ----------
+   -- Name --
+   ----------
+
+   function Name
+     (Tree : Syntax_Tree)
+      return String
+   is
+   begin
+      if Is_Constructor (Tree) then
+         return -Constructor_Node (Tree.Get_Expression.all).Name;
+      elsif Is_Literal (Tree) then
+         return -Literal_Node (Tree.Get_Expression.all).Primitive_Text;
+      elsif Is_Variable (Tree) then
+         return -Variable_Node (Tree.Get_Expression.all).Name;
+      else
+         raise Program_Error with
+           "expected constructor, literal or variable";
+      end if;
+   end Name;
 
    ----------
    -- Show --

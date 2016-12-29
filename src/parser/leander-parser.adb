@@ -6,6 +6,8 @@ with Leander.Parser.Modules;
 
 package body Leander.Parser is
 
+   Next_Variable_Index : Positive := 1;
+
    --------------------
    -- At_Constructor --
    --------------------
@@ -55,6 +57,18 @@ package body Leander.Parser is
    begin
       Env.Import_Names (Module);
    end Import_Module;
+
+   ------------------
+   -- New_Variable --
+   ------------------
+
+   function New_Variable return String is
+      Img : String := Positive'Image (Next_Variable_Index);
+   begin
+      Next_Variable_Index := Next_Variable_Index + 1;
+      Img (Img'First) := '-';
+      return "x" & Img;
+   end New_Variable;
 
    ----------------------
    -- Parse_Expression --

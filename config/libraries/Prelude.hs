@@ -1,12 +1,17 @@
+--  id = \ x -> x
+id x = x
 
-id = \ x -> x
-const = \ x -> \ y -> x
+const x = \ y -> x
+
 o = \ f -> \ g -> \ x -> f (g x)
 flip = \f -> \x -> \y -> f y x
 
 data Bool = False | True
-not = \x -> case x of False -> True
-                      True -> False
+not False = True
+not True = False
+
+--  not = \x -> case x of False -> True
+--                        True -> False
 
 otherwise = True
 
