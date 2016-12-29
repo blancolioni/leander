@@ -20,4 +20,6 @@ private
    function At_Variable return Boolean;
    function At_Constructor return Boolean;
 
+   function New_Variable return String;
+
 end Leander.Parser;
