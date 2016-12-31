@@ -31,6 +31,9 @@ package Leander.Annotation_Trees is
    function Get_Node (Tree : Tree_Type) return Node_Type
      with Pre => Is_Leaf (Tree);
 
+   function Head (Tree : Tree_Type) return Node_Type;
+   function Arity (Tree : Tree_Type) return Natural;
+
    overriding function Left (Tree : Tree_Type) return Tree_Type;
 
    overriding function Right (Tree : Tree_Type) return Tree_Type;
@@ -191,5 +194,15 @@ private
    is (if Tree.Node.Has_Annotation
        then Tree.Node.Annotation
        else Annotation (Tree.Node.Node));
+
+   function Head (Tree : Tree_Type) return Node_Type
+   is (if Tree.Is_Leaf
+       then Tree.Get_Node
+       else Tree.Left.Head);
+
+   function Arity (Tree : Tree_Type) return Natural
+   is (if Tree.Is_Leaf
+       then 0
+       else 1 + Arity (Tree.Left));
 
 end Leander.Annotation_Trees;

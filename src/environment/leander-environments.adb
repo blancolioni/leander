@@ -1,5 +1,6 @@
 with Ada.Text_IO;
 
+with Leander.Core.Compiler;
 with Leander.Core.Type_Inference;
 
 package body Leander.Environments is
@@ -18,6 +19,36 @@ package body Leander.Environments is
          Cons      => Env.Local.Constructors,
          Env       => Environment (Env));
    end Annotate;
+
+   -------------
+   -- Compile --
+   -------------
+
+   procedure Compile
+     (Env  : Leander.Environments.Environment;
+      Machine : SK.Machine.SK_Machine)
+   is
+
+      procedure Compile_Binding
+        (Name : String;
+         Tree : Leander.Core.Trees.Tree_Type);
+
+      ---------------------
+      -- Compile_Binding --
+      ---------------------
+
+      procedure Compile_Binding
+        (Name : String;
+         Tree : Leander.Core.Trees.Tree_Type)
+      is
+      begin
+         Leander.Core.Compiler.Compile
+           (Env, Name, Tree, Machine);
+      end Compile_Binding;
+
+   begin
+      Env.Local.Values.Scan (Compile_Binding'Access);
+   end Compile;
 
    ------------
    -- Create --

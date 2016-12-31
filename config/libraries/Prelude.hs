@@ -10,8 +10,11 @@ data Bool = False | True
 not False = True
 not True = False
 
---  not = \x -> case x of False -> True
---                        True -> False
+null [] = True
+null x = False
+
+--  length [] = 0
+--  length (_:xs) = 1 + length xs
 
 otherwise = True
 
