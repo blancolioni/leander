@@ -1,5 +1,4 @@
 with Ada.Text_IO;
-
 with Ada.Strings.Fixed.Hash;
 
 with Ada.Containers.Doubly_Linked_Lists;
@@ -378,8 +377,6 @@ package body Leander.Core.Type_Inference is
       Bindings.Scan (Add_Binding'Access);
 
       for Position in Dependencies.Iterate loop
-         Ada.Text_IO.Put_Line ("annotating: "
-                                 & Dependency_Maps.Key (Position));
          if Dependency_Maps.Element (Position).Is_Empty then
             Annotate
               (Tree     => Bindings.Binding (Dependency_Maps.Key (Position)),
@@ -529,8 +526,6 @@ package body Leander.Core.Type_Inference is
                      Pat_It : Trees.Tree_Type := Pat;
                   begin
                      while Pat_It.Is_Application loop
-                        Ada.Text_IO.Put_Line
-                          ("pat: " & Pat_It.Show);
                         Add_Binding;
                         Pat_It.Set_Annotation (Vector.Last_Element);
                         Enter_Local_Binding (Pat_It.Right.Variable_Name,

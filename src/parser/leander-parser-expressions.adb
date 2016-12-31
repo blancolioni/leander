@@ -3,6 +3,7 @@ with Ada.Characters.Handling;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
+with Leander.Prelude;
 with Leander.Primitives;
 
 with Leander.Syntax.Expressions;
@@ -52,6 +53,42 @@ package body Leander.Parser.Expressions is
    function Parse_Atomic_Expression return Leander.Syntax.Syntax_Tree is
       Current : constant Leander.Source.Source_Reference :=
                   Current_Source_Reference;
+
+      function Parse_Rest_Of_Tuple
+        return Leander.Syntax.Array_Of_Syntax_Trees;
+
+      function Parse_Rest_Of_Tuple
+        return Leander.Syntax.Array_Of_Syntax_Trees
+      is
+         use type Leander.Syntax.Array_Of_Syntax_Trees;
+      begin
+         if At_Expression then
+            declare
+               E : constant Leander.Syntax.Syntax_Tree_Record :=
+                     Leander.Syntax.Syntax_Tree_Record
+                       (Parse_Expression);
+            begin
+               if Tok = Tok_Comma then
+                  Scan;
+                  if not At_Expression then
+                     Error ("missing expression");
+                     return (1 => E);
+                  else
+                     return E & Parse_Rest_Of_Tuple;
+                  end if;
+               else
+                  return (1 => E);
+               end if;
+            end;
+         else
+            declare
+               Empty : Leander.Syntax.Array_Of_Syntax_Trees (1 .. 0);
+            begin
+               return Empty;
+            end;
+         end if;
+      end Parse_Rest_Of_Tuple;
+
    begin
       if Tok = Tok_Identifier then
          declare
@@ -76,8 +113,28 @@ package body Leander.Parser.Expressions is
       elsif Tok = Tok_Left_Paren then
          Scan;
          declare
-            Expr : constant Leander.Syntax.Syntax_Tree := Parse_Expression;
+            use type Leander.Syntax.Array_Of_Syntax_Trees;
+            Expr : Leander.Syntax.Syntax_Tree := Parse_Expression;
          begin
+            if Tok = Tok_Comma then
+               Scan;
+               declare
+                  Tuple : constant Leander.Syntax.Array_Of_Syntax_Trees :=
+                            Leander.Syntax.Syntax_Tree_Record (Expr)
+                          & Parse_Rest_Of_Tuple;
+               begin
+                  Leander.Prelude.Use_Tuple (Tuple'Length);
+                  Expr :=
+                    Leander.Syntax.Expressions.Constructor
+                      (Current,
+                       Leander.Primitives.Tuple_Name (Tuple'Length));
+                  for I in Tuple'Range loop
+                     Expr :=
+                       Leander.Syntax.Expressions.Apply
+                         (Tuple (I).Source, Expr, Tuple (I));
+                  end loop;
+               end;
+            end if;
             if Tok = Tok_Right_Paren then
                Scan;
             else
