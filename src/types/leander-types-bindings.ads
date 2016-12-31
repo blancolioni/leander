@@ -6,6 +6,10 @@ with Leander.Types.Trees;
 
 package Leander.Types.Bindings is
 
+   type Constructor_Count_Range is new Natural;
+   subtype Constructor_Index_Range is
+     Constructor_Count_Range range 1 .. Constructor_Count_Range'Last;
+
    type Constructor_Binding is tagged private;
 
    function Constructor_Type
@@ -14,7 +18,7 @@ package Leander.Types.Bindings is
 
    function Constructor_Index
      (Binding : Constructor_Binding)
-      return Natural;
+      return Constructor_Index_Range;
 
    type Constructor_Binding_List is tagged private;
 
@@ -44,19 +48,21 @@ package Leander.Types.Bindings is
    function Is_Enumeration (Binding : Type_Binding) return Boolean;
    function Is_Primitive (Binding : Type_Binding) return Boolean;
 
-   function Constructor_Count (Binding : Type_Binding) return Natural
+   function Constructor_Count
+     (Binding : Type_Binding)
+      return Constructor_Count_Range
      with Pre => Binding.Is_Algebraic;
 
    function Constructor_Name
      (Binding : Type_Binding;
-      Index   : Positive)
+      Index   : Constructor_Index_Range)
       return String
      with Pre => Binding.Is_Algebraic
      and then Index <= Binding.Constructor_Count;
 
    function Constructor_Type
      (Binding : Type_Binding;
-      Index   : Positive)
+      Index   : Constructor_Index_Range)
       return Leander.Types.Trees.Tree_Type
      with Pre => Binding.Is_Algebraic
      and then Index <= Binding.Constructor_Count;
@@ -108,7 +114,7 @@ private
    type Constructor_Binding is tagged
       record
          Con_Type : Leander.Types.Trees.Tree_Type;
-         Index    : Natural;
+         Index    : Constructor_Index_Range;
       end record;
 
    function Constructor_Type
@@ -118,7 +124,7 @@ private
 
    function Constructor_Index
      (Binding : Constructor_Binding)
-      return Natural
+      return Constructor_Index_Range
    is (Binding.Index);
 
    package Constructor_Binding_Maps is
@@ -146,7 +152,8 @@ private
    is (List.Map.Element (Name));
 
    package Constructor_Vectors is
-     new Ada.Containers.Indefinite_Vectors (Positive, String);
+     new Ada.Containers.Indefinite_Vectors
+       (Constructor_Index_Range, String);
 
    type Type_Binding is tagged
       record
@@ -171,18 +178,20 @@ private
    function Is_Primitive (Binding : Type_Binding) return Boolean
    is (Binding.Primitive);
 
-   function Constructor_Count (Binding : Type_Binding) return Natural
+   function Constructor_Count
+     (Binding : Type_Binding)
+      return Constructor_Count_Range
    is (Binding.Con_Vector.Last_Index);
 
    function Constructor_Name
      (Binding : Type_Binding;
-      Index   : Positive)
+      Index   : Constructor_Index_Range)
       return String
    is (Binding.Con_Vector.Element (Index));
 
    function Constructor_Type
      (Binding : Type_Binding;
-      Index   : Positive)
+      Index   : Constructor_Index_Range)
       return Leander.Types.Trees.Tree_Type
    is (Binding.Con_Map.Element (Binding.Con_Vector (Index)).Constructor_Type);
 

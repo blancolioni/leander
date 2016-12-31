@@ -75,8 +75,11 @@ private
       renames Ada.Strings.Unbounded.To_String;
 
    type Core_Node_Class is
-     (Algebraic_Case, Primitive_Case,
-      Constructor, Lambda, Literal, Variable);
+     (Algebraic_Case, Primitive_Case, Lambda,
+      Constructor, Literal, Variable);
+
+   subtype Primitive_Node_Class is
+     Core_Node_Class range Constructor .. Variable;
 
    type Core_Node is
      new Leander.Unifiable.Unifiable_Interface

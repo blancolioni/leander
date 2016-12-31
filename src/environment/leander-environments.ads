@@ -1,6 +1,8 @@
 private with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 private with Ada.Strings.Unbounded;
 
+with SK.Machine;
+
 with Leander.Types.Bindings;
 with Leander.Types.Trees;
 
@@ -76,6 +78,10 @@ package Leander.Environments is
 
    procedure Annotate
      (Env  : Leander.Environments.Environment'Class);
+
+   procedure Compile
+     (Env     : Leander.Environments.Environment;
+      Machine : SK.Machine.SK_Machine);
 
    procedure Import_Names
      (To   : in out Environment'Class;

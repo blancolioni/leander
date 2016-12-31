@@ -1,5 +1,7 @@
 with Ada.Text_IO;
 
+with SK.Machine;
+
 with Leander.Environments;
 
 with Leander.Kinds.Trees;
@@ -73,7 +75,10 @@ begin
                 ("Prelude",
                  Leander.Paths.Config_File
                    ("libraries/Prelude.hs"));
+      Machine : constant SK.Machine.SK_Machine :=
+                  SK.Machine.Create_Machine (65536);
    begin
+      Env.Compile (Machine);
       Leander.Repl.Start_Repl (Env);
    end;
 

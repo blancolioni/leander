@@ -85,6 +85,29 @@ package body Leander.Parser.Expressions is
             end if;
             return Expr;
          end;
+      elsif Tok = Tok_Left_Bracket then
+         if Next_Tok = Tok_Right_Bracket then
+            declare
+               Expr : constant Leander.Syntax.Syntax_Tree :=
+                        Leander.Syntax.Expressions.Constructor
+                          (Current, "[]");
+            begin
+               Scan;
+               Scan;
+               return Expr;
+            end;
+         else
+            Error ("lists not implemented yet");
+            while Tok /= Tok_Right_Bracket
+              and then Tok /= Tok_End_Of_File
+            loop
+               Scan;
+            end loop;
+            if Tok = Tok_Right_Bracket then
+               Scan;
+            end if;
+            return Leander.Syntax.Expressions.Variable (Current, "_");
+         end if;
       else
          Error ("expected atomic expression");
          Scan;
