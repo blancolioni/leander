@@ -18,6 +18,10 @@ package Leander.Syntax is
      (Syntax : Syntax_Tree)
       return Leander.Core.Trees.Tree_Type;
 
+   function Source
+     (Syntax : Syntax_Tree)
+      return Leander.Source.Source_Reference;
+
    type Array_Of_Syntax_Trees is
      array (Positive range <>) of Syntax_Tree_Record;
 
@@ -60,6 +64,11 @@ private
 
    function Has_Children (Tree : Syntax_Tree) return Boolean
    is (Tree.Node.Has_Left);
+
+   function Source
+     (Syntax : Syntax_Tree)
+      return Leander.Source.Source_Reference
+   is (Syntax.Node.Source);
 
    type Expression_Node is
      abstract new Node_Record with

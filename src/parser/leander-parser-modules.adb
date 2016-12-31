@@ -18,9 +18,10 @@ package body Leander.Parser.Modules is
    is
       Env : Leander.Environments.Environment;
    begin
-      Env.Create (Name);
       if Name = "Prelude" then
-         Leander.Prelude.Load_Built_Ins (Env);
+         Env := Leander.Prelude.Prelude_Environment;
+      else
+         Env.Create (Name);
       end if;
 
       Open (Path);

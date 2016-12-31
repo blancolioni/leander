@@ -33,6 +33,7 @@ package Leander.Annotation_Trees is
 
    function Head (Tree : Tree_Type) return Node_Type;
    function Arity (Tree : Tree_Type) return Natural;
+   function Last_Map (Tree : Tree_Type) return Tree_Type;
 
    overriding function Left (Tree : Tree_Type) return Tree_Type;
 
@@ -204,5 +205,11 @@ private
    is (if Tree.Is_Leaf
        then 0
        else 1 + Arity (Tree.Left));
+
+   function Last_Map (Tree : Tree_Type) return Tree_Type
+   is (if Tree.Is_Application and then Tree.Left.Is_Application
+       and then Tree.Left.Left.Show = "->"
+       then Tree.Right.Last_Map
+       else Tree);
 
 end Leander.Annotation_Trees;
