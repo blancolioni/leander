@@ -2,7 +2,9 @@ with Leander.Environments;
 
 package Leander.Prelude is
 
-   procedure Load_Built_Ins
-     (Env : in out Leander.Environments.Environment);
+   function Prelude_Environment
+     return Leander.Environments.Environment;
+
+   procedure Use_Tuple (Arity : Positive);
 
 end Leander.Prelude;

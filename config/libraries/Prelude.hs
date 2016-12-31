@@ -3,7 +3,8 @@ id x = x
 
 const x = \ y -> x
 
-o = \ f -> \ g -> \ x -> f (g x)
+o f g x = f (g x)
+
 flip = \f -> \x -> \y -> f y x
 
 data Bool = False | True
@@ -20,11 +21,12 @@ otherwise = True
 
 data Maybe a = Nothing | Just a
 
-maybe = \ n -> \f -> \x -> case x of Nothing -> n
-                                     Just z  -> f z
+maybe n f Nothing = n
+maybe n f (Just z) = f z
 
+--  maybe = \x1 -> \x2 -> \x3 -> 
 data  Either a b  =  Left a | Right b
 
-either = \f -> \g -> \exy -> case exy of Left x -> f x
-                                         Right y -> g y
+either f g (Left x) = f x
+either f g (Right y) = f y
                              

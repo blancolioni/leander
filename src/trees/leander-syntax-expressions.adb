@@ -1,4 +1,7 @@
+with Ada.Containers.Doubly_Linked_Lists;
+with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers.Indefinite_Vectors;
+with Ada.Strings.Fixed.Hash;
 with Ada.Strings.Unbounded;
 
 with Leander.Errors;
@@ -109,6 +112,31 @@ package body Leander.Syntax.Expressions is
    package Syntax_Tree_Vectors is
      new Ada.Containers.Indefinite_Vectors (Positive, Syntax_Tree);
 
+   function Show_Alts (Pats, Exps : Syntax_Tree_Vectors.Vector;
+                       Start      : Positive)
+                       return String;
+
+   type Algebraic_Alt is
+      record
+         Pat : Syntax_Tree_Record;
+         Exp : Syntax_Tree_Record;
+      end record;
+
+   package List_Of_Con_Alts is
+     new Ada.Containers.Doubly_Linked_Lists (Algebraic_Alt);
+
+   package Algebraic_Con_Maps is
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => List_Of_Con_Alts.List,
+        Hash            => Ada.Strings.Fixed.Hash,
+        Equivalent_Keys => "=",
+        "="             => List_Of_Con_Alts."=");
+
+   function Transform_Algebraic_Con
+     (Alts : List_Of_Con_Alts.List)
+      return Leander.Core.Trees.Tree_Type;
+
    type Case_Node is
      new Expression_Node with
       record
@@ -120,7 +148,8 @@ package body Leander.Syntax.Expressions is
    overriding function Show
      (Node : Case_Node)
       return String
-   is ("case " & Node.Expr.Show);
+   is ("case " & Node.Expr.Show & " of "
+       & Show_Alts (Node.Pats, Node.Exps, 1));
 
    overriding function Transform
      (Node   : Case_Node)
@@ -282,9 +311,26 @@ package body Leander.Syntax.Expressions is
       if Node.Right.Node.all in Application_Node'Class then
          return Node.Left.Show & " (" & Node.Right.Show & ")";
       else
-         return Node.Left.Show & " (" & Node.Right.Show & ")";
+         return Node.Left.Show & " " & Node.Right.Show;
       end if;
    end Show;
+
+   ---------------
+   -- Show_Alts --
+   ---------------
+
+   function Show_Alts (Pats, Exps : Syntax_Tree_Vectors.Vector;
+                       Start      : Positive)
+                       return String
+   is
+   begin
+      if Start > Pats.Last_Index then
+         return "";
+      else
+         return "(" & Pats (Start).Show & "->" & Exps (Start).Show & ")"
+           & Show_Alts (Pats, Exps, Start + 1);
+      end if;
+   end Show_Alts;
 
    ---------------
    -- Transform --
@@ -400,14 +446,75 @@ package body Leander.Syntax.Expressions is
          Leander.Errors.Error
            (Node.Source, "invalid type mixing in patterns");
          return Case_Expr;
+      elsif Is_Algebraic then
+         declare
+            use Leander.Core.Trees;
+            Result       : constant Tree_Type :=
+                             Leaf
+                               (Leander.Core.Algebraic_Case
+                                  (Node.Source));
+            Alt_Map      : Algebraic_Con_Maps.Map;
+            Have_Default : Boolean := False;
+            Default_Pat  : Syntax_Tree_Record;
+            Default_Exp  : Syntax_Tree_Record;
+            Alts         : Tree_Type := Empty;
+         begin
+            for I in 1 .. Active_Count loop
+               declare
+                  Pat     : constant Syntax_Tree := Node.Pats.Element (I);
+               begin
+                  if Is_Variable (Pat) then
+                     pragma Assert (I = Active_Count);
+                     Default_Pat := Syntax_Tree_Record (Pat);
+                     Default_Exp := Syntax_Tree_Record (Node.Exps.Element (I));
+                     Have_Default := True;
+                  else
+                     declare
+                        Head : constant String :=
+                                 Pat.Left_Most.Get_Expression.Show;
+                     begin
+                        if not Alt_Map.Contains (Head) then
+                           Alt_Map.Insert (Head, List_Of_Con_Alts.Empty_List);
+                        end if;
+                        Alt_Map (Head).Append
+                          ((Syntax_Tree_Record (Pat),
+                           Syntax_Tree_Record (Node.Exps.Element (I))));
+                     end;
+                  end if;
+               end;
+            end loop;
+
+            if Have_Default then
+               Alts :=
+                 Leander.Core.Trees.Apply
+                   (Leander.Core.Trees.Apply
+                      (Leander.Core.Variable
+                         (Default_Pat.Source,
+                          Default_Pat.Show),
+                       Default_Exp.Get_Expression.Transform),
+                    Alts);
+            end if;
+
+            for Alt of Alt_Map loop
+               Alts :=
+                 Leander.Core.Trees.Apply
+                   (Transform_Algebraic_Con (Alt),
+                    Alts);
+            end loop;
+
+            declare
+               E : constant Leander.Core.Trees.Tree_Type :=
+                     Result.Apply (Case_Expr.Apply (Alts));
+            begin
+               return E;
+            end;
+         end;
       else
          declare
             use Leander.Core, Leander.Core.Trees;
             Result : constant Tree_Type :=
                        Leaf
-                         (if Is_Algebraic
-                          then Algebraic_Case (Node.Source)
-                          else Primitive_Case (Node.Source));
+                         (Primitive_Case (Node.Source));
             Alts   : Tree_Type := Empty;
          begin
             for I in reverse 1 .. Active_Count loop
@@ -434,6 +541,189 @@ package body Leander.Syntax.Expressions is
          end;
       end if;
    end Transform;
+
+   -----------------------------
+   -- Transform_Algebraic_Con --
+   -----------------------------
+
+   function Transform_Algebraic_Con
+     (Alts : List_Of_Con_Alts.List)
+      return Leander.Core.Trees.Tree_Type
+   is
+      First_Pat  : constant Syntax_Tree :=
+                     Alts.First_Element.Pat;
+      Source     : constant Leander.Source.Source_Reference :=
+                     First_Pat.Source;
+      Con_Node   : constant Constructor_Node :=
+                     Constructor_Node
+                       (First_Pat.Left_Most.Get_Expression.all);
+      Con_Name   : constant String :=
+                     -Con_Node.Name;
+      First_Args : constant Array_Of_Syntax_Trees :=
+                     Application_Arguments (First_Pat);
+      Arg_Count  : constant Natural :=
+                     First_Args'Length;
+      Pat_Count  : constant Natural := Positive (Alts.Length);
+
+      type Pat_Matrix_Cell is
+         record
+            Pat : Syntax_Tree_Record;
+            Variable : Boolean;
+            Done     : Boolean;
+         end record;
+
+      Pat_Matrix : array (1 .. Pat_Count, 1 .. Arg_Count) of Pat_Matrix_Cell;
+      Exp_Vector : array (1 .. Pat_Count) of Syntax_Tree_Record;
+
+      type Row_Flags is array (1 .. Pat_Count) of Boolean;
+
+      function Arg_Name (Index : Positive) return String
+      is ("t" & Integer'Image (-Index));
+
+      function Con_Expr (Row, Col : Positive) return Syntax_Tree;
+
+      function Var_Expr
+        (Col  : Positive;
+         Rows : Row_Flags)
+         return Syntax_Tree;
+
+      --------------
+      -- Con_Expr --
+      --------------
+
+      function Con_Expr (Row, Col : Positive) return Syntax_Tree is
+         Result : Syntax_Tree_Record := Exp_Vector (Row);
+      begin
+         for I in reverse Col + 1 .. Arg_Count loop
+            pragma Assert (Pat_Matrix (Row, I).Variable);
+            Result :=
+              Syntax_Tree_Record
+                (Lambda (Result.Source, Pat_Matrix (Row, I).Pat.Show, Result));
+         end loop;
+         for I in Col + 1 .. Arg_Count loop
+            Result :=
+              Syntax_Tree_Record
+                (Apply
+                   (Result.Source, Result,
+                    Variable (Result.Source, Arg_Name (I))));
+         end loop;
+         return Result;
+      end Con_Expr;
+
+      --------------
+      -- Var_Expr --
+      --------------
+
+      function Var_Expr
+        (Col  : Positive;
+         Rows : Row_Flags)
+         return Syntax_Tree
+      is
+         Child_Case   : constant Syntax_Tree :=
+                          Case_Expression (Source,
+                                           Variable
+                                             (First_Pat.Node.Source,
+                                              Arg_Name (Col)));
+         Got_Variable : Boolean := False;
+         Got_Con      : Boolean := False;
+         First_Var    : Natural := 0;
+         Child_Rows   : Row_Flags := (others => False);
+      begin
+         for I in Pat_Matrix'Range (1) loop
+            if Rows (I) then
+               if not Pat_Matrix (I, Col).Variable then
+                  Add_Case_Alternate
+                    (Child_Case, Pat_Matrix (I, Col).Pat,
+                     Con_Expr (I, Col));
+                  Got_Con := True;
+               else
+                  Child_Rows (I) := True;
+                  Got_Variable := True;
+                  if First_Var = 0 then
+                     First_Var := I;
+                  end if;
+               end if;
+            end if;
+         end loop;
+
+         if not Got_Con then
+            declare
+               Expr : Syntax_Tree :=
+                        (if Col = Arg_Count
+                         then Exp_Vector (First_Var)
+                         else Var_Expr (Col + 1, Rows));
+            begin
+               Expr := Lambda (Source, Pat_Matrix (First_Var, Col).Pat.Show,
+                               Expr);
+               Expr := Apply (Source, Expr, Variable (Source, Arg_Name (Col)));
+               return Expr;
+            end;
+         elsif Got_Variable then
+            if Col < Pat_Matrix'Last (2) then
+               Add_Case_Alternate
+                 (Child_Case,
+                  Variable
+                    (First_Pat.Node.Source,
+                     Arg_Name (Col + 1)),
+                  Var_Expr (Col + 1, Child_Rows));
+            else
+               Add_Case_Alternate
+                 (Child_Case,
+                  Pat_Matrix (First_Var, Col).Pat,
+                  Exp_Vector (First_Var));
+            end if;
+         end if;
+
+         return Child_Case;
+      end Var_Expr;
+
+   begin
+      if Arg_Count = 0 then
+         pragma Assert (Pat_Count = 1);
+         return Leander.Core.Trees.Apply
+           (First_Pat.Get_Expression.Transform,
+            Alts.First_Element.Exp.Get_Expression.Transform);
+      end if;
+
+      declare
+         Row : Natural := 0;
+      begin
+         for Alt of Alts loop
+            Row := Row + 1;
+            declare
+               Col : Natural := 0;
+            begin
+               for Pat of Application_Arguments (Alt.Pat) loop
+                  Col := Col + 1;
+                  Pat_Matrix (Row, Col) :=
+                    (Pat, Is_Variable (Pat), False);
+               end loop;
+               Exp_Vector (Row) := Alt.Exp;
+            end;
+         end loop;
+      end;
+
+      declare
+         Rows         : constant Row_Flags := (others => True);
+         Child_Case   : constant Syntax_Tree :=
+                          Var_Expr (1, Rows);
+         Pat          : Leander.Core.Trees.Tree_Type :=
+                          Leander.Core.Trees.Leaf
+                            (Leander.Core.Constructor
+                               (Source => First_Pat.Source,
+                                Name   => Con_Name));
+      begin
+         for I in 1 .. Arg_Count loop
+            Pat :=
+              Pat.Apply
+                (Leander.Core.Trees.Leaf
+                   (Leander.Core.Variable
+                      (First_Pat.Source, Arg_Name (I))));
+         end loop;
+         return Pat.Apply (Child_Case.Get_Expression.Transform);
+      end;
+
+   end Transform_Algebraic_Con;
 
    --------------
    -- Variable --

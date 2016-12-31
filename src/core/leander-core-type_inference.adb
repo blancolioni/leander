@@ -172,11 +172,16 @@ package body Leander.Core.Type_Inference is
                   begin
                      if Unified.Is_Empty then
                         Leander.Errors.Error
-                          (Tree.Get_Node.Source,
+                          (Tree.Head.Source,
                            "type error");
                         Leander.Errors.Error
                           (Tree.Left.Get_Node.Source,
-                           Tree.Left.Annotation.Show);
+                           Tree.Left.Show & " :: "
+                           & Tree.Left.Annotation.Show);
+                        Leander.Errors.Error
+                          (Tree.Left.Get_Node.Source,
+                           Tree.Left.Show & " :: "
+                           & Left_A.Show);
                      end if;
                      Tree.Left.Set_Annotation
                        (Unified);
@@ -347,10 +352,12 @@ package body Leander.Core.Type_Inference is
               and then Tree.Left.Get_Node.Class = Lambda
             then
                declare
+                  Name : constant String := -Tree.Left.Get_Node.Name;
                   New_Bindings : Set_Of_Names.Set := Local_Bindings;
                begin
-                  New_Bindings.Insert
-                    (-Tree.Left.Get_Node.Name);
+                  if not New_Bindings.Contains (Name) then
+                     New_Bindings.Insert (Name);
+                  end if;
                   Scan_Dependencies (Tree.Right, New_Bindings, Set);
                end;
             else
@@ -371,6 +378,8 @@ package body Leander.Core.Type_Inference is
       Bindings.Scan (Add_Binding'Access);
 
       for Position in Dependencies.Iterate loop
+         Ada.Text_IO.Put_Line ("annotating: "
+                                 & Dependency_Maps.Key (Position));
          if Dependency_Maps.Element (Position).Is_Empty then
             Annotate
               (Tree     => Bindings.Binding (Dependency_Maps.Key (Position)),
@@ -520,6 +529,8 @@ package body Leander.Core.Type_Inference is
                      Pat_It : Trees.Tree_Type := Pat;
                   begin
                      while Pat_It.Is_Application loop
+                        Ada.Text_IO.Put_Line
+                          ("pat: " & Pat_It.Show);
                         Add_Binding;
                         Pat_It.Set_Annotation (Vector.Last_Element);
                         Enter_Local_Binding (Pat_It.Right.Variable_Name,

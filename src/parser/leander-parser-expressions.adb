@@ -115,6 +115,10 @@ package body Leander.Parser.Expressions is
       end if;
    end Parse_Atomic_Expression;
 
+   ---------------------------
+   -- Parse_Case_Expression --
+   ---------------------------
+
    function Parse_Case_Expression return Leander.Syntax.Syntax_Tree is
       Current : constant Leander.Source.Source_Reference :=
                   Current_Source_Reference;
