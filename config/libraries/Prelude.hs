@@ -7,6 +7,10 @@ o f g x = f (g x)
 
 flip = \f -> \x -> \y -> f y x
 
+fst (a,b) = a
+
+snd (a,b) = b
+
 data Bool = False | True
 not False = True
 not True = False
