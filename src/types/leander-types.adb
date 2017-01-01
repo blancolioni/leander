@@ -1,5 +1,9 @@
 package body Leander.Types is
 
+   ---------
+   -- "=" --
+   ---------
+
    overriding function "=" (Left, Right : Type_Node) return Boolean is
    begin
       if Left.Class = Right.Class then
@@ -15,6 +19,20 @@ package body Leander.Types is
          return False;
       end if;
    end "=";
+
+   --------------------
+   -- Add_Constraint --
+   --------------------
+
+   procedure Add_Constraint
+     (Node       : in out Type_Node;
+      Constraint : Type_Constraint'Class)
+   is
+   begin
+      if not Node.Constraints.Contains (Constraint) then
+         Node.Constraints.Append (Constraint);
+      end if;
+   end Add_Constraint;
 
    ----------------------------------
    -- Create_Variable_From_Binding --
@@ -34,6 +52,27 @@ package body Leander.Types is
           ((1 => Character'Val (Index + Character'Pos ('a') - 1)));
       return Result;
    end Create_Variable_From_Binding;
+
+   -----------------------
+   -- Merge_Constraints --
+   -----------------------
+
+   procedure Merge_Constraints
+     (Left, Right : in out Type_Node)
+   is
+      New_List : Constraint_Lists.List;
+   begin
+      for Constraint of Left.Constraints loop
+         New_List.Append (Constraint);
+      end loop;
+      for Constraint of Right.Constraints loop
+         if not New_List.Contains (Constraint) then
+            New_List.Append (Constraint);
+         end if;
+      end loop;
+      Left.Constraints := New_List;
+      Right.Constraints := New_List;
+   end Merge_Constraints;
 
    -----------------------
    -- Set_Binding_Index --

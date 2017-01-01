@@ -4,6 +4,7 @@ private with Ada.Strings.Unbounded;
 with SK.Machine;
 
 with Leander.Types.Bindings;
+with Leander.Types.Class_Constraints;
 with Leander.Types.Trees;
 
 with Leander.Core.Bindings;
@@ -14,7 +15,7 @@ package Leander.Environments is
    type Environment is tagged private;
 
    procedure Create
-     (Env : in out Environment'Class;
+     (Env  : in out Environment'Class;
       Name : String);
 
    function Has_Local_Binding
@@ -28,11 +29,29 @@ package Leander.Environments is
       return Leander.Core.Trees.Tree_Type
      with Pre => Env.Has_Local_Binding (Name);
 
+   function Has_Local_Signature
+     (Env  : Environment;
+      Name : String)
+      return Boolean;
+
+   function Local_Signature
+     (Env  : Environment;
+      Name : String)
+      return Leander.Types.Trees.Tree_Type
+     with Pre => Env.Has_Local_Signature (Name);
+
    procedure Scan_Local_Bindings
      (Env     : Environment'Class;
       Process : not null access
         procedure (Name : String;
                    Tree : Leander.Core.Trees.Tree_Type));
+
+   procedure Scan_Local_Bindings
+     (Env     : Environment'Class;
+      Process : not null access
+        procedure (Name : String;
+                   Tree : Leander.Core.Trees.Tree_Type;
+                   Signature : Leander.Types.Trees.Tree_Type));
 
    function Has_Expression_Binding
      (Env  : Environment;
@@ -67,10 +86,26 @@ package Leander.Environments is
       return Leander.Types.Bindings.Type_Binding'Class
      with Pre => Env.Has_Type_Constructor_Binding (Name);
 
+   function Has_Class_Binding
+     (Env  : Environment;
+      Name : String)
+      return Boolean;
+
+   function Class_Binding
+     (Env  : Environment;
+      Name : String)
+      return Leander.Types.Class_Constraints.Class_Constraint'Class
+     with Pre => Env.Has_Class_Binding (Name);
+
    procedure Insert_Value
      (Env   : in out Environment;
       Name  : String;
       Value : Leander.Core.Trees.Tree_Type);
+
+   procedure Insert_Signature
+     (Env   : in out Environment;
+      Name  : String;
+      Value : Leander.Types.Trees.Tree_Type);
 
    procedure Declare_Data_Type
      (Env       : in out Environment;
@@ -92,6 +127,11 @@ package Leander.Environments is
       Type_Name : String;
       Name      : String;
       Con_Type  : Leander.Types.Trees.Tree_Type);
+
+   procedure Insert_Class_Binding
+     (Env   : Environment;
+      Name  : String;
+      Class : Leander.Types.Class_Constraints.Class_Constraint'Class);
 
    procedure Annotate
      (Env  : Leander.Environments.Environment'Class);
@@ -121,6 +161,7 @@ private
          Values       : Leander.Core.Bindings.Binding_List;
          Constructors : Leander.Types.Bindings.Constructor_Binding_List;
          Types        : Leander.Types.Bindings.Type_Binding_List;
+         Classes      : Leander.Types.Class_Constraints.Class_Bindings;
       end record;
 
    type Environment is tagged
@@ -140,6 +181,18 @@ private
       Name : String)
       return Leander.Core.Trees.Tree_Type
    is (Env.Local.Values.Binding (Name));
+
+   function Has_Local_Signature
+     (Env  : Environment;
+      Name : String)
+      return Boolean
+   is (Env.Local.Values.Has_Signature (Name));
+
+   function Local_Signature
+     (Env  : Environment;
+      Name : String)
+      return Leander.Types.Trees.Tree_Type
+   is (Env.Local.Values.Signature (Name));
 
    function Has_Expression_Binding
      (Env  : Environment;
@@ -178,5 +231,20 @@ private
       Name : String)
       return Leander.Types.Bindings.Type_Binding'Class
    is (Env.Local.Types.Binding (Name));
+
+   function Has_Class_Binding
+     (Env  : Environment;
+      Name : String)
+      return Boolean
+   is (Env.Local.Classes.Has_Binding (Name)
+       or else Env.Global.Classes.Has_Binding (Name));
+
+   function Class_Binding
+     (Env  : Environment;
+      Name : String)
+      return Leander.Types.Class_Constraints.Class_Constraint'Class
+   is (if Env.Local.Classes.Has_Binding (Name)
+       then Env.Local.Classes.Binding (Name)
+       else Env.Global.Classes.Binding (Name));
 
 end Leander.Environments;

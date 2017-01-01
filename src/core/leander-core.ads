@@ -62,6 +62,10 @@ package Leander.Core is
      (Node : Core_Node'Class)
       return Leander.Types.Trees.Tree_Type;
 
+   function Source
+     (Node : Core_Node'Class)
+      return Leander.Source.Source_Reference;
+
 private
 
    function "+"
@@ -204,5 +208,10 @@ private
      (Node : Core_Node'Class)
       return Leander.Types.Trees.Tree_Type
    is (Node.Core_Type);
+
+   function Source
+     (Node : Core_Node'Class)
+      return Leander.Source.Source_Reference
+   is (Node.Source);
 
 end Leander.Core;
