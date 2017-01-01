@@ -1,4 +1,11 @@
---  id = \ x -> x
+class  Eq a  where  
+    (==), (/=) :: a -> a -> Bool  
+ 
+        -- Minimal complete definition:  
+        --      (==) or (/=)  
+    x /= y     =  not (x == y)  
+    x == y     =  not (x /= y)
+    
 id x = x
 
 const x = \ y -> x
@@ -12,6 +19,13 @@ fst (a,b) = a
 snd (a,b) = b
 
 data Bool = False | True
+
+True && x = x
+False && x = False
+
+False || x = x
+True || x = True
+
 not False = True
 not True = False
 

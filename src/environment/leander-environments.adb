@@ -112,6 +112,19 @@ package body Leander.Environments is
       null;
    end Import_Names;
 
+   --------------------------
+   -- Insert_Class_Binding --
+   --------------------------
+
+   procedure Insert_Class_Binding
+     (Env   : Environment;
+      Name  : String;
+      Class : Leander.Types.Class_Constraints.Class_Constraint'Class)
+   is
+   begin
+      Env.Local.Classes.Insert (Name, Class);
+   end Insert_Class_Binding;
+
    ------------------------
    -- Insert_Constructor --
    ------------------------
@@ -128,6 +141,20 @@ package body Leander.Environments is
    begin
       Env.Local.Constructors.Insert (Name, Binding);
    end Insert_Constructor;
+
+   ----------------------
+   -- Insert_Signature --
+   ----------------------
+
+   procedure Insert_Signature
+     (Env   : in out Environment;
+      Name  : String;
+      Value : Leander.Types.Trees.Tree_Type)
+   is
+   begin
+      Env.Local.Values.Insert (Name, Value);
+      Ada.Text_IO.Put_Line (Name & " :: " & Value.Show);
+   end Insert_Signature;
 
    ------------------
    -- Insert_Value --
@@ -152,6 +179,21 @@ package body Leander.Environments is
       Process : not null access
         procedure (Name : String;
                    Tree : Leander.Core.Trees.Tree_Type))
+   is
+   begin
+      Env.Local.Values.Scan (Process);
+   end Scan_Local_Bindings;
+
+   -------------------------
+   -- Scan_Local_Bindings --
+   -------------------------
+
+   procedure Scan_Local_Bindings
+     (Env     : Environment'Class;
+      Process : not null access
+        procedure (Name : String;
+                   Tree : Leander.Core.Trees.Tree_Type;
+                   Signature : Leander.Types.Trees.Tree_Type))
    is
    begin
       Env.Local.Values.Scan (Process);

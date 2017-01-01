@@ -37,6 +37,13 @@ package Leander.Types is
    function Variable_Kind return Leander.Kinds.Trees.Tree_Type;
    function Map_Operator return Leander.Kinds.Trees.Tree_Type;
 
+   procedure Merge_Constraints
+     (Left, Right : in out Type_Node);
+
+   procedure Add_Constraint
+     (Node       : in out Type_Node;
+      Constraint : Type_Constraint'Class);
+
 private
 
    package Constraint_Lists is

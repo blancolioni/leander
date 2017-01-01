@@ -1,4 +1,4 @@
---  with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
+with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
 with Leander.Kinds.Trees;
@@ -12,6 +12,7 @@ package body Leander.Parser.Types is
    ----------------
 
    function Parse_Type return Leander.Types.Trees.Tree_Type is
+      Result : Leander.Types.Trees.Tree_Type;
    begin
       if At_Variable then
          declare
@@ -19,17 +20,17 @@ package body Leander.Parser.Types is
          begin
             Scan;
 
-            return Leander.Types.Trees.Leaf
-              (Leander.Types.Variable
-                 (Name,
-                  Leander.Kinds.Trees.Leaf
-                    (Leander.Kinds.Primitive)));
+            Result :=
+              Leander.Types.Trees.Leaf
+                (Leander.Types.Variable
+                   (Name,
+                    Leander.Kinds.Trees.Leaf
+                      (Leander.Kinds.Primitive)));
          end;
       elsif At_Constructor then
          declare
             use Leander.Types.Trees;
             Indent  : constant Positive := Tok_Indent;
-            Result  : Tree_Type;
             Kind    : Leander.Kinds.Trees.Tree_Type :=
                         Leander.Kinds.Trees.Leaf
                           (Leander.Kinds.Primitive);
@@ -56,12 +57,33 @@ package body Leander.Parser.Types is
             Result.Set_Annotation
               (Leander.Kinds.Trees.Leaf
                  (Leander.Kinds.Primitive));
-            return Result;
          end;
+      elsif Tok = Tok_Left_Paren then
+         Scan;
+         Result := Parse_Type;
+         if Tok = Tok_Right_Paren then
+            Scan;
+         else
+            Error ("missing ')'");
+         end if;
       else
          raise Program_Error with
            "expected a variable or constructor";
       end if;
+
+      if Tok = Tok_Right_Arrow then
+         Scan;
+         declare
+            Target : constant Leander.Types.Trees.Tree_Type :=
+                       Parse_Type;
+         begin
+            return Leander.Core.Map_Operator.Apply (Result)
+              .Apply (Target);
+         end;
+      else
+         return Result;
+      end if;
+
    end Parse_Type;
 
    ----------------------------

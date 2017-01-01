@@ -1,4 +1,9 @@
-with Ada.Characters.Handling;
+with Ada.Text_IO;
+
+with Ada.Containers.Indefinite_Hashed_Maps;
+with Ada.Containers.Doubly_Linked_Lists;
+
+with Ada.Strings.Fixed.Hash;
 
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
@@ -10,11 +15,31 @@ with Leander.Syntax.Expressions;
 
 package body Leander.Parser.Expressions is
 
+   type Associativity_Type is (Left, Right, None);
+   pragma Unreferenced (Right, None);
+   type Priority_Range is range 0 .. 9;
+
+   type Fixity_Record is
+      record
+         Associativity : Associativity_Type := Left;
+         Priority      : Priority_Range := 9;
+      end record;
+
+   package Fixity_Maps is
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Fixity_Record,
+        Hash            => Ada.Strings.Fixed.Hash,
+        Equivalent_Keys => "=");
+
+   Fixities : Fixity_Maps.Map;
+
    function At_Atomic_Expression return Boolean;
    function At_Atomic_Pattern return Boolean renames At_Atomic_Expression;
 
    function Parse_Atomic_Expression return Leander.Syntax.Syntax_Tree;
    function Parse_Case_Expression return Leander.Syntax.Syntax_Tree;
+   function Parse_Left_Expression return Leander.Syntax.Syntax_Tree;
 
    function Parse_Atomic_Pattern return Leander.Syntax.Syntax_Tree
      renames Parse_Atomic_Expression;
@@ -29,10 +54,11 @@ package body Leander.Parser.Expressions is
    function At_Atomic_Expression return Boolean is
       use Leander.Parser.Lexical.Set_Of_Tokens;
    begin
-      return Tok <= +(Tok_Identifier, Tok_Integer_Literal,
-                      Tok_Character_Literal, Tok_Float_Literal,
-                      Tok_String_Literal,
-                      Tok_Left_Paren, Tok_Left_Bracket);
+      return At_Name
+        or else  Tok <= +(Tok_Integer_Literal,
+                          Tok_Character_Literal, Tok_Float_Literal,
+                          Tok_String_Literal,
+                          Tok_Left_Paren, Tok_Left_Bracket);
    end At_Atomic_Expression;
 
    -------------------
@@ -56,6 +82,10 @@ package body Leander.Parser.Expressions is
 
       function Parse_Rest_Of_Tuple
         return Leander.Syntax.Array_Of_Syntax_Trees;
+
+      -------------------------
+      -- Parse_Rest_Of_Tuple --
+      -------------------------
 
       function Parse_Rest_Of_Tuple
         return Leander.Syntax.Array_Of_Syntax_Trees
@@ -90,14 +120,14 @@ package body Leander.Parser.Expressions is
       end Parse_Rest_Of_Tuple;
 
    begin
-      if Tok = Tok_Identifier then
+      if At_Identifier then
          declare
-            Name : constant String := Tok_Text;
+            Name : constant String := Scan_Identifier;
          begin
-            Scan;
-            if Ada.Characters.Handling.Is_Upper (Name (Name'First)) then
-               return Leander.Syntax.Expressions.Constructor
-                 (Current, Name);
+            if Name (Name'First) in 'A' .. 'Z'
+              or else Name (Name'First) = ':'
+            then
+               return Leander.Syntax.Expressions.Constructor (Current, Name);
             else
                return Leander.Syntax.Expressions.Variable (Current, Name);
             end if;
@@ -233,6 +263,120 @@ package body Leander.Parser.Expressions is
    ----------------------
 
    function Parse_Expression return Leander.Syntax.Syntax_Tree is
+      use Leander.Syntax;
+
+      package Tree_Stacks is
+        new Ada.Containers.Doubly_Linked_Lists (Syntax_Tree_Record);
+
+      Operator_Stack : Tree_Stacks.List;
+      Value_Stack : Tree_Stacks.List;
+
+      procedure Pop_Operator;
+
+      procedure Push_Operator
+        (Operator : Syntax_Tree_Record);
+
+      ------------------
+      -- Pop_Operator --
+      ------------------
+
+      procedure Pop_Operator is
+         Operator       : constant Syntax_Tree_Record :=
+                            Operator_Stack.Last_Element;
+         Right, Left    : Syntax_Tree_Record;
+      begin
+         Operator_Stack.Delete_Last;
+
+         Right := Value_Stack.Last_Element;
+         Value_Stack.Delete_Last;
+         Left := Value_Stack.Last_Element;
+         Value_Stack.Delete_Last;
+         Value_Stack.Append
+           (Syntax_Tree_Record
+              (Leander.Syntax.Expressions.Apply
+                   (Left.Source,
+                    Leander.Syntax.Expressions.Apply
+                      (Left.Source, Operator, Left),
+                    Right)));
+
+         Ada.Text_IO.Put_Line
+           ("Pop op: " & Value_Stack.First_Element.Show);
+      end Pop_Operator;
+
+      -------------------
+      -- Push_Operator --
+      -------------------
+
+      procedure Push_Operator
+        (Operator : Syntax_Tree_Record)
+      is
+         Op_Fixity : Fixity_Record;
+      begin
+         if Fixities.Contains (Operator.Show) then
+            Op_Fixity := Fixities.Element (Operator.Show);
+         else
+            Fixities.Insert (Operator.Show, Op_Fixity);
+         end if;
+
+         while not Operator_Stack.Is_Empty loop
+            declare
+               Top : constant Syntax_Tree_Record :=
+                       Operator_Stack.Last_Element;
+               Top_Fixity : constant Fixity_Record :=
+                              Fixities.Element (Top.Show);
+               Pop : Boolean;
+            begin
+               Pop :=
+                 (Op_Fixity.Associativity = Left
+                  and then Op_Fixity.Priority >= Top_Fixity.Priority)
+                 or else (Op_Fixity.Associativity /= Left
+                          and then Op_Fixity.Priority > Top_Fixity.Priority);
+
+               if Pop then
+                  Pop_Operator;
+               else
+                  exit;
+               end if;
+            end;
+         end loop;
+
+         Operator_Stack.Append (Operator);
+      end Push_Operator;
+
+   begin
+
+      Value_Stack.Append (Syntax_Tree_Record (Parse_Left_Expression));
+
+      while At_Operator loop
+         declare
+            Current  : constant Leander.Source.Source_Reference :=
+                         Current_Source_Reference;
+            Is_Con   : constant Boolean := At_Constructor_Op;
+            Name     : constant String := Scan_Identifier;
+            Operator : constant Syntax_Tree_Record :=
+                         (if Is_Con
+                          then Leander.Syntax.Expressions.Constructor
+                            (Current, Name)
+                          else Leander.Syntax.Expressions.Variable
+                            (Current, Name));
+         begin
+            Push_Operator (Operator);
+            Value_Stack.Append (Syntax_Tree_Record (Parse_Left_Expression));
+         end;
+      end loop;
+
+      while not Operator_Stack.Is_Empty loop
+         Pop_Operator;
+      end loop;
+
+      return Value_Stack.First_Element;
+   end Parse_Expression;
+
+   ---------------------------
+   -- Parse_Left_Expression --
+   ---------------------------
+
+   function Parse_Left_Expression return Leander.Syntax.Syntax_Tree is
       Current : constant Leander.Source.Source_Reference :=
                   Current_Source_Reference;
    begin
@@ -283,6 +427,6 @@ package body Leander.Parser.Expressions is
            "expected to be at an expression";
       end if;
 
-   end Parse_Expression;
+   end Parse_Left_Expression;
 
 end Leander.Parser.Expressions;
