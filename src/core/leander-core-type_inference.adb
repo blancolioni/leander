@@ -54,16 +54,10 @@ package body Leander.Core.Type_Inference is
 
    procedure Annotate
      (Tree     : Trees.Tree_Type;
-      Bindings : Leander.Core.Bindings.Binding_List;
-      Types    : Leander.Types.Bindings.Type_Binding_List;
-      Cons     : Leander.Types.Bindings.Constructor_Binding_List;
       Env      : Leander.Environments.Environment);
 
    function Scan_Variable_Annotations
      (Tree : Trees.Tree_Type;
-      Bindings : Leander.Core.Bindings.Binding_List;
-      Types    : Leander.Types.Bindings.Type_Binding_List;
-      Cons     : Leander.Types.Bindings.Constructor_Binding_List;
       Env      : Leander.Environments.Environment)
       return Array_Of_Annotations;
 
@@ -90,14 +84,11 @@ package body Leander.Core.Type_Inference is
 
    procedure Annotate
      (Tree     : Trees.Tree_Type;
-      Bindings : Leander.Core.Bindings.Binding_List;
-      Types    : Leander.Types.Bindings.Type_Binding_List;
-      Cons     : Leander.Types.Bindings.Constructor_Binding_List;
       Env      : Leander.Environments.Environment)
    is
       Vars : Array_Of_Annotations :=
                Scan_Variable_Annotations
-                 (Tree, Bindings, Types, Cons, Env);
+                 (Tree, Env);
 
       Next_Variable : Natural := 0;
 
@@ -303,10 +294,7 @@ package body Leander.Core.Type_Inference is
    -----------------
 
    procedure Infer_Types
-     (Bindings : Leander.Core.Bindings.Binding_List;
-      Types    : Leander.Types.Bindings.Type_Binding_List;
-      Cons     : Leander.Types.Bindings.Constructor_Binding_List;
-      Env      : Leander.Environments.Environment)
+     (Env      : Leander.Environments.Environment)
    is
 
       Dependencies : Dependency_Maps.Map;
@@ -366,7 +354,7 @@ package body Leander.Core.Type_Inference is
          elsif Tree.Is_Variable then
             if not Local_Bindings.Contains (Tree.Variable_Name)
               and then not Set.Contains (Tree.Variable_Name)
-              and then Bindings.Has_Binding (Tree.Variable_Name)
+              and then Env.Has_Local_Binding (Tree.Variable_Name)
             then
                Set.Insert (Tree.Variable_Name);
             end if;
@@ -374,22 +362,18 @@ package body Leander.Core.Type_Inference is
       end Scan_Dependencies;
 
    begin
-      Bindings.Scan (Add_Binding'Access);
+      Env.Scan_Local_Bindings (Add_Binding'Access);
 
       for Position in Dependencies.Iterate loop
          if Dependency_Maps.Element (Position).Is_Empty then
             Annotate
-              (Tree     => Bindings.Binding (Dependency_Maps.Key (Position)),
-               Bindings => Bindings,
-               Types    => Types,
-               Cons     => Cons,
+              (Tree     => Env.Local_Binding (Dependency_Maps.Key (Position)),
                Env      => Env);
             Ada.Text_IO.Put_Line
               (Dependency_Maps.Key (Position)
                & " :: "
-               & Bindings.Binding
+               & Env.Local_Binding
                  (Dependency_Maps.Key (Position)).Annotation.Show);
-
          end if;
       end loop;
 
@@ -398,9 +382,9 @@ package body Leander.Core.Type_Inference is
             Ready : Boolean := True;
             Name  : constant String := Dependency_Maps.Key (Position);
          begin
-            if not Bindings.Binding (Name).Has_Annotation then
+            if not Env.Local_Binding (Name).Has_Annotation then
                for Dep_Name of Dependency_Maps.Element (Position) loop
-                  if not Bindings.Binding (Dep_Name).Has_Annotation then
+                  if not Env.Local_Binding (Dep_Name).Has_Annotation then
                      Ready := False;
                      exit;
                   end if;
@@ -409,15 +393,12 @@ package body Leander.Core.Type_Inference is
 --                    Ada.Text_IO.Put_Line
 --                      ("Annotating: " & Name);
                   Annotate
-                    (Tree     => Bindings.Binding (Name),
-                     Bindings => Bindings,
-                     Types    => Types,
-                     Cons     => Cons,
+                    (Tree     => Env.Local_Binding (Name),
                      Env      => Env);
                   Ada.Text_IO.Put_Line
                     (Name
                      & " :: "
-                     & Bindings.Binding (Name).Annotation.Show);
+                     & Env.Local_Binding (Name).Annotation.Show);
                end if;
             end if;
          end;
@@ -430,13 +411,9 @@ package body Leander.Core.Type_Inference is
 
    function Scan_Variable_Annotations
      (Tree     : Trees.Tree_Type;
-      Bindings : Leander.Core.Bindings.Binding_List;
-      Types    : Leander.Types.Bindings.Type_Binding_List;
-      Cons     : Leander.Types.Bindings.Constructor_Binding_List;
       Env      : Leander.Environments.Environment)
       return Array_Of_Annotations
    is
-      pragma Unreferenced (Types);
       Vector : Binding_Vectors.Vector;
       Map    : Binding_Maps.Map;
       Bound  : Local_Binding_Maps.Map;
@@ -549,10 +526,7 @@ package body Leander.Core.Type_Inference is
                      declare
                         Name : constant String := Pat_It.Constructor_Name;
                      begin
-                        if Cons.Has_Binding (Name) then
-                           Pat_It.Set_Annotation
-                             (Unbind (Cons.Binding (Name).Constructor_Type));
-                        elsif Env.Has_Expression_Binding (Name) then
+                        if Env.Has_Constructor_Binding (Name) then
                            Pat_It.Set_Annotation
                              (Unbind
                                 (Env.Constructor_Binding (Name)
@@ -636,10 +610,10 @@ package body Leander.Core.Type_Inference is
                if not Bound.Contains (Name)
                  or else Bound (Name).Is_Empty
                then
-                  if Bindings.Has_Binding (Name) then
+                  if Env.Has_Local_Binding (Name) then
                      declare
                         Tree : constant Trees.Tree_Type :=
-                                 Bindings.Binding (Name);
+                                 Env.Local_Binding (Name);
                      begin
                         Root.Set_Annotation
                           (Unbind (Tree.Annotation));
@@ -663,10 +637,7 @@ package body Leander.Core.Type_Inference is
             declare
                Name : constant String := Root.Constructor_Name;
             begin
-               if Cons.Has_Binding (Name) then
-                  Root.Set_Annotation
-                    (Unbind (Cons.Binding (Name).Constructor_Type));
-               elsif Env.Has_Expression_Binding (Name) then
+               if Env.Has_Constructor_Binding (Name) then
                   Root.Set_Annotation
                     (Unbind (Env.Constructor_Binding (Name).Constructor_Type));
                else

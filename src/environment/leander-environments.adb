@@ -14,10 +14,7 @@ package body Leander.Environments is
    is
    begin
       Leander.Core.Type_Inference.Infer_Types
-        (Bindings  => Env.Local.Values,
-         Types     => Env.Local.Types,
-         Cons      => Env.Local.Constructors,
-         Env       => Environment (Env));
+        (Env       => Environment (Env));
    end Annotate;
 
    -------------
@@ -145,5 +142,19 @@ package body Leander.Environments is
       Env.Local.Values.Insert (Name, Value);
       Ada.Text_IO.Put_Line (Name & " = " & Value.Show);
    end Insert_Value;
+
+   -------------------------
+   -- Scan_Local_Bindings --
+   -------------------------
+
+   procedure Scan_Local_Bindings
+     (Env     : Environment'Class;
+      Process : not null access
+        procedure (Name : String;
+                   Tree : Leander.Core.Trees.Tree_Type))
+   is
+   begin
+      Env.Local.Values.Scan (Process);
+   end Scan_Local_Bindings;
 
 end Leander.Environments;

@@ -17,6 +17,23 @@ package Leander.Environments is
      (Env : in out Environment'Class;
       Name : String);
 
+   function Has_Local_Binding
+     (Env  : Environment;
+      Name : String)
+      return Boolean;
+
+   function Local_Binding
+     (Env  : Environment;
+      Name : String)
+      return Leander.Core.Trees.Tree_Type
+     with Pre => Env.Has_Local_Binding (Name);
+
+   procedure Scan_Local_Bindings
+     (Env     : Environment'Class;
+      Process : not null access
+        procedure (Name : String;
+                   Tree : Leander.Core.Trees.Tree_Type));
+
    function Has_Expression_Binding
      (Env  : Environment;
       Name : String)
@@ -112,17 +129,31 @@ private
          Global : Environment_Access;
       end record;
 
-   function Has_Expression_Binding
+   function Has_Local_Binding
      (Env  : Environment;
       Name : String)
       return Boolean
    is (Env.Local.Values.Has_Binding (Name));
 
+   function Local_Binding
+     (Env  : Environment;
+      Name : String)
+      return Leander.Core.Trees.Tree_Type
+   is (Env.Local.Values.Binding (Name));
+
+   function Has_Expression_Binding
+     (Env  : Environment;
+      Name : String)
+      return Boolean
+   is (Env.Has_Local_Binding (Name)
+       or else Env.Global.Values.Has_Binding (Name));
+
    function Expression_Binding
      (Env  : Environment;
       Name : String)
       return Leander.Core.Trees.Tree_Type'Class
-   is (Env.Local.Values.Binding (Name));
+   is (if Env.Has_Local_Binding (Name) then Env.Local_Binding (Name)
+       else Env.Global.Values.Binding (Name));
 
    function Has_Constructor_Binding
      (Env  : Environment;

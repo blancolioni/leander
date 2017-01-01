@@ -32,5 +32,5 @@ maybe n f (Just z) = f z
 data  Either a b  =  Left a | Right b
 
 either f g (Left x) = f x
-either f g (Right y) = f y
+either f g (Right y) = g y
                              
