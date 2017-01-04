@@ -11,7 +11,10 @@ package body Leander.Parser.Types is
    -- Parse_Type --
    ----------------
 
-   function Parse_Type return Leander.Types.Trees.Tree_Type is
+   function Parse_Type
+     (Env : Leander.Environments.Environment)
+      return Leander.Types.Trees.Tree_Type
+   is
       Result : Leander.Types.Trees.Tree_Type;
    begin
       if At_Variable then
@@ -20,12 +23,16 @@ package body Leander.Parser.Types is
          begin
             Scan;
 
-            Result :=
-              Leander.Types.Trees.Leaf
-                (Leander.Types.Variable
-                   (Name,
-                    Leander.Kinds.Trees.Leaf
-                      (Leander.Kinds.Primitive)));
+            if Env.Has_Type_Variable_Binding (Name) then
+               Result := Env.Type_Variable_Binding (Name);
+            else
+               Result :=
+                 Leander.Types.Trees.Leaf
+                   (Leander.Types.Variable
+                      (Name,
+                       Leander.Kinds.Trees.Leaf
+                         (Leander.Kinds.Primitive)));
+            end if;
          end;
       elsif At_Constructor then
          declare
@@ -41,7 +48,7 @@ package body Leander.Parser.Types is
             Scan;
             while At_Variable and then Tok_Indent > Indent loop
                Count := Count + 1;
-               Vars (Count) := Parse_Type;
+               Vars (Count) := Parse_Type (Env);
                Kind :=
                  Leander.Kinds.Trees.Apply
                    (Leander.Kinds.Trees.Apply
@@ -60,7 +67,7 @@ package body Leander.Parser.Types is
          end;
       elsif Tok = Tok_Left_Paren then
          Scan;
-         Result := Parse_Type;
+         Result := Parse_Type (Env);
          if Tok = Tok_Right_Paren then
             Scan;
          else
@@ -75,7 +82,7 @@ package body Leander.Parser.Types is
          Scan;
          declare
             Target : constant Leander.Types.Trees.Tree_Type :=
-                       Parse_Type;
+                       Parse_Type (Env);
          begin
             return Leander.Core.Map_Operator.Apply (Result)
               .Apply (Target);
@@ -91,7 +98,8 @@ package body Leander.Parser.Types is
    ----------------------------
 
    function Parse_Type_Constructor
-     (Target : Leander.Types.Trees.Tree_Type)
+     (Env    : Leander.Environments.Environment;
+      Target : Leander.Types.Trees.Tree_Type)
       return Leander.Types.Trees.Tree_Type
    is
       Vars  : array (1 .. 10) of Leander.Types.Trees.Tree_Type;
@@ -102,7 +110,7 @@ package body Leander.Parser.Types is
       Scan;
       while Tok_Indent > Indent and then At_Variable loop
          Count := Count + 1;
-         Vars (Count) := Parse_Type;
+         Vars (Count) := Parse_Type (Env);
       end loop;
       declare
          Result : Leander.Types.Trees.Tree_Type := Target;

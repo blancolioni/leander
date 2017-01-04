@@ -59,6 +59,8 @@ package body Leander.Parser.Declarations is
       pragma Assert (Tok = Tok_Class);
       Scan;
 
+      Class.Create;
+
       if At_Constructor_Name
         and then Next_Tok = Tok_Identifier
         and then Next_Tok (2) = Tok_Double_Right_Arrow
@@ -133,13 +135,16 @@ package body Leander.Parser.Declarations is
 
       declare
          Name : constant String := Scan_Identifier;
+         Tyvar : constant String :=
+                   (if At_Variable_Name
+                    then Scan_Identifier
+                    else "*");
       begin
-         if At_Variable_Name then
-            Class.Create (Name, Scan_Identifier);
-         else
+         if Tyvar = "*" then
             Error ("missing type variable");
-            Class.Create (Name, "a");
          end if;
+         Class.Set_Constraint (Name, Tyvar);
+         Env.Insert_Class_Binding (Name, Class);
 
          if Tok = Tok_Where then
             Scan;
@@ -183,12 +188,13 @@ package body Leander.Parser.Declarations is
 
          begin
             Class_Env.Create (Name);
+            Class_Env.Insert_Type_Variable (Tyvar, Class.Type_Variable);
+
             Parse_Value_Binding (Class_Env);
             Class_Env.Scan_Local_Bindings
               (Copy_Binding'Access);
          end;
 
-         Env.Insert_Class_Binding (Name, Class);
       end;
 
    end Parse_Class_Declaration;
@@ -213,7 +219,7 @@ package body Leander.Parser.Declarations is
       declare
          Name : constant String := Tok_Text;
       begin
-         Tycon := Leander.Parser.Types.Parse_Type;
+         Tycon := Leander.Parser.Types.Parse_Type (Env);
 
          if Tok /= Tok_Equal then
             Error ("expected '='");
@@ -238,7 +244,7 @@ package body Leander.Parser.Declarations is
                   Con_Name : constant String := Tok_Text;
                   Con_Type : constant Leander.Types.Trees.Tree_Type :=
                                Leander.Parser.Types.Parse_Type_Constructor
-                                 (Tycon);
+                                 (Env, Tycon);
                begin
                   Env.Insert_Constructor
                     (Type_Name => Name,
@@ -331,7 +337,7 @@ package body Leander.Parser.Declarations is
       begin
          if Tok = Tok_Colon_Colon then
             Scan;
-            return Leander.Parser.Types.Parse_Type;
+            return Leander.Parser.Types.Parse_Type (Env);
          elsif Tok = Tok_Comma then
             Scan;
             if not At_Name then

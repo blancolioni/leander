@@ -50,6 +50,8 @@ private
      new Ada.Containers.Indefinite_Doubly_Linked_Lists
        (Type_Constraint'Class);
 
+   function Show_Constraints (List : Constraint_Lists.List) return String;
+
    type Type_Node_Class is (Binding, Constructor, Variable);
 
    type Type_Node is
@@ -66,9 +68,10 @@ private
    overriding function Show
      (Node : Type_Node)
       return String
-   is (if Node.Class = Binding
-       then Natural'Image (Node.Index)
-       else Ada.Strings.Unbounded.To_String (Node.Name));
+   is (Show_Constraints (Node.Constraints)
+       & (if Node.Class = Binding
+          then Natural'Image (Node.Index)
+          else Ada.Strings.Unbounded.To_String (Node.Name)));
 
    overriding function Is_Variable
      (Node : Type_Node)

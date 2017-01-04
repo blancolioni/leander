@@ -1,4 +1,14 @@
+with Ada.Text_IO;
+
 package body Leander.Types.Class_Constraints is
+
+   type Class_Record is
+      record
+         Head          : Leander.Types.Trees.Tree_Type;
+         Type_Variable : Leander.Types.Trees.Tree_Type;
+         Constraints   : Constraint_Lists.List;
+         Methods       : Leander.Core.Bindings.Binding_List;
+      end record;
 
    -----------------
    -- Add_Context --
@@ -9,7 +19,7 @@ package body Leander.Types.Class_Constraints is
       Context : Class_Constraint'Class)
    is
    begin
-      Class.Constraints.Append (Context);
+      Class.Class_Body.Constraints.Append (Context);
    end Add_Context;
 
    ----------------
@@ -23,9 +33,9 @@ package body Leander.Types.Class_Constraints is
       Default   : Leander.Core.Trees.Tree_Type)
    is
    begin
-      Class.Methods.Insert (Name, Signature);
+      Class.Class_Body.Methods.Insert (Name, Signature);
       if not Default.Is_Empty then
-         Class.Methods.Insert (Name, Default);
+         Class.Class_Body.Methods.Insert (Name, Default);
       end if;
    end Add_Method;
 
@@ -47,19 +57,10 @@ package body Leander.Types.Class_Constraints is
    ------------
 
    procedure Create
-     (Class : in out Class_Constraint'Class;
-      Name  : String;
-      Tyvar : String)
+     (Class : in out Class_Constraint'Class)
    is
-      Kind : constant Leander.Kinds.Trees.Tree_Type :=
-               Leander.Kinds.Trees.Leaf
-                 (Leander.Kinds.Variable ('a'));
    begin
-      Class.Head :=
-        Leander.Types.Trees.Apply
-          (Leander.Types.Constructor (Name, Kind),
-           Leander.Types.Variable (Tyvar, Kind));
-
+      Class.Class_Body := new Class_Record;
    end Create;
 
    -----------------
@@ -87,5 +88,44 @@ package body Leander.Types.Class_Constraints is
    begin
       Bindings.Map.Insert (Name, Binding);
    end Insert;
+
+   --------------------
+   -- Set_Constraint --
+   --------------------
+
+   procedure Set_Constraint
+     (Class : in out Class_Constraint'Class;
+      Name  : String;
+      Tyvar : String)
+   is
+      Kind : constant Leander.Kinds.Trees.Tree_Type :=
+               Leander.Kinds.Trees.Leaf
+                 (Leander.Kinds.Variable ('a'));
+      Var_Node : Leander.Types.Type_Node :=
+                   Leander.Types.Variable (Tyvar, Kind);
+   begin
+      Var_Node.Add_Constraint (Class);
+      Class.Class_Body.Type_Variable := Leander.Types.Trees.Leaf (Var_Node);
+      Class.Class_Body.Head :=
+        Leander.Types.Trees.Apply
+          (Leander.Types.Constructor (Name, Kind),
+           Class.Class_Body.Type_Variable);
+      Ada.Text_IO.Put_Line
+        ("class: " & Leander.Types.Type_Constraint'Class (Class).Show);
+   end Set_Constraint;
+
+   overriding function Show
+     (Constraint : Class_Constraint)
+      return String
+   is (Constraint.Class_Body.Head.Left.Show);
+
+   -------------------
+   -- Type_Variable --
+   -------------------
+
+   function Type_Variable
+     (Class : Class_Constraint'Class)
+      return Leander.Types.Trees.Tree_Type
+   is (Class.Class_Body.Type_Variable);
 
 end Leander.Types.Class_Constraints;

@@ -113,4 +113,25 @@ package body Leander.Types.Bindings is
       List.Map.Insert (Name, Type_Binding (Binding));
    end Insert;
 
+   --------------------------
+   -- Insert_Type_Variable --
+   --------------------------
+
+   procedure Insert_Type_Variable
+     (List  : in out Type_Binding_List;
+      Name  : String;
+      Value : Leander.Types.Trees.Tree_Type)
+   is
+   begin
+      List.Map.Insert
+        (Name,
+         Type_Binding'
+           (Algebraic   => False,
+            Enumeration => False,
+            Primitive   => False,
+            Kind        => Value.Annotation,
+            Head        => Value,
+            others      => <>));
+   end Insert_Type_Variable;
+
 end Leander.Types.Bindings;
