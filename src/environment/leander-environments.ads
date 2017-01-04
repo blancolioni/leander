@@ -86,6 +86,17 @@ package Leander.Environments is
       return Leander.Types.Bindings.Type_Binding'Class
      with Pre => Env.Has_Type_Constructor_Binding (Name);
 
+   function Has_Type_Variable_Binding
+     (Env  : Environment;
+      Name : String)
+      return Boolean;
+
+   function Type_Variable_Binding
+     (Env  : Environment;
+      Name : String)
+      return Leander.Types.Trees.Tree_Type
+     with Pre => Env.Has_Type_Variable_Binding (Name);
+
    function Has_Class_Binding
      (Env  : Environment;
       Name : String)
@@ -101,6 +112,11 @@ package Leander.Environments is
      (Env   : in out Environment;
       Name  : String;
       Value : Leander.Core.Trees.Tree_Type);
+
+   procedure Insert_Type_Variable
+     (Env   : in out Environment;
+      Name  : String;
+      Value : Leander.Types.Trees.Tree_Type);
 
    procedure Insert_Signature
      (Env   : in out Environment;
@@ -231,6 +247,18 @@ private
       Name : String)
       return Leander.Types.Bindings.Type_Binding'Class
    is (Env.Local.Types.Binding (Name));
+
+   function Has_Type_Variable_Binding
+     (Env  : Environment;
+      Name : String)
+      return Boolean
+   is (Env.Local.Types.Has_Binding (Name));
+
+   function Type_Variable_Binding
+     (Env  : Environment;
+      Name : String)
+      return Leander.Types.Trees.Tree_Type
+   is (Env.Local.Types.Variable_Binding (Name));
 
    function Has_Class_Binding
      (Env  : Environment;

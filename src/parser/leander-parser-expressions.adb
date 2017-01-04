@@ -1,5 +1,3 @@
-with Ada.Text_IO;
-
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers.Doubly_Linked_Lists;
 
@@ -298,9 +296,6 @@ package body Leander.Parser.Expressions is
                     Leander.Syntax.Expressions.Apply
                       (Left.Source, Operator, Left),
                     Right)));
-
-         Ada.Text_IO.Put_Line
-           ("Pop op: " & Value_Stack.First_Element.Show);
       end Pop_Operator;
 
       -------------------

@@ -90,4 +90,30 @@ package body Leander.Types is
       Node.Index := Index;
    end Set_Binding_Index;
 
+   ----------------------
+   -- Show_Constraints --
+   ----------------------
+
+   function Show_Constraints (List : Constraint_Lists.List) return String is
+   begin
+      if List.Is_Empty then
+         return "";
+      elsif Natural (List.Length) = 1 then
+         return List.First_Element.Show & " => ";
+      else
+         declare
+            use Ada.Strings.Unbounded;
+            Result : Unbounded_String;
+         begin
+            for Constraint of List loop
+               if Result /= Null_Unbounded_String then
+                  Result := Result & ",";
+               end if;
+               Result := Result & Constraint.Show;
+            end loop;
+            return "(" & To_String (Result) & ") => ";
+         end;
+      end if;
+   end Show_Constraints;
+
 end Leander.Types;

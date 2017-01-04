@@ -10,6 +10,9 @@ package Leander.Types.Class_Constraints is
    type Class_Constraint is new Type_Constraint with private;
 
    procedure Create
+     (Class : in out Class_Constraint'Class);
+
+   procedure Set_Constraint
      (Class : in out Class_Constraint'Class;
       Name  : String;
       Tyvar : String);
@@ -23,6 +26,10 @@ package Leander.Types.Class_Constraints is
       Name      : String;
       Signature : Leander.Types.Trees.Tree_Type;
       Default   : Leander.Core.Trees.Tree_Type);
+
+   function Type_Variable
+     (Class : Class_Constraint'Class)
+      return Leander.Types.Trees.Tree_Type;
 
    type Class_Bindings is tagged private;
 
@@ -46,18 +53,16 @@ package Leander.Types.Class_Constraints is
 
 private
 
+   type Class_Record;
+
    type Class_Constraint is new Type_Constraint with
       record
-         Head          : Leander.Types.Trees.Tree_Type;
-         Type_Variable : Leander.Types.Trees.Tree_Type;
-         Constraints   : Constraint_Lists.List;
-         Methods       : Leander.Core.Bindings.Binding_List;
+         Class_Body : access Class_Record;
       end record;
 
    overriding function Show
      (Constraint : Class_Constraint)
-      return String
-   is (Constraint.Head.Show);
+      return String;
 
    package Class_Binding_Maps is
      new Ada.Containers.Indefinite_Hashed_Maps

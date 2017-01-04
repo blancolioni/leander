@@ -80,6 +80,12 @@ package Leander.Types.Bindings is
       return Type_Binding'Class
      with Pre => List.Has_Binding (Name);
 
+   function Variable_Binding
+     (List : Type_Binding_List;
+      Name : String)
+      return Leander.Types.Trees.Tree_Type
+     with Pre => List.Has_Binding (Name);
+
    procedure Insert
      (List    : in out Type_Binding_List;
       Name    : String;
@@ -101,6 +107,11 @@ package Leander.Types.Bindings is
      (List           : in out Type_Binding_List;
       Name           : String;
       Primitive_Type : Leander.Types.Trees.Tree_Type);
+
+   procedure Insert_Type_Variable
+     (List  : in out Type_Binding_List;
+      Name  : String;
+      Value : Leander.Types.Trees.Tree_Type);
 
    function Add_Constructor
      (List      : in out Type_Binding_List;
@@ -218,5 +229,11 @@ private
       Name : String)
       return Type_Binding'Class
    is (List.Map.Element (Name));
+
+   function Variable_Binding
+     (List : Type_Binding_List;
+      Name : String)
+      return Leander.Types.Trees.Tree_Type
+   is (List.Map.Element (Name).Head);
 
 end Leander.Types.Bindings;

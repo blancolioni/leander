@@ -156,6 +156,19 @@ package body Leander.Environments is
       Ada.Text_IO.Put_Line (Name & " :: " & Value.Show);
    end Insert_Signature;
 
+   --------------------------
+   -- Insert_Type_Variable --
+   --------------------------
+
+   procedure Insert_Type_Variable
+     (Env   : in out Environment;
+      Name  : String;
+      Value : Leander.Types.Trees.Tree_Type)
+   is
+   begin
+      Env.Local.Types.Insert_Type_Variable (Name, Value);
+   end Insert_Type_Variable;
+
    ------------------
    -- Insert_Value --
    ------------------
