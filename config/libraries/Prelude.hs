@@ -6,7 +6,18 @@ class  Eq a  where
     x /= y     =  not (x == y)  
     x == y     =  not (x /= y)
     
+class  (Eq a) => Ord a  where  
+    compare              :: a -> a -> Ordering  
+    (<), (<=), (>=), (>) :: a -> a -> Bool  
+    max, min             :: a -> a -> a  
+    
 id x = x
+
+equal x y = x == y
+
+equal4 w x y z = (w == x) && (y == z)
+
+checkEqual = equal4 1 1 2 2 
 
 const x = \ y -> x
 
@@ -28,6 +39,10 @@ True || x = True
 
 not False = True
 not True = False
+
+-- Ordering type  
+ 
+data  Ordering  =  LT | EQ | GT  
 
 null [] = True
 null x = False

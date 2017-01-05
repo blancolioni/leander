@@ -57,7 +57,7 @@ package body Leander.Types is
    -- Merge_Constraints --
    -----------------------
 
-   procedure Merge_Constraints
+   overriding procedure Merge_Constraints
      (Left, Right : in out Type_Node)
    is
       New_List : Constraint_Lists.List;
@@ -70,9 +70,39 @@ package body Leander.Types is
             New_List.Append (Constraint);
          end if;
       end loop;
+      Minimise (New_List);
       Left.Constraints := New_List;
       Right.Constraints := New_List;
    end Merge_Constraints;
+
+   --------------
+   -- Minimise --
+   --------------
+
+   procedure Minimise
+     (List : in out Constraint_Lists.List)
+   is
+      New_List : Constraint_Lists.List;
+   begin
+      for Constraint of List loop
+         declare
+            OK : Boolean := True;
+         begin
+            for Check of List loop
+               if Constraint /= Check
+                 and then Check.Is_Subset_Of (Constraint)
+               then
+                  OK := False;
+                  exit;
+               end if;
+            end loop;
+            if OK then
+               New_List.Append (Constraint);
+            end if;
+         end;
+      end loop;
+      List := New_List;
+   end Minimise;
 
    -----------------------
    -- Set_Binding_Index --

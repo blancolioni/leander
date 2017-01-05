@@ -40,6 +40,15 @@ package body Leander.Core.Compiler is
       Tree    : Leander.Core.Trees.Tree_Type;
       Machine : SK.Machine.SK_Machine)
    is
+
+      procedure Add_Constraint_Abstraction
+        (Constraint : Leander.Types.Type_Constraint'Class;
+         Variable   : String);
+
+      procedure Add_Constraint_Argument
+        (Constraint : Leander.Types.Type_Constraint'Class;
+         Variable   : String);
+
       procedure Compile (T : Leander.Core.Trees.Tree_Type);
 
       procedure Compile_Algebraic_Case
@@ -53,13 +62,47 @@ package body Leander.Core.Compiler is
                   return String
       is ("k" & Integer'Image (-Positive (Index)));
 
+      --------------------------------
+      -- Add_Constraint_Abstraction --
+      --------------------------------
+
+      procedure Add_Constraint_Abstraction
+        (Constraint : Leander.Types.Type_Constraint'Class;
+         Variable   : String)
+      is
+         Name : constant String :=
+                  Constraint.Show & "-" & Variable & "-vt";
+      begin
+         SK.Machine.Assembler.Lambda
+           (Machine, Name);
+      end Add_Constraint_Abstraction;
+
+      -----------------------------
+      -- Add_Constraint_Argument --
+      -----------------------------
+
+      procedure Add_Constraint_Argument
+        (Constraint : Leander.Types.Type_Constraint'Class;
+         Variable   : String)
+      is
+         Name : constant String :=
+                  Constraint.Show & "-" & Variable & "-vt";
+      begin
+         SK.Machine.Assembler.Push
+           (Machine, Name);
+         SK.Machine.Assembler.Apply (Machine);
+      end Add_Constraint_Argument;
+
       -------------
       -- Compile --
       -------------
 
       procedure Compile (T : Leander.Core.Trees.Tree_Type) is
       begin
-         if T.Is_Application then
+         if T.Is_Empty then
+            --  class method
+            null;
+         elsif T.Is_Application then
             if Is_Lambda (T) then
                Compile (T.Right);
                SK.Machine.Assembler.Lambda
@@ -70,6 +113,11 @@ package body Leander.Core.Compiler is
                null;
             else
                Compile (T.Left);
+               if T.Left.Is_Variable then
+                  Leander.Types.Trees.Scan_Constraints
+                    (T.Left.Annotation,
+                     Add_Constraint_Argument'Access);
+               end if;
                Compile (T.Right);
                SK.Machine.Apply (Machine);
             end if;
@@ -249,10 +297,18 @@ package body Leander.Core.Compiler is
       end Compile_Constructor_Expression;
 
    begin
-      Compile (Tree);
-      Ada.Text_IO.Put_Line
-        (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
-      SK.Machine.Bind (Machine, Name);
+      if not Tree.Has_Annotation then
+         Ada.Text_IO.Put_Line ("skipping: " & Tree.Show);
+      else
+         Compile (Tree);
+         Leander.Types.Trees.Scan_Constraints
+           (Tree.Annotation,
+            Add_Constraint_Abstraction'Access);
+
+         Ada.Text_IO.Put_Line
+           (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
+         SK.Machine.Bind (Machine, Name);
+      end if;
    end Compile;
 
 end Leander.Core.Compiler;

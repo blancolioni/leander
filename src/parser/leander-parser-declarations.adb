@@ -183,6 +183,7 @@ package body Leander.Parser.Declarations is
 
                Class.Add_Method
                  (Name, Signature, Tree);
+               Env.Insert_Signature (Name, Signature);
 
             end Copy_Binding;
 

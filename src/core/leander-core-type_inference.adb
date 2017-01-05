@@ -4,11 +4,12 @@ with Ada.Strings.Fixed.Hash;
 with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Hashed_Maps;
-with Ada.Containers.Indefinite_Hashed_Sets;
 
 with Leander.Core.Trees;
 
 with Leander.Errors;
+
+with Leander.Set_Of_Names;
 
 package body Leander.Core.Type_Inference is
 
@@ -25,12 +26,6 @@ package body Leander.Core.Type_Inference is
         Element_Type    => Positive,
         Hash            => Ada.Strings.Fixed.Hash,
         Equivalent_Keys => "=");
-
-   package Set_Of_Names is
-     new Ada.Containers.Indefinite_Hashed_Sets
-       (Element_Type        => String,
-        Hash                => Ada.Strings.Fixed.Hash,
-        Equivalent_Elements => "=");
 
    package Dependency_Maps is
      new Ada.Containers.Indefinite_Hashed_Maps
@@ -238,10 +233,14 @@ package body Leander.Core.Type_Inference is
             if Bindings (A.Binding_Index).Is_Binding then
                declare
                   Index    : constant Positive := A.Binding_Index;
+                  Var_Type : Leander.Types.Trees.Tree_Type;
                begin
                   Next_Variable := Next_Variable + 1;
-                  Bindings (Index) :=
+                  Var_Type :=
                     A.Create_Variable_From_Binding (Next_Variable);
+                  Bindings (Index).Merge_Constraints
+                    (Var_Type);
+                  Bindings (Index) := Var_Type;
                end;
             end if;
             return Bindings (A.Binding_Index);
@@ -365,43 +364,65 @@ package body Leander.Core.Type_Inference is
       Env.Scan_Local_Bindings (Add_Binding'Access);
 
       for Position in Dependencies.Iterate loop
-         if Dependency_Maps.Element (Position).Is_Empty then
-            Annotate
-              (Tree     => Env.Local_Binding (Dependency_Maps.Key (Position)),
-               Env      => Env);
-            Ada.Text_IO.Put_Line
-              (Dependency_Maps.Key (Position)
-               & " :: "
-               & Env.Local_Binding
-                 (Dependency_Maps.Key (Position)).Annotation.Show);
-         end if;
-      end loop;
-
-      for Position in Dependencies.Iterate loop
          declare
-            Ready : Boolean := True;
-            Name  : constant String := Dependency_Maps.Key (Position);
+            Name : constant String := Dependency_Maps.Key (Position);
          begin
-            if not Env.Local_Binding (Name).Has_Annotation then
-               for Dep_Name of Dependency_Maps.Element (Position) loop
-                  if not Env.Local_Binding (Dep_Name).Has_Annotation then
-                     Ready := False;
-                     exit;
-                  end if;
-               end loop;
-               if Ready then
---                    Ada.Text_IO.Put_Line
---                      ("Annotating: " & Name);
+            if Dependency_Maps.Element (Position).Is_Empty  then
+               if Env.Has_Local_Signature (Name) then
+                  Ada.Text_IO.Put_Line
+                    (Name
+                     & " :: "
+                     & Leander.Types.Trees.Show_Type
+                       (Env.Local_Signature (Name)));
+               else
                   Annotate
                     (Tree     => Env.Local_Binding (Name),
                      Env      => Env);
                   Ada.Text_IO.Put_Line
-                    (Name
+                    (Dependency_Maps.Key (Position)
                      & " :: "
-                     & Env.Local_Binding (Name).Annotation.Show);
+                     & Leander.Types.Trees.Show_Type
+                       (Env.Local_Binding (Name).Annotation));
                end if;
             end if;
          end;
+      end loop;
+
+      for I in 1 .. 2 loop
+         for Position in Dependencies.Iterate loop
+            declare
+               Ready : Boolean := True;
+               Name  : constant String := Dependency_Maps.Key (Position);
+            begin
+               if not Env.Has_Local_Signature (Name)
+                 and then not Env.Local_Binding (Name).Has_Annotation
+               then
+                  for Dep_Name of Dependency_Maps.Element (Position) loop
+                     if not Env.Has_Local_Signature (Dep_Name)
+                       and then not Env.Local_Binding (Dep_Name).Has_Annotation
+                     then
+                        Ready := False;
+                        exit;
+                     end if;
+                  end loop;
+                  if Ready then
+                     --                    Ada.Text_IO.Put_Line
+                     --                      ("Annotating: " & Name);
+                     Annotate
+                       (Tree     => Env.Local_Binding (Name),
+                        Env      => Env);
+                     Ada.Text_IO.Put_Line
+                       (Name
+                        & " :: "
+                        & Leander.Types.Trees.Show_Type
+                          (Env.Local_Binding (Name).Annotation));
+                  else
+                     Ada.Text_IO.Put_Line
+                       ("Not ready: " & Name);
+                  end if;
+               end if;
+            end;
+         end loop;
       end loop;
    end Infer_Types;
 
@@ -610,7 +631,10 @@ package body Leander.Core.Type_Inference is
                if not Bound.Contains (Name)
                  or else Bound (Name).Is_Empty
                then
-                  if Env.Has_Local_Binding (Name) then
+                  if Env.Has_Local_Signature (Name) then
+                     Root.Set_Annotation
+                       (Unbind (Env.Local_Signature (Name)));
+                  elsif Env.Has_Local_Binding (Name) then
                      declare
                         Tree : constant Trees.Tree_Type :=
                                  Env.Local_Binding (Name);
@@ -681,6 +705,7 @@ package body Leander.Core.Type_Inference is
                   return Vector (Local_Map.Element (T.Variable_Name));
                else
                   Add_Binding;
+                  T.Merge_Tree_Constraints (Vector.Last_Element);
                   Local_Map.Insert (T.Variable_Name, Vector.Last_Index);
                   return Vector.Last_Element;
                end if;
@@ -725,9 +750,11 @@ package body Leander.Core.Type_Inference is
 --        Ada.Text_IO.Put_Line
 --          ("Unify: " & Left.Show & " with " & Right.Show);
       if Left.Is_Binding then
+         Left.Merge_Tree_Constraints (Right);
          Bindings (Left.Binding_Index) := Right;
          return Right;
       elsif Right.Is_Binding then
+         Left.Merge_Tree_Constraints (Right);
          Bindings (Right.Binding_Index) := Left;
          return Left;
       elsif Left.Is_Leaf then

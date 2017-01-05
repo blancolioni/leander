@@ -39,8 +39,10 @@ package body Leander.Environments is
          Tree : Leander.Core.Trees.Tree_Type)
       is
       begin
-         Leander.Core.Compiler.Compile
-           (Env, Name, Tree, Machine);
+         if not Tree.Is_Empty then
+            Leander.Core.Compiler.Compile
+              (Env, Name, Tree, Machine);
+         end if;
       end Compile_Binding;
 
    begin

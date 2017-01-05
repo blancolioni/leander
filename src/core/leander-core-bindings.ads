@@ -12,6 +12,11 @@ package Leander.Core.Bindings is
       Name : String)
       return Boolean;
 
+   function Has_Value
+     (List : Binding_List;
+      Name : String)
+      return Boolean;
+
    function Has_Signature
      (List : Binding_List;
       Name : String)
@@ -33,8 +38,8 @@ package Leander.Core.Bindings is
      (List    : in out Binding_List;
       Name    : String;
       Binding : Leander.Core.Trees.Tree_Type)
-     with Pre => not List.Has_Binding (Name),
-     Post => List.Has_Binding (Name);
+     with Pre => not List.Has_Value (Name),
+     Post => List.Has_Value (Name);
 
    procedure Insert
      (List      : in out Binding_List;
@@ -79,6 +84,12 @@ private
       end record;
 
    function Has_Binding
+     (List : Binding_List;
+      Name : String)
+      return Boolean
+   is (List.Map.Contains (Name));
+
+   function Has_Value
      (List : Binding_List;
       Name : String)
       return Boolean
