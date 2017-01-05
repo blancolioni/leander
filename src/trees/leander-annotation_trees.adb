@@ -1,5 +1,29 @@
 package body Leander.Annotation_Trees is
 
+   -----------------------
+   -- Merge_Constraints --
+   -----------------------
+
+   overriding procedure Merge_Constraints
+     (Left, Right : in out Tree_Type)
+   is
+   begin
+      Left.Merge_Tree_Constraints (Right);
+   end Merge_Constraints;
+
+   ----------------------------
+   -- Merge_Tree_Constraints --
+   ----------------------------
+
+   procedure Merge_Tree_Constraints
+     (Left, Right : Tree_Type)
+   is
+   begin
+      if Left.Node.Leaf and then Right.Node.Leaf then
+         Left.Node.Node.Merge_Constraints (Right.Node.Node);
+      end if;
+   end Merge_Tree_Constraints;
+
    ------------------
    -- Replace_Node --
    ------------------

@@ -215,7 +215,8 @@ private
       Name : String)
       return Boolean
    is (Env.Has_Local_Binding (Name)
-       or else Env.Global.Values.Has_Binding (Name));
+       or else (Env.Global /= null
+                and then Env.Global.Values.Has_Binding (Name)));
 
    function Expression_Binding
      (Env  : Environment;
@@ -228,7 +229,9 @@ private
      (Env  : Environment;
       Name : String)
       return Boolean
-   is (Env.Local.Constructors.Has_Binding (Name));
+   is (Env.Local.Constructors.Has_Binding (Name)
+       or else (Env.Global /= null
+                and then Env.Global.Constructors.Has_Binding (Name)));
 
    function Constructor_Binding
      (Env  : Environment;
@@ -240,7 +243,9 @@ private
      (Env  : Environment;
       Name : String)
       return Boolean
-   is (Env.Local.Types.Has_Binding (Name));
+   is (Env.Local.Types.Has_Binding (Name)
+       or else (Env.Global /= null
+                and then Env.Global.Types.Has_Binding (Name)));
 
    function Type_Constructor_Binding
      (Env  : Environment;
@@ -265,7 +270,8 @@ private
       Name : String)
       return Boolean
    is (Env.Local.Classes.Has_Binding (Name)
-       or else Env.Global.Classes.Has_Binding (Name));
+       or else (Env.Global /= null
+                and then Env.Global.Classes.Has_Binding (Name)));
 
    function Class_Binding
      (Env  : Environment;

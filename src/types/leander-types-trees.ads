@@ -32,4 +32,14 @@ package Leander.Types.Trees is
                    return Tree_Type
                    renames Type_Trees.Apply;
 
+   procedure Scan_Constraints
+     (Tree : Tree_Type;
+      Process : not null access
+        procedure (Constraint : Type_Constraint'Class;
+                   Variable   : String));
+
+   function Show_Type
+     (Tree : Tree_Type)
+      return String;
+
 end Leander.Types.Trees;

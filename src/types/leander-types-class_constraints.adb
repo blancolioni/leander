@@ -89,6 +89,26 @@ package body Leander.Types.Class_Constraints is
       Bindings.Map.Insert (Name, Binding);
    end Insert;
 
+   ------------------
+   -- Is_Subset_Of --
+   ------------------
+
+   overriding function Is_Subset_Of
+     (Subset   : Class_Constraint;
+      Superset : Class_Constraint)
+      return Boolean
+   is
+   begin
+      for Constraint of Subset.Class_Body.Constraints loop
+         if Constraint = Type_Constraint'Class (Superset)
+           or else Class_Constraint (Constraint).Is_Subset_Of (Superset)
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Is_Subset_Of;
+
    --------------------
    -- Set_Constraint --
    --------------------

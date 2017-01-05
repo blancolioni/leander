@@ -64,6 +64,11 @@ private
      (Constraint : Class_Constraint)
       return String;
 
+   overriding function Is_Subset_Of
+     (Subset : Class_Constraint;
+      Superset : Class_Constraint)
+      return Boolean;
+
    package Class_Binding_Maps is
      new Ada.Containers.Indefinite_Hashed_Maps
        (Key_Type        => String,

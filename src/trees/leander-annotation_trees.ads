@@ -62,6 +62,12 @@ package Leander.Annotation_Trees is
      (Tree       : Tree_Type;
       Annotation : Annotation_Type);
 
+   overriding procedure Merge_Constraints
+     (Left, Right : in out Tree_Type);
+
+   procedure Merge_Tree_Constraints
+     (Left, Right : Tree_Type);
+
 private
 
    type Tree_Node (Leaf : Boolean);

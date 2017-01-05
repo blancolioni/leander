@@ -8,6 +8,12 @@ package Leander.Types is
 
    type Type_Constraint is interface and Show_Interface;
 
+   function Is_Subset_Of
+     (Subset   : Type_Constraint;
+      Superset : Type_Constraint)
+      return Boolean
+      is abstract;
+
    type Type_Node is
      new Leander.Unifiable.Unifiable_Interface
      and Show_Interface
@@ -37,7 +43,7 @@ package Leander.Types is
    function Variable_Kind return Leander.Kinds.Trees.Tree_Type;
    function Map_Operator return Leander.Kinds.Trees.Tree_Type;
 
-   procedure Merge_Constraints
+   overriding procedure Merge_Constraints
      (Left, Right : in out Type_Node);
 
    procedure Add_Constraint
@@ -51,6 +57,9 @@ private
        (Type_Constraint'Class);
 
    function Show_Constraints (List : Constraint_Lists.List) return String;
+
+   procedure Minimise
+     (List : in out Constraint_Lists.List);
 
    type Type_Node_Class is (Binding, Constructor, Variable);
 
@@ -68,10 +77,9 @@ private
    overriding function Show
      (Node : Type_Node)
       return String
-   is (Show_Constraints (Node.Constraints)
-       & (if Node.Class = Binding
-          then Natural'Image (Node.Index)
-          else Ada.Strings.Unbounded.To_String (Node.Name)));
+   is (if Node.Class = Binding
+       then Natural'Image (Node.Index)
+       else Ada.Strings.Unbounded.To_String (Node.Name));
 
    overriding function Is_Variable
      (Node : Type_Node)

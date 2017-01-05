@@ -39,6 +39,10 @@ package Leander.Unifiable is
       Index : Positive)
    is abstract;
 
+   procedure Merge_Constraints
+     (Left, Right : in out Unifiable_Interface)
+   is null;
+
    function Create_Variable_From_Binding
      (Node  : Unifiable_Interface;
       Index : Positive)
