@@ -10,6 +10,7 @@ package body Leander.Primitives is
    Local_List_Type  : Leander.Types.Trees.Tree_Type;
    Local_Empty_List : Leander.Types.Trees.Tree_Type;
    Local_Cons       : Leander.Types.Trees.Tree_Type;
+   Local_Map_Type   : Leander.Types.Trees.Tree_Type;
 
    type Tuple_Entry_Record is
       record
@@ -55,8 +56,7 @@ package body Leander.Primitives is
 
             Tycon :=
               Leander.Types.Trees.Leaf
-                (Leander.Types.Constructor
-                   (Name, Kind));
+                (Leander.Types.Constructor (Name));
             Tycon.Set_Annotation (Kind);
 
 --              declare
@@ -81,9 +81,10 @@ package body Leander.Primitives is
                  Leander.Types.Trees.Apply
                    (Con,
                     Leander.Types.Variable
-                      ((1 => Character'Val (96 + I)),
-                       Leander.Kinds.Trees.Leaf
-                         (Leander.Kinds.Primitive)));
+                      ((1 => Character'Val (96 + I))));
+               Con.Right.Set_Annotation
+                 (Leander.Kinds.Trees.Leaf
+                    (Leander.Kinds.Primitive));
             end loop;
             for I in reverse 1 .. Arity loop
                Con :=
@@ -91,10 +92,11 @@ package body Leander.Primitives is
                    (Leander.Types.Trees.Apply
                       (Leander.Core.Map_Operator,
                        Leander.Types.Variable
-                         ((1 => Character'Val (96 + I)),
-                          Leander.Kinds.Trees.Leaf
-                            (Leander.Kinds.Primitive))),
+                         ((1 => Character'Val (96 + I)))),
                     Con);
+               Con.Right.Set_Annotation
+                 (Leander.Kinds.Trees.Leaf
+                    (Leander.Kinds.Primitive));
             end loop;
 
             Ada.Text_IO.Put_Line
@@ -144,6 +146,15 @@ package body Leander.Primitives is
    begin
       return Local_List_Type;
    end List_Type;
+
+   --------------
+   -- Map_Type --
+   --------------
+
+   function Map_Type return Leander.Types.Trees.Tree_Type is
+   begin
+      return Local_Map_Type;
+   end Map_Type;
 
    ---------------
    -- Tuple_Con --
@@ -202,29 +213,37 @@ package body Leander.Primitives is
                          Type_Con_0),
                       Type_Con_1);
 
+   Type_Variable_A : constant Leander.Types.Trees.Tree_Type :=
+                       Leander.Types.Trees.Leaf
+                         (Leander.Types.Variable ("a"));
 begin
+   Type_Variable_A.Set_Annotation (Type_Con_0);
+
    Local_Int_Type :=
      Leander.Types.Trees.Leaf
        (Leander.Types.Constructor
-          ("Int", Type_Con_0));
+          ("Int"));
+   Local_Int_Type.Set_Annotation (Type_Con_0);
 
    Local_List_Type :=
      Leander.Types.Trees.Leaf
-       (Leander.Types.Constructor
-          ("[]", Type_Con_1));
+       (Leander.Types.Constructor ("[]"));
+   Local_List_Type.First_Leaf.Set_Annotation (Type_Con_1);
+
+   Local_Map_Type :=
+     Leander.Types.Trees.Leaf
+       (Leander.Types.Constructor ("->"));
+   Local_Map_Type.First_Leaf.Set_Annotation (Type_Con_2);
 
    Local_Empty_List :=
      Leander.Types.Trees.Apply
-       (Local_List_Type,
-        Leander.Types.Variable ("a", Type_Con_0));
+       (Local_List_Type, Type_Variable_A);
 
    Local_Cons :=
      Leander.Types.Trees.Apply
        (Leander.Types.Trees.Apply
-          (Leander.Types.Constructor ("->", Type_Con_2),
-           Leander.Types.Variable ("a", Type_Con_0)),
+          (Leander.Types.Constructor ("->"), Type_Variable_A),
         Leander.Types.Trees.Apply
-          (Local_List_Type,
-           Leander.Types.Variable ("a", Type_Con_0)));
+          (Local_List_Type, Type_Variable_A));
 
 end Leander.Primitives;

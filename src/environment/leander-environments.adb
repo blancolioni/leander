@@ -1,5 +1,7 @@
 with Ada.Text_IO;
 
+with Leander.Types.Kind_Inference;
+
 with Leander.Core.Compiler;
 with Leander.Core.Type_Inference;
 
@@ -13,8 +15,10 @@ package body Leander.Environments is
      (Env  : Environment'Class)
    is
    begin
+      Leander.Types.Kind_Inference.Infer_Kinds
+        (Environment (Env));
       Leander.Core.Type_Inference.Infer_Types
-        (Env       => Environment (Env));
+        (Environment (Env));
    end Annotate;
 
    -------------
@@ -61,6 +65,20 @@ package body Leander.Environments is
       Env.Local := new Environment_Record;
       Env.Local.Name := Ada.Strings.Unbounded.To_Unbounded_String (Name);
    end Create;
+
+   ----------------------------------
+   -- Create_Temporary_Environment --
+   ----------------------------------
+
+   procedure Create_Temporary_Environment
+     (Env    : in out Environment'Class;
+      Parent : Environment'Class;
+      Name   : String)
+   is
+   begin
+      Env.Create (Name);
+      Env.Global := Parent.Local;
+   end Create_Temporary_Environment;
 
    -----------------------
    -- Declare_Data_Type --
@@ -213,5 +231,19 @@ package body Leander.Environments is
    begin
       Env.Local.Values.Scan (Process);
    end Scan_Local_Bindings;
+
+   ------------------------------
+   -- Scan_Local_Type_Bindings --
+   ------------------------------
+
+   procedure Scan_Local_Type_Bindings
+     (Env     : Environment'Class;
+      Process : not null access
+        procedure (Name : String;
+                   Tree : Leander.Types.Bindings.Type_Binding'Class))
+   is
+   begin
+      Env.Local.Types.Scan_Bindings (Process);
+   end Scan_Local_Type_Bindings;
 
 end Leander.Environments;

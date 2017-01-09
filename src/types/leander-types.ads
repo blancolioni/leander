@@ -22,23 +22,16 @@ package Leander.Types is
    overriding function "=" (Left, Right : Type_Node) return Boolean;
 
    function Constructor
-     (Name : String;
-      Kind : Leander.Kinds.Trees.Tree_Type)
+     (Name : String)
       return Type_Node;
 
    function Variable
-     (Name : String;
-      Kind : Leander.Kinds.Trees.Tree_Type)
+     (Name : String)
       return Type_Node;
 
    function Binding
      (Index : Positive)
       return Type_Node;
-
-   function Has_Annotation (Item : Type_Node'Class) return Boolean;
-   function Annotation
-     (Item : Type_Node'Class)
-      return Leander.Kinds.Trees.Tree_Type;
 
    function Variable_Kind return Leander.Kinds.Trees.Tree_Type;
    function Map_Operator return Leander.Kinds.Trees.Tree_Type;
@@ -68,7 +61,8 @@ private
      and Show_Interface with
       record
          Class       : Type_Node_Class;
-         Kind        : Leander.Kinds.Trees.Tree_Type;
+--           Kind        : Leander.Kinds.Trees.Tree_Type :=
+--                           Leander.Kinds.Trees.Empty;
          Name        : Ada.Strings.Unbounded.Unbounded_String;
          Index       : Natural := 0;
          Constraints : Constraint_Lists.List;
@@ -120,13 +114,13 @@ private
      (Node  : in out Type_Node;
       Index : Positive);
 
-   function Has_Annotation (Item : Type_Node'Class) return Boolean
-   is (not Item.Kind.Is_Empty);
-
-   function Annotation
-     (Item : Type_Node'Class)
-      return Leander.Kinds.Trees.Tree_Type
-   is (Item.Kind);
+--     function Has_Annotation (Item : Type_Node'Class) return Boolean
+--     is (not Item.Kind.Is_Empty);
+--
+--     function Annotation
+--       (Item : Type_Node'Class)
+--        return Leander.Kinds.Trees.Tree_Type
+--     is (Item.Kind);
 
    function Binding
      (Index : Positive)
@@ -136,17 +130,17 @@ private
        others => <>);
 
    function Constructor
-     (Name : String;
-      Kind : Leander.Kinds.Trees.Tree_Type)
+     (Name : String)
       return Type_Node
-   is (Constructor, Kind, Ada.Strings.Unbounded.To_Unbounded_String (Name),
+   is (Constructor,
+       Ada.Strings.Unbounded.To_Unbounded_String (Name),
        others => <>);
 
    function Variable
-     (Name : String;
-      Kind : Leander.Kinds.Trees.Tree_Type)
+     (Name : String)
       return Type_Node
-   is (Variable, Kind, Ada.Strings.Unbounded.To_Unbounded_String (Name),
+   is (Variable,
+       Ada.Strings.Unbounded.To_Unbounded_String (Name),
        others => <>);
 
    function Variable_Kind return Leander.Kinds.Trees.Tree_Type

@@ -18,6 +18,11 @@ package Leander.Environments is
      (Env  : in out Environment'Class;
       Name : String);
 
+   procedure Create_Temporary_Environment
+     (Env    : in out Environment'Class;
+      Parent : Environment'Class;
+      Name   : String);
+
    function Has_Local_Binding
      (Env  : Environment;
       Name : String)
@@ -52,6 +57,12 @@ package Leander.Environments is
         procedure (Name : String;
                    Tree : Leander.Core.Trees.Tree_Type;
                    Signature : Leander.Types.Trees.Tree_Type));
+
+   procedure Scan_Local_Type_Bindings
+     (Env     : Environment'Class;
+      Process : not null access
+        procedure (Name : String;
+                   Tree : Leander.Types.Bindings.Type_Binding'Class));
 
    function Has_Expression_Binding
      (Env  : Environment;
@@ -251,7 +262,9 @@ private
      (Env  : Environment;
       Name : String)
       return Leander.Types.Bindings.Type_Binding'Class
-   is (Env.Local.Types.Binding (Name));
+   is (if Env.Local.Types.Has_Binding (Name)
+       then Env.Local.Types.Binding (Name)
+       else Env.Global.Types.Binding (Name));
 
    function Has_Type_Variable_Binding
      (Env  : Environment;

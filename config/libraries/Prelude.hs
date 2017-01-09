@@ -11,6 +11,9 @@ class  (Eq a) => Ord a  where
     (<), (<=), (>=), (>) :: a -> a -> Bool  
     max, min             :: a -> a -> a  
     
+class  Functor f  where  
+    fmap              :: (a -> b) -> f a -> f b
+    
 id x = x
 
 equal x y = x == y

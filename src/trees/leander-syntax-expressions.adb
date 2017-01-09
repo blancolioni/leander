@@ -341,12 +341,14 @@ package body Leander.Syntax.Expressions is
       return Leander.Core.Trees.Tree_Type
    is
    begin
-      return
+      return Core : constant Leander.Core.Trees.Tree_Type :=
         Leander.Core.Trees.Leaf
           (Leander.Core.Literal
              (Node.Source,
-              Ada.Strings.Unbounded.To_String (Node.Primitive_Text),
-              Node.Primitive_Type));
+              Ada.Strings.Unbounded.To_String (Node.Primitive_Text)))
+      do
+         Core.Set_Annotation (Node.Primitive_Type);
+      end return;
    end Transform;
 
    ---------------

@@ -4,7 +4,7 @@ package Leander.Types.Trees is
 
    package Type_Trees is
      new Leander.Annotation_Trees
-       (Type_Node, Leander.Kinds.Trees.Tree_Type, Has_Annotation, Annotation);
+       (Type_Node, Leander.Kinds.Trees.Tree_Type);
 
    subtype Tree_Type is Type_Trees.Tree_Type;
 
