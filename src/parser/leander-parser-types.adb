@@ -7,6 +7,9 @@ with Leander.Core;
 
 package body Leander.Parser.Types is
 
+   function At_Atomic_Type return Boolean
+   is (At_Name or else Tok = Tok_Left_Bracket or else Tok = Tok_Left_Paren);
+
    ----------------
    -- Parse_Type --
    ----------------
@@ -15,68 +18,52 @@ package body Leander.Parser.Types is
      (Env : Leander.Environments.Environment)
       return Leander.Types.Trees.Tree_Type
    is
-      Result : Leander.Types.Trees.Tree_Type;
+      Result : Leander.Types.Trees.Tree_Type :=
+                 Leander.Types.Trees.Empty;
+      Expr   : Leander.Types.Trees.Tree_Type;
+      Indent : constant Positive := Tok_Indent;
    begin
-      if At_Variable then
-         declare
-            Name : constant String := Tok_Text;
-         begin
-            Scan;
 
-            if Env.Has_Type_Variable_Binding (Name) then
-               Result := Env.Type_Variable_Binding (Name);
+      while At_Atomic_Type loop
+         if At_Variable then
+            declare
+               Name : constant String := Tok_Text;
+            begin
+               Scan;
+               if Env.Has_Type_Variable_Binding (Name) then
+                  Expr := Env.Type_Variable_Binding (Name);
+               else
+                  Expr :=
+                    Leander.Types.Trees.Leaf
+                      (Leander.Types.Variable (Name));
+               end if;
+            end;
+         elsif At_Constructor then
+            Expr :=
+              Leander.Types.Trees.Leaf
+                (Leander.Types.Constructor (Tok_Text));
+            Scan;
+         elsif Tok = Tok_Left_Paren then
+            Scan;
+            Expr := Parse_Type (Env);
+            if Tok = Tok_Right_Paren then
+               Scan;
             else
-               Result :=
-                 Leander.Types.Trees.Leaf
-                   (Leander.Types.Variable
-                      (Name,
-                       Leander.Kinds.Trees.Leaf
-                         (Leander.Kinds.Primitive)));
+               Error ("missing ')'");
             end if;
-         end;
-      elsif At_Constructor then
-         declare
-            use Leander.Types.Trees;
-            Indent  : constant Positive := Tok_Indent;
-            Kind    : Leander.Kinds.Trees.Tree_Type :=
-                        Leander.Kinds.Trees.Leaf
-                          (Leander.Kinds.Primitive);
-            Con     : constant String := Tok_Text;
-            Vars    : array (1 .. 10) of Tree_Type;
-            Count   : Natural := 0;
-         begin
-            Scan;
-            while At_Variable and then Tok_Indent > Indent loop
-               Count := Count + 1;
-               Vars (Count) := Parse_Type (Env);
-               Kind :=
-                 Leander.Kinds.Trees.Apply
-                   (Leander.Kinds.Trees.Apply
-                      (Leander.Kinds.Map,
-                       Leander.Kinds.Primitive),
-                    Kind);
-            end loop;
-
-            Result := Leaf (Leander.Types.Constructor (Con, Kind));
-            for I in 1 .. Count loop
-               Result := Apply (Result, Vars (I));
-            end loop;
-            Result.Set_Annotation
-              (Leander.Kinds.Trees.Leaf
-                 (Leander.Kinds.Primitive));
-         end;
-      elsif Tok = Tok_Left_Paren then
-         Scan;
-         Result := Parse_Type (Env);
-         if Tok = Tok_Right_Paren then
-            Scan;
          else
-            Error ("missing ')'");
+            raise Program_Error with
+              "expected an atomic type";
          end if;
-      else
-         raise Program_Error with
-           "expected a variable or constructor";
-      end if;
+
+         if Result.Is_Empty then
+            Result := Expr;
+         else
+            Result := Result.Apply (Expr);
+         end if;
+
+         exit when Tok_Indent <= Indent;
+      end loop;
 
       if Tok = Tok_Right_Arrow then
          Scan;

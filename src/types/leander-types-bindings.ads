@@ -42,6 +42,9 @@ package Leander.Types.Bindings is
 
    type Type_Binding is tagged private;
 
+   procedure Annotate_Type_Constructor
+     (Binding : Type_Binding);
+
    function Kind (Binding : Type_Binding) return Leander.Kinds.Trees.Tree_Type;
 
    function Is_Algebraic (Binding : Type_Binding) return Boolean;
@@ -120,6 +123,12 @@ package Leander.Types.Bindings is
       Con_Type  : Leander.Types.Trees.Tree_Type)
       return Constructor_Binding'Class;
 
+   procedure Scan_Bindings
+     (List    : Type_Binding_List;
+      Process : not null access
+        procedure (Name : String;
+                   Binding : Type_Binding'Class));
+
 private
 
    type Constructor_Binding is tagged
@@ -171,14 +180,13 @@ private
          Algebraic    : Boolean;
          Enumeration  : Boolean;
          Primitive    : Boolean;
-         Kind         : Leander.Kinds.Trees.Tree_Type;
          Head         : Leander.Types.Trees.Tree_Type;
          Con_Map      : Constructor_Binding_Maps.Map;
          Con_Vector   : Constructor_Vectors.Vector;
       end record;
 
    function Kind (Binding : Type_Binding) return Leander.Kinds.Trees.Tree_Type
-   is (Binding.Kind);
+   is (Binding.Head.First_Leaf.Annotation);
 
    function Is_Algebraic (Binding : Type_Binding) return Boolean
    is (Binding.Algebraic);

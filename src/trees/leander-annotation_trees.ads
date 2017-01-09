@@ -8,8 +8,6 @@ generic
    type Annotation_Type is
      new Leander.Trees.Tree_Interface
      and Leander.Unifiable.Unifiable_Interface with private;
-   with function Has_Annotation (Node : Node_Type'Class) return Boolean;
-   with function Annotation (Node : Node_Type'Class) return Annotation_Type;
 package Leander.Annotation_Trees is
 
    type Tree_Type is
@@ -32,6 +30,7 @@ package Leander.Annotation_Trees is
      with Pre => Is_Leaf (Tree);
 
    function Head (Tree : Tree_Type) return Node_Type;
+   function First_Leaf (Tree : Tree_Type) return Tree_Type;
    function Arity (Tree : Tree_Type) return Natural;
    function Last_Map (Tree : Tree_Type) return Tree_Type;
 
@@ -193,14 +192,10 @@ private
 
    function Has_Annotation (Tree : Tree_Type) return Boolean
    is (not Tree.Is_Empty
-       and then (Tree.Node.Has_Annotation
-                 or else (Tree.Is_Leaf
-                          and then Has_Annotation (Tree.Node.Node))));
+       and then Tree.Node.Has_Annotation);
 
    function Annotation (Tree : Tree_Type) return Annotation_Type
-   is (if Tree.Node.Has_Annotation
-       then Tree.Node.Annotation
-       else Annotation (Tree.Node.Node));
+   is (Tree.Node.Annotation);
 
    function Head (Tree : Tree_Type) return Node_Type
    is (if Tree.Is_Leaf
@@ -216,6 +211,11 @@ private
    is (if Tree.Is_Application and then Tree.Left.Is_Application
        and then Tree.Left.Left.Show = "->"
        then Tree.Right.Last_Map
+       else Tree);
+
+   function First_Leaf (Tree : Tree_Type) return Tree_Type
+   is (if Tree.Is_Application
+       then Tree.Left.First_Leaf
        else Tree);
 
 end Leander.Annotation_Trees;

@@ -24,6 +24,38 @@ package body Leander.Types.Bindings is
       return Con;
    end Add_Constructor;
 
+   -------------------------------
+   -- Annotate_Type_Constructor --
+   -------------------------------
+
+   procedure Annotate_Type_Constructor
+     (Binding : Type_Binding)
+   is
+      Kind : Leander.Kinds.Trees.Tree_Type :=
+               Leander.Kinds.Trees.Leaf
+                 (Leander.Kinds.Primitive);
+      It   : Leander.Types.Trees.Tree_Type :=
+               Binding.Head;
+   begin
+      if not Binding.Head.Has_Annotation then
+         while It.Is_Application loop
+            It.Right.Set_Annotation
+              (Leander.Kinds.Trees.Leaf
+                 (Leander.Kinds.Primitive));
+            Kind :=
+              Leander.Kinds.Trees.Apply
+                (Leander.Kinds.Trees.Apply
+                   (Leander.Kinds.Map,
+                    Leander.Kinds.Primitive),
+                 Kind);
+            It.Set_Annotation (Kind);
+            It := It.Left;
+         end loop;
+
+         It.Set_Annotation (Kind);
+      end if;
+   end Annotate_Type_Constructor;
+
    -----------------------
    -- Declare_Data_Type --
    -----------------------
@@ -40,7 +72,6 @@ package body Leander.Types.Bindings is
            (Algebraic   => True,
             Enumeration => True,
             Primitive   => False,
-            Kind        => Data_Type.Annotation,
             Head        => Data_Type,
             others      => <>));
    end Declare_Data_Type;
@@ -61,7 +92,6 @@ package body Leander.Types.Bindings is
            (Algebraic   => True,
             Enumeration => True,
             Primitive   => False,
-            Kind        => New_Type.Annotation,
             Head        => New_Type,
             others      => <>));
    end Declare_New_Type;
@@ -82,7 +112,6 @@ package body Leander.Types.Bindings is
            (Algebraic   => False,
             Enumeration => False,
             Primitive   => True,
-            Kind        => Primitive_Type.Annotation,
             Head        => Primitive_Type,
             others      => <>));
    end Declare_Primitive_Type;
@@ -129,9 +158,26 @@ package body Leander.Types.Bindings is
            (Algebraic   => False,
             Enumeration => False,
             Primitive   => False,
-            Kind        => Value.Annotation,
             Head        => Value,
             others      => <>));
    end Insert_Type_Variable;
+
+   -------------------
+   -- Scan_Bindings --
+   -------------------
+
+   procedure Scan_Bindings
+     (List    : Type_Binding_List;
+      Process : not null access
+        procedure (Name : String;
+                   Binding : Type_Binding'Class))
+   is
+   begin
+      for Position in List.Map.Iterate loop
+         Process
+           (Type_Binding_Maps.Key (Position),
+            Type_Binding_Maps.Element (Position));
+      end loop;
+   end Scan_Bindings;
 
 end Leander.Types.Bindings;

@@ -188,7 +188,7 @@ package body Leander.Parser.Declarations is
             end Copy_Binding;
 
          begin
-            Class_Env.Create (Name);
+            Class_Env.Create_Temporary_Environment (Env, Name);
             Class_Env.Insert_Type_Variable (Tyvar, Class.Type_Variable);
 
             Parse_Value_Binding (Class_Env);

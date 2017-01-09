@@ -13,6 +13,7 @@ package Leander.Kinds is
    function Variable (Name : Character) return Kind_Node;
    function Primitive return Kind_Node;
    function Map return Kind_Node;
+   function Binding (Index : Positive) return Kind_Node;
 
    type Kind_Annotation is
      new Leander.Trees.Tree_Interface
@@ -175,6 +176,9 @@ private
 
    function Variable (Name : Character) return Kind_Node
    is (Variable, Name, 1);
+
+   function Binding (Index : Positive) return Kind_Node
+   is (Binding, '_', Index);
 
    function Primitive return Kind_Node is
      (Primitive, '*', 1);

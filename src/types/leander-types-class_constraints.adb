@@ -118,21 +118,22 @@ package body Leander.Types.Class_Constraints is
       Name  : String;
       Tyvar : String)
    is
-      Kind : constant Leander.Kinds.Trees.Tree_Type :=
-               Leander.Kinds.Trees.Leaf
-                 (Leander.Kinds.Variable ('a'));
       Var_Node : Leander.Types.Type_Node :=
-                   Leander.Types.Variable (Tyvar, Kind);
+                   Leander.Types.Variable (Tyvar);
    begin
       Var_Node.Add_Constraint (Class);
       Class.Class_Body.Type_Variable := Leander.Types.Trees.Leaf (Var_Node);
       Class.Class_Body.Head :=
         Leander.Types.Trees.Apply
-          (Leander.Types.Constructor (Name, Kind),
+          (Leander.Types.Constructor (Name),
            Class.Class_Body.Type_Variable);
       Ada.Text_IO.Put_Line
         ("class: " & Leander.Types.Type_Constraint'Class (Class).Show);
    end Set_Constraint;
+
+   ----------
+   -- Show --
+   ----------
 
    overriding function Show
      (Constraint : Class_Constraint)
