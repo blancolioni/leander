@@ -109,6 +109,62 @@ package body Leander.Types.Class_Constraints is
       return False;
    end Is_Subset_Of;
 
+   ----------
+   -- Name --
+   ----------
+
+   function Name
+     (Class : Class_Constraint'Class)
+      return String
+   is
+   begin
+      return Class.Class_Body.Head.Left.Constructor_Name;
+   end Name;
+
+   ----------
+   -- Scan --
+   ----------
+
+   procedure Scan
+     (Bindings : Class_Bindings;
+      Process  : not null access
+        procedure (Binding : Class_Constraint'Class))
+   is
+   begin
+      for Binding of Bindings.Map loop
+         Process (Binding);
+      end loop;
+   end Scan;
+
+   procedure Scan_Methods
+     (Class   : Class_Constraint'Class;
+      Process : not null access
+        procedure (Name : String;
+                   Signature : Leander.Types.Trees.Tree_Type))
+   is
+      procedure Local_Process
+        (Name      : String;
+         Tree      : Leander.Core.Trees.Tree_Type;
+         Signature : Leander.Types.Trees.Tree_Type);
+
+      -------------------
+      -- Local_Process --
+      -------------------
+
+      procedure Local_Process
+        (Name      : String;
+         Tree      : Leander.Core.Trees.Tree_Type;
+         Signature : Leander.Types.Trees.Tree_Type)
+      is
+         pragma Unreferenced (Tree);
+      begin
+         Process (Name, Signature);
+      end Local_Process;
+
+   begin
+      Class.Class_Body.Methods.Scan (Local_Process'Access);
+   end Scan_Methods;
+
    --------------------
    -- Set_Constraint --
    --------------------
@@ -123,12 +179,17 @@ package body Leander.Types.Class_Constraints is
    begin
       Var_Node.Add_Constraint (Class);
       Class.Class_Body.Type_Variable := Leander.Types.Trees.Leaf (Var_Node);
+      Class.Class_Body.Type_Variable.Set_Annotation
+        (Leander.Kinds.Trees.Leaf
+           (Leander.Kinds.Variable ('a')));
       Class.Class_Body.Head :=
         Leander.Types.Trees.Apply
           (Leander.Types.Constructor (Name),
            Class.Class_Body.Type_Variable);
       Ada.Text_IO.Put_Line
-        ("class: " & Leander.Types.Type_Constraint'Class (Class).Show);
+        ("class: " & Leander.Types.Type_Constraint'Class (Class).Show
+         & " " & Class.Type_Variable.Show_With_Annotations);
+
    end Set_Constraint;
 
    ----------

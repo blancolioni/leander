@@ -5,7 +5,7 @@ with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Hashed_Maps;
 
 with Leander.Types.Bindings;
-with Leander.Types.Trees;
+with Leander.Types.Class_Constraints.Annotation;
 
 package body Leander.Types.Kind_Inference is
 
@@ -22,11 +22,6 @@ package body Leander.Types.Kind_Inference is
         Element_Type    => Positive,
         Hash            => Ada.Strings.Fixed.Hash,
         Equivalent_Keys => "=");
-
-   procedure Annotate
-     (Env       : Leander.Environments.Environment;
-      Root_Type : Leander.Types.Trees.Tree_Type)
-     with Unreferenced;
 
    function Scan_Variable_Annotations
      (Tree     : Trees.Tree_Type;
@@ -117,6 +112,11 @@ package body Leander.Types.Kind_Inference is
                  (Unified);
                Unify (Tree.Left);
             end;
+         elsif Tree.Is_Variable then
+            if Env.Has_Type_Variable_Binding (Tree.Variable_Name) then
+               Env.Type_Variable_Binding (Tree.Variable_Name).Set_Annotation
+                 (Tree.Annotation);
+            end if;
          end if;
       end Unify;
 
@@ -206,14 +206,60 @@ package body Leander.Types.Kind_Inference is
    procedure Infer_Kinds
      (Env       : Leander.Environments.Environment)
    is
+      procedure Annotate_Class
+        (Binding : Leander.Types.Class_Constraints.Class_Constraint'Class);
+
+      procedure Annotate_Type_Body
+        (Name    : String;
+         Binding : Leander.Types.Bindings.Type_Binding'Class);
+
       procedure Annotate_Type_Declaration
         (Name    : String;
          Binding : Leander.Types.Bindings.Type_Binding'Class);
 
+      --------------------
+      -- Annotate_Class --
+      --------------------
+
+      procedure Annotate_Class
+        (Binding : Leander.Types.Class_Constraints.Class_Constraint'Class)
+      is
+      begin
+         Leander.Types.Class_Constraints.Annotation.Annotate (Binding, Env);
+      end Annotate_Class;
+
+      ------------------------
+      -- Annotate_Type_Body --
+      ------------------------
+
       procedure Annotate_Type_Body
         (Name    : String;
          Binding : Leander.Types.Bindings.Type_Binding'Class)
-      is null;
+      is
+         pragma Unreferenced (Name);
+         Type_Env : Leander.Environments.Environment;
+         Type_Pat : Leander.Types.Trees.Tree_Type :=
+                      Binding.Type_Pattern;
+      begin
+         if Binding.Is_Algebraic then
+            Type_Env.Create_Temporary_Environment
+              (Parent => Env,
+               Name   => Binding.Type_Name);
+            while Type_Pat.Is_Application loop
+               Type_Env.Insert_Type_Variable
+                 (Type_Pat.Right.Variable_Name,
+                  Type_Pat.Right);
+               Type_Pat := Type_Pat.Left;
+            end loop;
+            for I in 1 .. Binding.Constructor_Count loop
+               Annotate (Type_Env, Binding.Constructor_Type (I));
+               Ada.Text_IO.Put_Line
+                 (Binding.Constructor_Name (I)
+                  & " :: "
+                  & Binding.Constructor_Type (I).Show);
+            end loop;
+         end if;
+      end Annotate_Type_Body;
 
       -------------------------------
       -- Annotate_Type_Declaration --
@@ -236,6 +282,8 @@ package body Leander.Types.Kind_Inference is
         (Annotate_Type_Declaration'Access);
       Env.Scan_Local_Type_Bindings
         (Annotate_Type_Body'Access);
+      Env.Scan_Local_Class_Bindings
+        (Annotate_Class'Access);
    end Infer_Kinds;
 
    -------------------------------

@@ -51,6 +51,14 @@ package Leander.Types.Bindings is
    function Is_Enumeration (Binding : Type_Binding) return Boolean;
    function Is_Primitive (Binding : Type_Binding) return Boolean;
 
+   function Type_Name
+     (Binding : Type_Binding)
+      return String;
+
+   function Type_Pattern
+     (Binding : Type_Binding)
+      return Leander.Types.Trees.Tree_Type;
+
    function Constructor_Count
      (Binding : Type_Binding)
       return Constructor_Count_Range
@@ -243,5 +251,15 @@ private
       Name : String)
       return Leander.Types.Trees.Tree_Type
    is (List.Map.Element (Name).Head);
+
+   function Type_Name
+     (Binding : Type_Binding)
+      return String
+   is (Binding.Head.First_Leaf.Constructor_Name);
+
+   function Type_Pattern
+     (Binding : Type_Binding)
+      return Leander.Types.Trees.Tree_Type
+   is (Binding.Head);
 
 end Leander.Types.Bindings;
