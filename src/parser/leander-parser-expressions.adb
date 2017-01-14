@@ -138,6 +138,39 @@ package body Leander.Parser.Expressions is
             return Leander.Syntax.Expressions.Literal
               (Current, Literal, Leander.Primitives.Int_Type);
          end;
+      elsif Tok = Tok_Character_Literal then
+         declare
+            Ch : constant Character := Tok_Character_Value;
+         begin
+            Scan;
+            return Leander.Syntax.Expressions.Literal
+              (Current, Natural'Image (Character'Pos (Ch)),
+               Leander.Primitives.Char_Type);
+         end;
+      elsif Tok = Tok_String_Literal then
+         declare
+            S : constant String := Tok_Text;
+            E : Leander.Syntax.Syntax_Tree :=
+                  Leander.Syntax.Expressions.Constructor
+                    (Current, "[]");
+         begin
+            for Ch of reverse S loop
+               declare
+                  App : constant Leander.Syntax.Syntax_Tree :=
+                          Leander.Syntax.Expressions.Apply
+                            (Current,
+                             Leander.Syntax.Expressions.Constructor
+                               (Current, ":"),
+                             Leander.Syntax.Expressions.Literal
+                               (Current, (Natural'Image (Character'Pos (Ch))),
+                                Leander.Primitives.Char_Type));
+               begin
+                  E := Leander.Syntax.Expressions.Apply (Current, App, E);
+               end;
+            end loop;
+            Scan;
+            return E;
+         end;
       elsif Tok = Tok_Left_Paren then
          Scan;
          declare

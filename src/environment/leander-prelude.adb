@@ -17,6 +17,8 @@ package body Leander.Prelude is
    is
    begin
       Env.Declare_Primitive_Type
+        ("Char", Leander.Primitives.Char_Type);
+      Env.Declare_Primitive_Type
         ("Int", Leander.Primitives.Int_Type);
       Env.Declare_Data_Type
         ("->", Leander.Primitives.Map_Type);
