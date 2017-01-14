@@ -51,6 +51,25 @@ package body Leander.Parser.Types is
             else
                Error ("missing ')'");
             end if;
+         elsif Tok = Tok_Left_Bracket then
+            Scan;
+            if Tok = Tok_Right_Bracket then
+               Scan;
+               Expr :=
+                 Leander.Types.Trees.Leaf
+                   (Leander.Types.Constructor ("[]"));
+            else
+               Expr := Parse_Type (Env);
+               if Tok = Tok_Right_Bracket then
+                  Scan;
+               else
+                  Error ("missing ']'");
+               end if;
+               Expr :=
+                 Leander.Types.Trees.Apply
+                   (Leander.Types.Constructor ("[]"),
+                    Expr);
+            end if;
          else
             raise Program_Error with
               "expected an atomic type";
