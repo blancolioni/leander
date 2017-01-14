@@ -232,6 +232,19 @@ package body Leander.Environments is
       Env.Local.Values.Scan (Process);
    end Scan_Local_Bindings;
 
+   -------------------------------
+   -- Scan_Local_Class_Bindings --
+   -------------------------------
+
+   procedure Scan_Local_Class_Bindings
+     (Env     : Environment'Class;
+      Process : not null access
+        procedure (Binding : Types.Class_Constraints.Class_Constraint'Class))
+   is
+   begin
+      Env.Local.Classes.Scan (Process);
+   end Scan_Local_Class_Bindings;
+
    ------------------------------
    -- Scan_Local_Type_Bindings --
    ------------------------------
