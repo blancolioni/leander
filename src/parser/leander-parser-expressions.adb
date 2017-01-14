@@ -417,6 +417,52 @@ package body Leander.Parser.Expressions is
          end;
       elsif Tok = Tok_Case then
          return Parse_Case_Expression;
+      elsif Tok = Tok_If then
+         declare
+            Cond, True_Expr, False_Expr : Leander.Syntax.Syntax_Tree_Record;
+            True_Pos, False_Pos         : Leander.Source.Source_Reference;
+         begin
+            Scan;
+            Cond := Leander.Syntax.Syntax_Tree_Record (Parse_Expression);
+            if Tok = Tok_Semi then
+               Scan;
+            end if;
+            if Tok = Tok_Then then
+               Scan;
+            else
+               Error ("missing 'then'");
+            end if;
+            True_Pos := Current_Source_Reference;
+            True_Expr := Leander.Syntax.Syntax_Tree_Record (Parse_Expression);
+            if Tok = Tok_Semi then
+               Scan;
+            end if;
+            if Tok = Tok_Else then
+               Scan;
+            else
+               Error ("missing 'else'");
+            end if;
+            False_Pos := Current_Source_Reference;
+            False_Expr := Leander.Syntax.Syntax_Tree_Record (Parse_Expression);
+
+            declare
+               Result : constant Leander.Syntax.Syntax_Tree :=
+                          Leander.Syntax.Expressions.Case_Expression
+                            (Current, Cond);
+            begin
+               Leander.Syntax.Expressions.Add_Case_Alternate
+                 (Result,
+                  Leander.Syntax.Expressions.Constructor
+                    (True_Pos, "True"),
+                  True_Expr);
+               Leander.Syntax.Expressions.Add_Case_Alternate
+                 (Result,
+                  Leander.Syntax.Expressions.Constructor
+                    (False_Pos, "False"),
+                  False_Expr);
+               return Result;
+            end;
+         end;
       else
          raise Constraint_Error with
            "expected to be at an expression";
