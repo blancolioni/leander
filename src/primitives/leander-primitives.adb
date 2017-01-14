@@ -7,6 +7,7 @@ with Leander.Kinds.Trees;
 package body Leander.Primitives is
 
    Local_Int_Type   : Leander.Types.Trees.Tree_Type;
+   Local_Char_Type  : Leander.Types.Trees.Tree_Type;
    Local_List_Type  : Leander.Types.Trees.Tree_Type;
    Local_Empty_List : Leander.Types.Trees.Tree_Type;
    Local_Cons       : Leander.Types.Trees.Tree_Type;
@@ -26,6 +27,15 @@ package body Leander.Primitives is
    Tuples : Tuple_Vectors.Vector;
 
    procedure Check_Tuple (Arity : Positive);
+
+   ---------------
+   -- Char_Type --
+   ---------------
+
+   function Char_Type return Leander.Types.Trees.Tree_Type is
+   begin
+      return Local_Char_Type;
+   end Char_Type;
 
    -----------------
    -- Check_Tuple --
@@ -225,6 +235,12 @@ begin
           ("Int"));
    Local_Int_Type.Set_Annotation (Type_Con_0);
 
+   Local_Char_Type :=
+     Leander.Types.Trees.Leaf
+       (Leander.Types.Constructor
+          ("Char"));
+   Local_Char_Type.Set_Annotation (Type_Con_0);
+
    Local_List_Type :=
      Leander.Types.Trees.Leaf
        (Leander.Types.Constructor ("[]"));
@@ -242,8 +258,14 @@ begin
    Local_Cons :=
      Leander.Types.Trees.Apply
        (Leander.Types.Trees.Apply
-          (Leander.Types.Constructor ("->"), Type_Variable_A),
+          (Leander.Types.Constructor ("->"),
+           Leander.Types.Trees.Apply
+             (Local_List_Type, Type_Variable_A)),
         Leander.Types.Trees.Apply
           (Local_List_Type, Type_Variable_A));
-
+   Local_Cons :=
+     Leander.Types.Trees.Apply
+       (Leander.Types.Trees.Apply
+          (Leander.Types.Constructor ("->"), Type_Variable_A),
+        Local_Cons);
 end Leander.Primitives;

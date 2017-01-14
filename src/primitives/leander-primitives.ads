@@ -2,6 +2,7 @@ with Leander.Types.Trees;
 
 package Leander.Primitives is
 
+   function Char_Type return Leander.Types.Trees.Tree_Type;
    function Int_Type return Leander.Types.Trees.Tree_Type;
 
    function List_Type return Leander.Types.Trees.Tree_Type;
