@@ -119,6 +119,11 @@ package Leander.Environments is
       return Leander.Types.Class_Constraints.Class_Constraint'Class
      with Pre => Env.Has_Class_Binding (Name);
 
+   procedure Scan_Local_Class_Bindings
+     (Env     : Environment'Class;
+      Process : not null access
+        procedure (Binding : Types.Class_Constraints.Class_Constraint'Class));
+
    procedure Insert_Value
      (Env   : in out Environment;
       Name  : String;
