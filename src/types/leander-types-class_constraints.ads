@@ -9,6 +9,10 @@ package Leander.Types.Class_Constraints is
 
    type Class_Constraint is new Type_Constraint with private;
 
+   function Name
+     (Class : Class_Constraint'Class)
+      return String;
+
    procedure Create
      (Class : in out Class_Constraint'Class);
 
@@ -31,6 +35,12 @@ package Leander.Types.Class_Constraints is
      (Class : Class_Constraint'Class)
       return Leander.Types.Trees.Tree_Type;
 
+   procedure Scan_Methods
+     (Class   : Class_Constraint'Class;
+      Process : not null access
+        procedure (Name : String;
+                   Signature : Leander.Types.Trees.Tree_Type));
+
    type Class_Bindings is tagged private;
 
    function Has_Binding
@@ -50,6 +60,11 @@ package Leander.Types.Class_Constraints is
       Binding  : Class_Constraint'Class)
      with Pre => not Bindings.Has_Binding (Name),
      Post => Bindings.Has_Binding (Name);
+
+   procedure Scan
+     (Bindings : Class_Bindings;
+      Process  : not null access
+        procedure (Binding : Class_Constraint'Class));
 
 private
 
