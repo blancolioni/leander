@@ -11,9 +11,21 @@ class  (Eq a) => Ord a  where
     (<), (<=), (>=), (>) :: a -> a -> Bool  
     max, min             :: a -> a -> a  
     
+	max x y = if x <= y then y else x
+	min x y = if x <= y then x else y
+	
 class  Functor f  where  
     fmap              :: (a -> b) -> f a -> f b
     
+class  Monad m  where  
+    (>>=)  :: m a -> (a -> m b) -> m b  
+    (>>)   :: m a -> m b -> m b  
+    return :: a -> m a  
+ 
+        -- Minimal complete definition:  
+        --      (>>=), return  
+    m >> k  =  m >>= \_ -> k  
+	
 id x = x
 
 equal x y = x == y
