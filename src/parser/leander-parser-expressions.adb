@@ -6,10 +6,12 @@ with Ada.Strings.Fixed.Hash;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
+with Leander.Parser.Declarations;
+
+with Leander.Core.Cases;
+
 with Leander.Prelude;
 with Leander.Primitives;
-
-with Leander.Syntax.Expressions;
 
 package body Leander.Parser.Expressions is
 
@@ -35,14 +37,14 @@ package body Leander.Parser.Expressions is
    function At_Atomic_Expression return Boolean;
    function At_Atomic_Pattern return Boolean renames At_Atomic_Expression;
 
-   function Parse_Atomic_Expression return Leander.Syntax.Syntax_Tree;
-   function Parse_Case_Expression return Leander.Syntax.Syntax_Tree;
-   function Parse_Left_Expression return Leander.Syntax.Syntax_Tree;
+   function Parse_Atomic_Expression return Leander.Core.Trees.Tree_Type;
+   function Parse_Case_Expression return Leander.Core.Trees.Tree_Type;
+   function Parse_Left_Expression return Leander.Core.Trees.Tree_Type;
 
-   function Parse_Atomic_Pattern return Leander.Syntax.Syntax_Tree
+   function Parse_Atomic_Pattern return Leander.Core.Trees.Tree_Type
      renames Parse_Atomic_Expression;
 
-   function Parse_Pattern return Leander.Syntax.Syntax_Tree
+   function Parse_Pattern return Leander.Core.Trees.Tree_Type
      renames Parse_Expression;
 
    --------------------------
@@ -74,27 +76,25 @@ package body Leander.Parser.Expressions is
    -- Parse_Atomic_Expression --
    -----------------------------
 
-   function Parse_Atomic_Expression return Leander.Syntax.Syntax_Tree is
+   function Parse_Atomic_Expression return Leander.Core.Trees.Tree_Type is
       Current : constant Leander.Source.Source_Reference :=
                   Current_Source_Reference;
 
       function Parse_Rest_Of_Tuple
-        return Leander.Syntax.Array_Of_Syntax_Trees;
+        return Leander.Core.Trees.Array_Of_Trees;
 
       -------------------------
       -- Parse_Rest_Of_Tuple --
       -------------------------
 
       function Parse_Rest_Of_Tuple
-        return Leander.Syntax.Array_Of_Syntax_Trees
+        return Leander.Core.Trees.Array_Of_Trees
       is
-         use type Leander.Syntax.Array_Of_Syntax_Trees;
+         use type Leander.Core.Trees.Array_Of_Trees;
       begin
          if At_Expression then
             declare
-               E : constant Leander.Syntax.Syntax_Tree_Record :=
-                     Leander.Syntax.Syntax_Tree_Record
-                       (Parse_Expression);
+               E : constant Leander.Core.Trees.Tree_Type := Parse_Expression;
             begin
                if Tok = Tok_Comma then
                   Scan;
@@ -110,7 +110,7 @@ package body Leander.Parser.Expressions is
             end;
          else
             declare
-               Empty : Leander.Syntax.Array_Of_Syntax_Trees (1 .. 0);
+               Empty : Leander.Core.Trees.Array_Of_Trees (1 .. 0);
             begin
                return Empty;
             end;
@@ -125,47 +125,57 @@ package body Leander.Parser.Expressions is
             if Name (Name'First) in 'A' .. 'Z'
               or else Name (Name'First) = ':'
             then
-               return Leander.Syntax.Expressions.Constructor (Current, Name);
+               return Leander.Core.Trees.Leaf
+                 (Leander.Core.Constructor (Current, Name));
             else
-               return Leander.Syntax.Expressions.Variable (Current, Name);
+               return Leander.Core.Trees.Leaf
+                 (Leander.Core.Variable (Current, Name));
             end if;
          end;
       elsif Tok = Tok_Integer_Literal then
          declare
             Literal : constant String := Tok_Text;
+            Expr    : constant Leander.Core.Trees.Tree_Type :=
+                        Leander.Core.Trees.Leaf
+                          (Leander.Core.Literal
+                             (Current, Literal));
          begin
             Scan;
-            return Leander.Syntax.Expressions.Literal
-              (Current, Literal, Leander.Primitives.Int_Type);
+            Expr.Set_Annotation (Leander.Primitives.Int_Type);
+            return Expr;
          end;
       elsif Tok = Tok_Character_Literal then
          declare
             Ch : constant Character := Tok_Character_Value;
+            Expr    : constant Leander.Core.Trees.Tree_Type :=
+                        Leander.Core.Trees.Leaf
+                          (Leander.Core.Literal
+                             (Current, Natural'Image (Character'Pos (Ch))));
          begin
             Scan;
-            return Leander.Syntax.Expressions.Literal
-              (Current, Natural'Image (Character'Pos (Ch)),
-               Leander.Primitives.Char_Type);
+            Expr.Set_Annotation (Leander.Primitives.Char_Type);
+            return Expr;
          end;
       elsif Tok = Tok_String_Literal then
          declare
             S : constant String := Tok_Text;
-            E : Leander.Syntax.Syntax_Tree :=
-                  Leander.Syntax.Expressions.Constructor
-                    (Current, "[]");
+            E : Leander.Core.Trees.Tree_Type :=
+                  Leander.Core.Trees.Leaf
+                    (Leander.Core.Constructor
+                       (Current, "[]"));
          begin
             for Ch of reverse S loop
                declare
-                  App : constant Leander.Syntax.Syntax_Tree :=
-                          Leander.Syntax.Expressions.Apply
-                            (Current,
-                             Leander.Syntax.Expressions.Constructor
-                               (Current, ":"),
-                             Leander.Syntax.Expressions.Literal
-                               (Current, (Natural'Image (Character'Pos (Ch))),
-                                Leander.Primitives.Char_Type));
+
+                  App : constant Leander.Core.Trees.Tree_Type :=
+                          Leander.Core.Trees.Apply
+                            (Leander.Core.Constructor (Current, ":"),
+                             Leander.Core.Literal
+                               (Current,
+                                (Natural'Image (Character'Pos (Ch)))));
                begin
-                  E := Leander.Syntax.Expressions.Apply (Current, App, E);
+                  App.Right.Set_Annotation (Leander.Primitives.Char_Type);
+                  E := App.Apply (E);
                end;
             end loop;
             Scan;
@@ -174,25 +184,23 @@ package body Leander.Parser.Expressions is
       elsif Tok = Tok_Left_Paren then
          Scan;
          declare
-            use type Leander.Syntax.Array_Of_Syntax_Trees;
-            Expr : Leander.Syntax.Syntax_Tree := Parse_Expression;
+            use type Leander.Core.Trees.Array_Of_Trees;
+            Expr : Leander.Core.Trees.Tree_Type := Parse_Expression;
          begin
             if Tok = Tok_Comma then
                Scan;
                declare
-                  Tuple : constant Leander.Syntax.Array_Of_Syntax_Trees :=
-                            Leander.Syntax.Syntax_Tree_Record (Expr)
-                          & Parse_Rest_Of_Tuple;
+                  Tuple : constant Leander.Core.Trees.Array_Of_Trees :=
+                            Expr & Parse_Rest_Of_Tuple;
                begin
                   Leander.Prelude.Use_Tuple (Tuple'Length);
                   Expr :=
-                    Leander.Syntax.Expressions.Constructor
-                      (Current,
-                       Leander.Primitives.Tuple_Name (Tuple'Length));
+                    Leander.Core.Trees.Leaf
+                      (Leander.Core.Constructor
+                         (Current,
+                          Leander.Primitives.Tuple_Name (Tuple'Length)));
                   for I in Tuple'Range loop
-                     Expr :=
-                       Leander.Syntax.Expressions.Apply
-                         (Tuple (I).Source, Expr, Tuple (I));
+                     Expr := Expr.Apply (Tuple (I));
                   end loop;
                end;
             end if;
@@ -206,9 +214,10 @@ package body Leander.Parser.Expressions is
       elsif Tok = Tok_Left_Bracket then
          if Next_Tok = Tok_Right_Bracket then
             declare
-               Expr : constant Leander.Syntax.Syntax_Tree :=
-                        Leander.Syntax.Expressions.Constructor
-                          (Current, "[]");
+               Expr : constant Leander.Core.Trees.Tree_Type :=
+                        Leander.Core.Trees.Leaf
+                          (Leander.Core.Constructor
+                             (Current, "[]"));
             begin
                Scan;
                Scan;
@@ -224,12 +233,14 @@ package body Leander.Parser.Expressions is
             if Tok = Tok_Right_Bracket then
                Scan;
             end if;
-            return Leander.Syntax.Expressions.Variable (Current, "_");
+            return Leander.Core.Trees.Leaf
+              (Leander.Core.Variable (Current, "_"));
          end if;
       else
          Error ("expected atomic expression");
          Scan;
-         return Leander.Syntax.Expressions.Variable (Current, "_");
+         return Leander.Core.Trees.Leaf
+           (Leander.Core.Variable (Current, "_"));
       end if;
    end Parse_Atomic_Expression;
 
@@ -237,19 +248,16 @@ package body Leander.Parser.Expressions is
    -- Parse_Case_Expression --
    ---------------------------
 
-   function Parse_Case_Expression return Leander.Syntax.Syntax_Tree is
-      Current : constant Leander.Source.Source_Reference :=
-                  Current_Source_Reference;
+   function Parse_Case_Expression return Leander.Core.Trees.Tree_Type is
    begin
       pragma Assert (Tok = Tok_Case);
       Scan;
 
       declare
-         E : constant Leander.Syntax.Syntax_Tree := Parse_Expression;
-         Result : constant Leander.Syntax.Syntax_Tree :=
-                    Leander.Syntax.Expressions.Case_Expression
-                      (Current, E);
+         E : constant Leander.Core.Trees.Tree_Type := Parse_Expression;
+         Builder : Leander.Core.Cases.Case_Builder;
       begin
+         Builder.Set_Case_Expression (E);
          if Tok = Tok_Of then
             Scan;
          else
@@ -263,7 +271,7 @@ package body Leander.Parser.Expressions is
               and then At_Atomic_Pattern
             loop
                declare
-                  Pat : constant Leander.Syntax.Syntax_Tree :=
+                  Pat : constant Leander.Core.Trees.Tree_Type :=
                           Leander.Parser.Expressions.Parse_Pattern;
                begin
                   if Tok = Tok_Right_Arrow then
@@ -273,19 +281,16 @@ package body Leander.Parser.Expressions is
                   end if;
 
                   declare
-                     Exp : constant Leander.Syntax.Syntax_Tree :=
+                     Exp : constant Leander.Core.Trees.Tree_Type :=
                              Parse_Expression;
                   begin
-                     Leander.Syntax.Expressions.Add_Case_Alternate
-                       (Case_Expr  => Result,
-                        Pattern    => Pat,
-                        Expression => Exp);
+                     Builder.Add_Alt (Pat, Exp);
                   end;
                end;
             end loop;
          end;
 
-         return Result;
+         return Builder.Transform;
       end;
    end Parse_Case_Expression;
 
@@ -293,11 +298,11 @@ package body Leander.Parser.Expressions is
    -- Parse_Expression --
    ----------------------
 
-   function Parse_Expression return Leander.Syntax.Syntax_Tree is
-      use Leander.Syntax;
+   function Parse_Expression return Leander.Core.Trees.Tree_Type is
+      use Leander.Core, Leander.Core.Trees;
 
       package Tree_Stacks is
-        new Ada.Containers.Doubly_Linked_Lists (Syntax_Tree_Record);
+        new Ada.Containers.Doubly_Linked_Lists (Tree_Type);
 
       Operator_Stack : Tree_Stacks.List;
       Value_Stack : Tree_Stacks.List;
@@ -305,16 +310,16 @@ package body Leander.Parser.Expressions is
       procedure Pop_Operator;
 
       procedure Push_Operator
-        (Operator : Syntax_Tree_Record);
+        (Operator : Tree_Type);
 
       ------------------
       -- Pop_Operator --
       ------------------
 
       procedure Pop_Operator is
-         Operator       : constant Syntax_Tree_Record :=
+         Operator       : constant Tree_Type :=
                             Operator_Stack.Last_Element;
-         Right, Left    : Syntax_Tree_Record;
+         Right, Left    : Tree_Type;
       begin
          Operator_Stack.Delete_Last;
 
@@ -322,13 +327,7 @@ package body Leander.Parser.Expressions is
          Value_Stack.Delete_Last;
          Left := Value_Stack.Last_Element;
          Value_Stack.Delete_Last;
-         Value_Stack.Append
-           (Syntax_Tree_Record
-              (Leander.Syntax.Expressions.Apply
-                   (Left.Source,
-                    Leander.Syntax.Expressions.Apply
-                      (Left.Source, Operator, Left),
-                    Right)));
+         Value_Stack.Append (Operator.Apply (Left).Apply (Right));
       end Pop_Operator;
 
       -------------------
@@ -336,22 +335,23 @@ package body Leander.Parser.Expressions is
       -------------------
 
       procedure Push_Operator
-        (Operator : Syntax_Tree_Record)
+        (Operator : Tree_Type)
       is
          Op_Fixity : Fixity_Record;
+         Op_Name : constant String := Operator.Get_Node.Show;
       begin
-         if Fixities.Contains (Operator.Show) then
-            Op_Fixity := Fixities.Element (Operator.Show);
+         if Fixities.Contains (Op_Name) then
+            Op_Fixity := Fixities.Element (Op_Name);
          else
-            Fixities.Insert (Operator.Show, Op_Fixity);
+            Fixities.Insert (Op_Name, Op_Fixity);
          end if;
 
          while not Operator_Stack.Is_Empty loop
             declare
-               Top : constant Syntax_Tree_Record :=
+               Top : constant Tree_Type :=
                        Operator_Stack.Last_Element;
                Top_Fixity : constant Fixity_Record :=
-                              Fixities.Element (Top.Show);
+                              Fixities.Element (Top.Get_Node.Show);
                Pop : Boolean;
             begin
                Pop :=
@@ -373,7 +373,7 @@ package body Leander.Parser.Expressions is
 
    begin
 
-      Value_Stack.Append (Syntax_Tree_Record (Parse_Left_Expression));
+      Value_Stack.Append (Parse_Left_Expression);
 
       while At_Operator loop
          declare
@@ -381,15 +381,14 @@ package body Leander.Parser.Expressions is
                          Current_Source_Reference;
             Is_Con   : constant Boolean := At_Constructor_Op;
             Name     : constant String := Scan_Identifier;
-            Operator : constant Syntax_Tree_Record :=
-                         (if Is_Con
-                          then Leander.Syntax.Expressions.Constructor
-                            (Current, Name)
-                          else Leander.Syntax.Expressions.Variable
-                            (Current, Name));
+            Operator : constant Tree_Type :=
+                         Leaf
+                           (if Is_Con
+                            then Constructor (Current, Name)
+                            else Variable (Current, Name));
          begin
             Push_Operator (Operator);
-            Value_Stack.Append (Syntax_Tree_Record (Parse_Left_Expression));
+            Value_Stack.Append (Parse_Left_Expression);
          end;
       end loop;
 
@@ -404,22 +403,20 @@ package body Leander.Parser.Expressions is
    -- Parse_Left_Expression --
    ---------------------------
 
-   function Parse_Left_Expression return Leander.Syntax.Syntax_Tree is
+   function Parse_Left_Expression return Leander.Core.Trees.Tree_Type is
       Current : constant Leander.Source.Source_Reference :=
                   Current_Source_Reference;
    begin
       if At_Atomic_Expression then
          declare
             Indent  : constant Positive := Tok_Indent;
-            Expr    : Leander.Syntax.Syntax_Tree :=
+            Expr    : Leander.Core.Trees.Tree_Type :=
                         Parse_Atomic_Expression;
          begin
             while At_Atomic_Expression
               and then Tok_Indent > Indent
             loop
-               Expr :=
-                 Leander.Syntax.Expressions.Apply
-                   (Current, Expr, Parse_Atomic_Expression);
+               Expr := Expr.Apply (Parse_Atomic_Expression);
             end loop;
             return Expr;
          end;
@@ -442,21 +439,57 @@ package body Leander.Parser.Expressions is
             end if;
 
             declare
-               Expr : constant Leander.Syntax.Syntax_Tree :=
+               Expr : constant Leander.Core.Trees.Tree_Type :=
                         Parse_Expression;
             begin
-               return Leander.Syntax.Expressions.Lambda (Current, Name, Expr);
+               return Leander.Core.Trees.Leaf
+                 (Leander.Core.Lambda (Current, Name)).Apply (Expr);
             end;
          end;
       elsif Tok = Tok_Case then
          return Parse_Case_Expression;
+      elsif Tok = Tok_Let then
+         declare
+            Env    : Leander.Environments.Environment;
+         begin
+            Env.Create ("let-env");
+            Scan;
+            Leander.Parser.Declarations.Parse_Value_Bindings (Env);
+
+            if Tok = Tok_In then
+               Scan;
+            else
+               Error ("missing 'in'");
+            end if;
+
+            declare
+--                 Bindings : Leander.Core.Trees.Tree_Type :=
+--                              Leander.Core.Trees.Empty;
+               Expr     : constant Leander.Core.Trees.Tree_Type :=
+                            Parse_Expression;
+
+--                 procedure Add_Binding
+--                   (Name : String;
+--                    Tree : Leander.Core.Trees.Tree_Type;
+--                    Signature : Leander.Types.Trees.Tree_Type);
+
+            begin
+--                 Env.Scan_Local_Bindings (Add_Binding'Access);
+--                 Expr :=
+--                   Leander.Core.Trees.Apply
+--                     (Leander.Core.Let (Current),
+--                      Leander.Core.Trees.Apply
+--                        (Expr, Bindings));
+               return Expr;
+            end;
+         end;
       elsif Tok = Tok_If then
          declare
-            Cond, True_Expr, False_Expr : Leander.Syntax.Syntax_Tree_Record;
+            Cond, True_Expr, False_Expr : Leander.Core.Trees.Tree_Type;
             True_Pos, False_Pos         : Leander.Source.Source_Reference;
          begin
             Scan;
-            Cond := Leander.Syntax.Syntax_Tree_Record (Parse_Expression);
+            Cond := Parse_Expression;
             if Tok = Tok_Semi then
                Scan;
             end if;
@@ -466,7 +499,7 @@ package body Leander.Parser.Expressions is
                Error ("missing 'then'");
             end if;
             True_Pos := Current_Source_Reference;
-            True_Expr := Leander.Syntax.Syntax_Tree_Record (Parse_Expression);
+            True_Expr := Parse_Expression;
             if Tok = Tok_Semi then
                Scan;
             end if;
@@ -476,24 +509,23 @@ package body Leander.Parser.Expressions is
                Error ("missing 'else'");
             end if;
             False_Pos := Current_Source_Reference;
-            False_Expr := Leander.Syntax.Syntax_Tree_Record (Parse_Expression);
+            False_Expr := Parse_Expression;
 
             declare
-               Result : constant Leander.Syntax.Syntax_Tree :=
-                          Leander.Syntax.Expressions.Case_Expression
-                            (Current, Cond);
+               Builder : Leander.Core.Cases.Case_Builder;
             begin
-               Leander.Syntax.Expressions.Add_Case_Alternate
-                 (Result,
-                  Leander.Syntax.Expressions.Constructor
-                    (True_Pos, "True"),
-                  True_Expr);
-               Leander.Syntax.Expressions.Add_Case_Alternate
-                 (Result,
-                  Leander.Syntax.Expressions.Constructor
-                    (False_Pos, "False"),
+               Builder.Set_Case_Expression (Cond);
+               Builder.Add_Alt
+                 (Leander.Core.Trees.Leaf
+                    (Leander.Core.Constructor
+                         (False_Pos, "False")),
                   False_Expr);
-               return Result;
+               Builder.Add_Alt
+                 (Leander.Core.Trees.Leaf
+                    (Leander.Core.Constructor
+                         (True_Pos, "True")),
+                  True_Expr);
+               return Builder.Transform;
             end;
          end;
       else

@@ -43,6 +43,10 @@ package Leander.Core is
      (Source : Leander.Source.Source_Reference)
       return Core_Node;
 
+   function Let
+     (Source : Leander.Source.Source_Reference)
+      return Core_Node;
+
    function Variable_Type
      return Leander.Types.Trees.Tree_Type;
 
@@ -66,7 +70,7 @@ private
       renames Ada.Strings.Unbounded.To_String;
 
    type Core_Node_Class is
-     (Algebraic_Case, Primitive_Case, Lambda,
+     (Algebraic_Case, Primitive_Case, Lambda, Let,
       Constructor, Literal, Variable);
 
    subtype Primitive_Node_Class is
@@ -147,6 +151,11 @@ private
       Name   : String)
       return Core_Node
    is (Class => Lambda, Source => Source, Name => +Name);
+
+   function Let
+     (Source : Leander.Source.Source_Reference)
+      return Core_Node
+   is (Class => Let, Source => Source, others => <>);
 
    function Algebraic_Case
      (Source : Leander.Source.Source_Reference)

@@ -80,3 +80,5 @@ data  Either a b  =  Left a | Right b
 either f g (Left x) = f x
 either f g (Right y) = g y
                              
+[]     ++ ys = ys
+(x:xs) ++ ys = x : (xs ++ ys)

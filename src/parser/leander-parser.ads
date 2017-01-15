@@ -1,12 +1,13 @@
+with Leander.Core.Trees;
+
 with Leander.Environments;
 with Leander.Source;
-with Leander.Syntax;
 
 package Leander.Parser is
 
    function Parse_Expression
      (Expr : String)
-      return Leander.Syntax.Syntax_Tree;
+      return Leander.Core.Trees.Tree_Type;
 
    procedure Import_Module
      (Name : String;
