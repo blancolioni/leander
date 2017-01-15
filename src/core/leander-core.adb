@@ -14,6 +14,8 @@ package body Leander.Core is
             return -Node.Name;
          when Lambda =>
             return "\" & (-Node.Name) & " ->";
+         when Let =>
+            return "let";
          when Algebraic_Case =>
             return "acase";
          when Primitive_Case =>

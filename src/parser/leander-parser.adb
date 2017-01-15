@@ -137,12 +137,12 @@ package body Leander.Parser is
 
    function Parse_Expression
      (Expr : String)
-      return Leander.Syntax.Syntax_Tree
+      return Leander.Core.Trees.Tree_Type
    is
    begin
       Open_String (Expr);
       declare
-         Result : constant Leander.Syntax.Syntax_Tree :=
+         Result : constant Leander.Core.Trees.Tree_Type :=
                     Leander.Parser.Expressions.Parse_Expression;
       begin
          Close;

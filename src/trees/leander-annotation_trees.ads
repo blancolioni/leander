@@ -16,6 +16,7 @@ package Leander.Annotation_Trees is
    with private;
 
    subtype Tree_Class is Tree_Type'Class;
+   type Array_Of_Trees is array (Positive range <>) of Tree_Type;
 
    overriding function Apply (Left, Right : Tree_Type) return Tree_Type;
 
@@ -33,6 +34,7 @@ package Leander.Annotation_Trees is
    function First_Leaf (Tree : Tree_Type) return Tree_Type;
    function Arity (Tree : Tree_Type) return Natural;
    function Last_Map (Tree : Tree_Type) return Tree_Type;
+   function Arguments (Tree : Tree_Type) return Array_Of_Trees;
 
    overriding function Left (Tree : Tree_Type) return Tree_Type;
 
@@ -206,6 +208,12 @@ private
    is (if Tree.Is_Leaf
        then 0
        else 1 + Arity (Tree.Left));
+
+   Empty_Tree_Array : Array_Of_Trees (1 .. 0);
+
+   function Arguments (Tree : Tree_Type) return Array_Of_Trees
+   is (if Tree.Is_Leaf then Empty_Tree_Array
+       else Tree.Left.Arguments & Tree.Right);
 
    function Last_Map (Tree : Tree_Type) return Tree_Type
    is (if Tree.Is_Application and then Tree.Left.Is_Application

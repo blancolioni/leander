@@ -6,7 +6,6 @@ with Leander.Kinds.Trees;
 
 with Leander.Core.Trees;
 with Leander.Parser.Modules;
-with Leander.Syntax;
 
 with Leander.Repl;
 

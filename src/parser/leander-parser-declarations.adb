@@ -12,9 +12,8 @@ with Leander.Parser.Types;
 with Leander.Types.Class_Constraints;
 with Leander.Types.Trees;
 
+with Leander.Core.Cases;
 with Leander.Core.Trees;
-
-with Leander.Syntax.Expressions;
 
 with Leander.Primitives;
 
@@ -28,9 +27,6 @@ package body Leander.Parser.Declarations is
      (Env : in out Leander.Environments.Environment);
 
    procedure Parse_Data_Declaration
-     (Env : in out Leander.Environments.Environment);
-
-   procedure Parse_Value_Binding
      (Env : in out Leander.Environments.Environment);
 
    procedure Skip_Declaration;
@@ -191,7 +187,7 @@ package body Leander.Parser.Declarations is
             Class_Env.Create_Temporary_Environment (Env, Name);
             Class_Env.Insert_Type_Variable (Tyvar, Class.Type_Variable);
 
-            Parse_Value_Binding (Class_Env);
+            Parse_Value_Bindings (Class_Env);
             Class_Env.Scan_Local_Bindings
               (Copy_Binding'Access);
          end;
@@ -284,7 +280,7 @@ package body Leander.Parser.Declarations is
          elsif Tok = Tok_Class then
             Parse_Class_Declaration (Env);
          elsif Leander.Parser.Expressions.At_Pattern then
-            Parse_Value_Binding (Env);
+            Parse_Value_Bindings (Env);
          else
             raise Program_Error with
               "expected to be at a declaration";
@@ -292,38 +288,39 @@ package body Leander.Parser.Declarations is
       end if;
    end Parse_Declaration;
 
-   -------------------------
-   -- Parse_Value_Binding --
-   -------------------------
+   --------------------------
+   -- Parse_Value_Bindings --
+   --------------------------
 
-   procedure Parse_Value_Binding
+   procedure Parse_Value_Bindings
      (Env : in out Leander.Environments.Environment)
    is
-      use Leander.Syntax;
+
+      use Leander.Core.Trees;
 
       package Tree_Vectors is
-        new Ada.Containers.Vectors (Positive, Syntax_Tree_Record);
+        new Ada.Containers.Vectors (Positive, Tree_Type);
       Source  : constant Leander.Source.Source_Reference :=
                   Current_Source_Reference;
       Pat_Source : Leander.Source.Source_Reference :=
                      Current_Source_Reference;
       Indent     : constant Positive := Tok_Indent;
-      Pattern : Syntax_Tree :=
+      Pattern : Tree_Type :=
                   Leander.Parser.Expressions.Parse_Pattern;
-      Current : Syntax_Tree := Pattern.Left_Most;
+      Current : Tree_Type := Pattern.First_Leaf;
       Pats : Tree_Vectors.Vector;
       Exps : Tree_Vectors.Vector;
       Last : Boolean := False;
 
       function Pattern_Name
-        (Pat : Syntax_Tree)
+        (Pat : Tree_Type)
          return String
-         renames Leander.Syntax.Expressions.Application_Name;
+      is (Pat.Head.Show);
 
       function Pattern_Arguments
-        (Pat : Syntax_Tree)
-         return Array_Of_Syntax_Trees
-        renames Leander.Syntax.Expressions.Application_Arguments;
+        (Pat : Tree_Type)
+         return Array_Of_Trees
+        renames Arguments;
 
       function Parse_Type_Signature
         return Leander.Types.Trees.Tree_Type;
@@ -373,15 +370,14 @@ package body Leander.Parser.Declarations is
            and then Pattern_Name (Pattern) = Pattern_Name (Current)
            and then Tok /= Tok_Comma and then Tok /= Tok_Colon_Colon
          then
-            Pats.Append (Syntax_Tree_Record (Pattern));
+            Pats.Append (Pattern);
             if Tok = Tok_Equal then
                Scan;
             else
                Error ("missing '='");
             end if;
             Exps.Append
-              (Syntax_Tree_Record
-                 (Leander.Parser.Expressions.Parse_Expression));
+              (Leander.Parser.Expressions.Parse_Expression);
             if Leander.Parser.Expressions.At_Pattern
               and then Tok_Indent >= Indent
             then
@@ -395,18 +391,19 @@ package body Leander.Parser.Declarations is
                declare
                   Name       : constant String :=
                                  Pattern_Name (Pats.First_Element);
-                  First_Args : constant Array_Of_Syntax_Trees :=
+                  First_Args : constant Array_Of_Trees :=
                                  Pattern_Arguments
                                    (Pats.First_Element);
                   Pat_Count  : constant Natural := First_Args'Length;
-                  Fun_Args   : Array_Of_Syntax_Trees (1 .. Pat_Count);
-                  Value      : Syntax_Tree_Record;
+                  Fun_Args   : Array_Of_Trees (1 .. Pat_Count);
+                  Value      : Tree_Type;
                   Simple     : Boolean := False;
+                  Builder    : Leander.Core.Cases.Case_Builder;
                begin
 
                   if Pats.Last_Index = 1
                     and then (for all X of First_Args =>
-                                Leander.Syntax.Expressions.Is_Variable (X))
+                                X.Is_Leaf and then X.Get_Node.Is_Variable)
                   then
                      Value := Exps.First_Element;
                      for I in Fun_Args'Range loop
@@ -415,50 +412,44 @@ package body Leander.Parser.Declarations is
                   else
                      for I in Fun_Args'Range loop
                         Fun_Args (I) :=
-                          Syntax_Tree_Record
-                            (Leander.Syntax.Expressions.Variable
-                               (First_Args (I).Source, New_Variable));
+                          Leaf
+                            (Leander.Core.Variable
+                               (First_Args (I).Head.Source, New_Variable));
                      end loop;
 
                      if Pat_Count = 0 then
                         null;
                      elsif Pat_Count = 1 then
                         Value :=
-                          Syntax_Tree_Record
-                            (Leander.Syntax.Expressions.Case_Expression
+                          Leaf
+                            (Leander.Core.Variable
                                (Source,
-                                Leander.Syntax.Expressions.Variable
-                                  (Source, Fun_Args (1).Show)));
+                                Fun_Args (1).Show));
                      else
                         Value :=
-                          Syntax_Tree_Record
-                            (Leander.Syntax.Expressions.Constructor
-                               (Pats.First_Element.Source,
+                          Leaf
+                            (Leander.Core.Constructor
+                               (Pats.First_Element.Head.Source,
                                 Leander.Primitives.Tuple_Name (Pat_Count)));
                         Leander.Prelude.Use_Tuple (Pat_Count);
                         for I in Fun_Args'Range loop
                            Value :=
-                             Syntax_Tree_Record
-                               (Leander.Syntax.Expressions.Apply
-                                  (First_Args (I).Source,
-                                   Value, Fun_Args (I)));
+                             Apply (Value, Fun_Args (I));
                         end loop;
-                        Value :=
-                          Syntax_Tree_Record
-                            (Leander.Syntax.Expressions.Case_Expression
-                               (Source, Value));
                      end if;
+
+                     Builder.Set_Case_Expression (Value);
 
                      for I in 1 .. Pats.Last_Index loop
                         declare
-                           Pat  : Syntax_Tree := Pats (I);
-                           Exp  : constant Syntax_Tree := Exps (I);
-                           Args : constant Array_Of_Syntax_Trees :=
+                           Pat  : Tree_Type := Pats (I);
+                           Exp  : constant Tree_Type := Exps (I);
+                           Args : constant Array_Of_Trees :=
                                     Pattern_Arguments (Pat);
                         begin
                            if Args'Length /= Pat_Count then
                               Leander.Errors.Error
-                                (Pat.Source,
+                                (Pat.Get_Node.Source,
                                  "inconsistent patterns in declaration");
                            end if;
                            if Args'Length = 0 then
@@ -469,35 +460,35 @@ package body Leander.Parser.Declarations is
                            end if;
 
                            if Args'Length = 1 then
-                              Pat := Syntax_Tree (Args (Args'First));
+                              Pat := Args (Args'First);
                            elsif Args'Length > 1 then
                               Pat :=
-                                Leander.Syntax.Expressions.Constructor
-                                  (Pat_Source,
-                                   Leander.Primitives.Tuple_Name
-                                     (Args'Length));
+                                Leaf (Leander.Core.Constructor
+                                      (Pat_Source,
+                                         Leander.Primitives.Tuple_Name
+                                           (Args'Length)));
                               for Arg of Args loop
-                                 Pat :=
-                                   Leander.Syntax.Expressions.Apply
-                                     (Arg.Source, Pat, Arg);
+                                 Pat := Pat.Apply (Arg);
                               end loop;
                            end if;
 
-                           Leander.Syntax.Expressions.Add_Case_Alternate
-                             (Value, Pat, Exp);
+                           Builder.Add_Alt (Pat, Exp);
                         end;
                      end loop;
+
+                     Value := Builder.Transform;
+
                   end if;
 
                   if not Simple then
                      for I in reverse Fun_Args'Range loop
                         Value :=
-                          Syntax_Tree_Record
-                            (Leander.Syntax.Expressions.Lambda
-                               (Source, Fun_Args (I).Show, Value));
+                          Apply
+                            (Leander.Core.Lambda (Source, Fun_Args (I).Show),
+                             Value);
                      end loop;
                   end if;
-                  Env.Insert_Value (Name, Value.To_Core);
+                  Env.Insert_Value (Name, Value);
                end;
 
             end if;
@@ -530,7 +521,7 @@ package body Leander.Parser.Declarations is
          end if;
 
       end loop;
-   end Parse_Value_Binding;
+   end Parse_Value_Bindings;
 
    ----------------------
    -- Skip_Declaration --
