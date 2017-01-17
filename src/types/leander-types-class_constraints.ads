@@ -39,7 +39,8 @@ package Leander.Types.Class_Constraints is
      (Class   : Class_Constraint'Class;
       Process : not null access
         procedure (Name : String;
-                   Signature : Leander.Types.Trees.Tree_Type));
+                   Signature : Leander.Types.Trees.Tree_Type;
+                   Default   : Leander.Core.Trees.Tree_Type));
 
    type Class_Bindings is tagged private;
 

@@ -108,6 +108,11 @@ package Leander.Environments is
       return Leander.Types.Trees.Tree_Type
      with Pre => Env.Has_Type_Variable_Binding (Name);
 
+   procedure Add_Type_Assertion
+     (Env       : Environment;
+      Name      : String;
+      Assertion : Leander.Types.Type_Assertion'Class);
+
    function Has_Class_Binding
      (Env  : Environment;
       Name : String)

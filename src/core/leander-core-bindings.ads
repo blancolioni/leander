@@ -22,6 +22,12 @@ package Leander.Core.Bindings is
       Name : String)
       return Boolean;
 
+   function Bound_Name
+     (List : Binding_List;
+      Name : String)
+      return String
+     with Pre => List.Has_Binding (Name);
+
    function Binding
      (List : Binding_List;
       Name : String)
@@ -35,16 +41,17 @@ package Leander.Core.Bindings is
      with Pre => List.Has_Signature (Name);
 
    procedure Insert
-     (List    : in out Binding_List;
-      Name    : String;
-      Binding : Leander.Core.Trees.Tree_Type)
+     (List       : in out Binding_List;
+      Name       : String;
+      Binding    : Leander.Core.Trees.Tree_Type;
+      Bound_Name : String := "")
      with Pre => not List.Has_Value (Name),
      Post => List.Has_Value (Name);
 
    procedure Insert
-     (List      : in out Binding_List;
-      Name      : String;
-      Signature : Leander.Types.Trees.Tree_Type)
+     (List          : in out Binding_List;
+      Name          : String;
+      Signature     : Leander.Types.Trees.Tree_Type)
      with Pre => not List.Has_Signature (Name),
      Post => List.Has_Signature (Name);
 
@@ -69,6 +76,7 @@ private
          Has_Signature : Boolean := False;
          Value         : Leander.Core.Trees.Tree_Type;
          Signature     : Leander.Types.Trees.Tree_Type;
+         Bound_Name    : Ada.Strings.Unbounded.Unbounded_String;
       end record;
 
    package Binding_Maps is
@@ -102,6 +110,13 @@ private
       return Boolean
    is (List.Map.Contains (Name)
        and then List.Map.Element (Name).Has_Signature);
+
+   function Bound_Name
+     (List : Binding_List;
+      Name : String)
+      return String
+   is (Ada.Strings.Unbounded.To_String
+       (List.Map.Element (Name).Bound_Name));
 
    function Binding
      (List : Binding_List;

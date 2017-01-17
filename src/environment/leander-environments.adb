@@ -1,11 +1,26 @@
 with Ada.Text_IO;
 
 with Leander.Types.Kind_Inference;
+with Leander.Types.Class_Constraints.Compiler;
+with Leander.Types.Instances.Compiler;
 
 with Leander.Core.Compiler;
 with Leander.Core.Type_Inference;
 
 package body Leander.Environments is
+
+   ------------------------
+   -- Add_Type_Assertion --
+   ------------------------
+
+   procedure Add_Type_Assertion
+     (Env       : Environment;
+      Name      : String;
+      Assertion : Leander.Types.Type_Assertion'Class)
+   is
+   begin
+      Env.Local.Types.Add_Assertion (Name, Assertion);
+   end Add_Type_Assertion;
 
    --------------
    -- Annotate --
@@ -34,6 +49,13 @@ package body Leander.Environments is
         (Name : String;
          Tree : Leander.Core.Trees.Tree_Type);
 
+      procedure Compile_Class
+        (Class : Leander.Types.Class_Constraints.Class_Constraint'Class);
+
+      procedure Compile_Instances
+        (Name    : String;
+         Binding : Leander.Types.Bindings.Type_Binding'Class);
+
       ---------------------
       -- Compile_Binding --
       ---------------------
@@ -49,7 +71,56 @@ package body Leander.Environments is
          end if;
       end Compile_Binding;
 
+      -------------------
+      -- Compile_Class --
+      -------------------
+
+      procedure Compile_Class
+        (Class : Leander.Types.Class_Constraints.Class_Constraint'Class)
+      is
+      begin
+         Leander.Types.Class_Constraints.Compiler.Compile
+           (Class, Env, Machine);
+      end Compile_Class;
+
+      -----------------------
+      -- Compile_Instances --
+      -----------------------
+
+      procedure Compile_Instances
+        (Name    : String;
+         Binding : Leander.Types.Bindings.Type_Binding'Class)
+      is
+
+         pragma Unreferenced (Name);
+
+         procedure Compile_Instance_Assertion
+           (Assertion : Leander.Types.Type_Assertion'Class);
+
+         --------------------------------
+         -- Compile_Instance_Assertion --
+         --------------------------------
+
+         procedure Compile_Instance_Assertion
+           (Assertion : Leander.Types.Type_Assertion'Class)
+         is
+         begin
+            Leander.Types.Instances.Compiler.Compile
+              (Env, Leander.Types.Instances.Type_Instance (Assertion),
+               Machine);
+         end Compile_Instance_Assertion;
+
+      begin
+         Ada.Text_IO.Put_Line
+           ("compiling instances for " & Binding.Type_Pattern.Show);
+
+         Binding.Type_Pattern.Head.Scan_Assertions
+           (Compile_Instance_Assertion'Access);
+      end Compile_Instances;
+
    begin
+      Env.Local.Classes.Scan (Compile_Class'Access);
+      Env.Local.Types.Scan_Bindings (Compile_Instances'Access);
       Env.Local.Values.Scan (Compile_Binding'Access);
    end Compile;
 
@@ -199,8 +270,8 @@ package body Leander.Environments is
       Value : Leander.Core.Trees.Tree_Type)
    is
    begin
-      Env.Local.Values.Insert (Name, Value);
       Ada.Text_IO.Put_Line (Name & " = " & Value.Show);
+      Env.Local.Values.Insert (Name, Value);
    end Insert_Value;
 
    -------------------------

@@ -104,6 +104,11 @@ package Leander.Types.Bindings is
      with Pre => not List.Has_Binding (Name),
      Post => List.Has_Binding (Name);
 
+   procedure Add_Assertion
+     (List      : in out Type_Binding_List;
+      Name      : String;
+      Assertion : Type_Assertion'Class);
+
    procedure Declare_Data_Type
      (List      : in out Type_Binding_List;
       Name      : String;

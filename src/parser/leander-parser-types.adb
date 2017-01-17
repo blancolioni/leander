@@ -10,6 +10,64 @@ package body Leander.Parser.Types is
    function At_Atomic_Type return Boolean
    is (At_Name or else Tok = Tok_Left_Bracket or else Tok = Tok_Left_Paren);
 
+   function Parse_Atomic_Type
+     (Env : Leander.Environments.Environment)
+      return Leander.Types.Trees.Tree_Type
+   is
+      Expr   : Leander.Types.Trees.Tree_Type;
+   begin
+      if At_Variable then
+         declare
+            Name : constant String := Tok_Text;
+         begin
+            Scan;
+            if Env.Has_Type_Variable_Binding (Name) then
+               Expr := Env.Type_Variable_Binding (Name);
+            else
+               Expr :=
+                 Leander.Types.Trees.Leaf
+                   (Leander.Types.Variable (Name));
+            end if;
+         end;
+      elsif At_Constructor then
+         Expr :=
+           Leander.Types.Trees.Leaf
+             (Leander.Types.Constructor (Tok_Text));
+         Scan;
+      elsif Tok = Tok_Left_Paren then
+         Scan;
+         Expr := Parse_Type (Env);
+         if Tok = Tok_Right_Paren then
+            Scan;
+         else
+            Error ("missing ')'");
+         end if;
+      elsif Tok = Tok_Left_Bracket then
+         Scan;
+         if Tok = Tok_Right_Bracket then
+            Scan;
+            Expr :=
+              Leander.Types.Trees.Leaf
+                (Leander.Types.Constructor ("[]"));
+         else
+            Expr := Parse_Type (Env);
+            if Tok = Tok_Right_Bracket then
+               Scan;
+            else
+               Error ("missing ']'");
+            end if;
+            Expr :=
+              Leander.Types.Trees.Apply
+                (Leander.Types.Constructor ("[]"),
+                 Expr);
+         end if;
+      else
+         raise Program_Error with
+           "expected an atomic type";
+      end if;
+      return Expr;
+   end Parse_Atomic_Type;
+
    ----------------
    -- Parse_Type --
    ----------------
@@ -25,55 +83,8 @@ package body Leander.Parser.Types is
    begin
 
       while At_Atomic_Type loop
-         if At_Variable then
-            declare
-               Name : constant String := Tok_Text;
-            begin
-               Scan;
-               if Env.Has_Type_Variable_Binding (Name) then
-                  Expr := Env.Type_Variable_Binding (Name);
-               else
-                  Expr :=
-                    Leander.Types.Trees.Leaf
-                      (Leander.Types.Variable (Name));
-               end if;
-            end;
-         elsif At_Constructor then
-            Expr :=
-              Leander.Types.Trees.Leaf
-                (Leander.Types.Constructor (Tok_Text));
-            Scan;
-         elsif Tok = Tok_Left_Paren then
-            Scan;
-            Expr := Parse_Type (Env);
-            if Tok = Tok_Right_Paren then
-               Scan;
-            else
-               Error ("missing ')'");
-            end if;
-         elsif Tok = Tok_Left_Bracket then
-            Scan;
-            if Tok = Tok_Right_Bracket then
-               Scan;
-               Expr :=
-                 Leander.Types.Trees.Leaf
-                   (Leander.Types.Constructor ("[]"));
-            else
-               Expr := Parse_Type (Env);
-               if Tok = Tok_Right_Bracket then
-                  Scan;
-               else
-                  Error ("missing ']'");
-               end if;
-               Expr :=
-                 Leander.Types.Trees.Apply
-                   (Leander.Types.Constructor ("[]"),
-                    Expr);
-            end if;
-         else
-            raise Program_Error with
-              "expected an atomic type";
-         end if;
+
+         Expr := Parse_Atomic_Type (Env);
 
          if Result.Is_Empty then
             Result := Expr;

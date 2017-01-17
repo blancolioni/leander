@@ -33,8 +33,9 @@ package Leander.Types.Trees is
                    renames Type_Trees.Apply;
 
    procedure Scan_Constraints
-     (Tree : Tree_Type;
-      Process : not null access
+     (Tree         : Tree_Type;
+      Include_Cons : Boolean;
+      Process      : not null access
         procedure (Constraint : Type_Constraint'Class;
                    Variable   : String));
 

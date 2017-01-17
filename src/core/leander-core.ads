@@ -80,9 +80,10 @@ private
      new Leander.Unifiable.Unifiable_Interface
      and Show_Interface with
       record
-         Source     : Leander.Source.Source_Reference;
-         Class      : Core_Node_Class;
-         Name       : Ada.Strings.Unbounded.Unbounded_String;
+         Source        : Leander.Source.Source_Reference;
+         Class         : Core_Node_Class;
+         Name          : Ada.Strings.Unbounded.Unbounded_String;
+         Original_Type : Leander.Types.Trees.Tree_Type;
       end record;
 
    overriding function Show
@@ -136,7 +137,8 @@ private
       return Core_Node
    is (Class => Constructor,
        Name => +Name,
-       Source => Source);
+       Source => Source,
+       Original_Type => Leander.Types.Trees.Empty);
 
    function Literal
      (Source       : Leander.Source.Source_Reference;
@@ -144,13 +146,15 @@ private
       return Core_Node
    is (Class => Literal,
        Name => +Text,
-       Source => Source);
+       Source => Source,
+       Original_Type => Leander.Types.Trees.Empty);
 
    function Lambda
      (Source : Leander.Source.Source_Reference;
       Name   : String)
       return Core_Node
-   is (Class => Lambda, Source => Source, Name => +Name);
+   is (Class => Lambda, Source => Source, Name => +Name,
+       Original_Type => Leander.Types.Trees.Empty);
 
    function Let
      (Source : Leander.Source.Source_Reference)
@@ -171,7 +175,8 @@ private
      (Source : Leander.Source.Source_Reference;
       Name   : String)
       return Core_Node
-   is (Class => Variable, Name => +Name, Source => Source);
+   is (Class => Variable, Name => +Name, Source => Source,
+       Original_Type => Leander.Types.Trees.Empty);
 
    function Variable_Type
      return Leander.Types.Trees.Tree_Type

@@ -20,6 +20,18 @@ package body Leander.Types is
       end if;
    end "=";
 
+   -------------------
+   -- Add_Assertion --
+   -------------------
+
+   procedure Add_Assertion
+     (Node      : in out Type_Node;
+      Assertion : Type_Assertion'Class)
+   is
+   begin
+      Node.Assertions.Append (Assertion);
+   end Add_Assertion;
+
    --------------------
    -- Add_Constraint --
    --------------------
@@ -43,13 +55,13 @@ package body Leander.Types is
       Index : Positive)
       return Type_Node
    is
-      pragma Unreferenced (Node);
       Result : Type_Node;
    begin
       Result.Class := Variable;
       Result.Name :=
         Ada.Strings.Unbounded.To_Unbounded_String
           ((1 => Character'Val (Index + Character'Pos ('a') - 1)));
+      Result.Constraints := Node.Constraints;
       return Result;
    end Create_Variable_From_Binding;
 
@@ -103,6 +115,21 @@ package body Leander.Types is
       end loop;
       List := New_List;
    end Minimise;
+
+   ---------------------
+   -- Scan_Assertions --
+   ---------------------
+
+   procedure Scan_Assertions
+     (Node    : Type_Node'Class;
+      Process : not null access
+        procedure (Assertion : Type_Assertion'Class))
+   is
+   begin
+      for Item of Node.Assertions loop
+         Process (Item);
+      end loop;
+   end Scan_Assertions;
 
    -----------------------
    -- Set_Binding_Index --

@@ -6,6 +6,7 @@ private package Leander.Parser.Declarations is
      (Env : in out Leander.Environments.Environment);
 
    procedure Parse_Value_Bindings
-     (Env : in out Leander.Environments.Environment);
+     (Env    : in out Leander.Environments.Environment;
+      Indent : Positive);
 
 end Leander.Parser.Declarations;

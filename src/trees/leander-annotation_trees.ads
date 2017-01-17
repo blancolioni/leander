@@ -30,6 +30,9 @@ package Leander.Annotation_Trees is
    function Get_Node (Tree : Tree_Type) return Node_Type
      with Pre => Is_Leaf (Tree);
 
+   function Update_Node (Tree : Tree_Type)
+                         return access Node_Type;
+
    function Head (Tree : Tree_Type) return Node_Type;
    function First_Leaf (Tree : Tree_Type) return Tree_Type;
    function Arity (Tree : Tree_Type) return Natural;
@@ -92,7 +95,7 @@ private
          Annotation     : Annotation_Type;
          case Leaf is
             when True =>
-               Node : Node_Type;
+               Node : aliased Node_Type;
             when False =>
                Left, Right : Tree_Type;
          end case;
@@ -157,6 +160,10 @@ private
 
    function Get_Node (Tree : Tree_Type) return Node_Type
    is (Tree.Node.Node);
+
+   function Update_Node (Tree : Tree_Type)
+                         return access Node_Type
+   is (Tree.Node.Node'Access);
 
    overriding function Left (Tree : Tree_Type) return Tree_Type
    is (Tree.Node.Left);

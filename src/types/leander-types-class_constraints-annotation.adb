@@ -16,7 +16,8 @@ package body Leander.Types.Class_Constraints.Annotation is
 
       procedure Annotate_Method
         (Name      : String;
-         Signature : Leander.Types.Trees.Tree_Type);
+         Signature : Leander.Types.Trees.Tree_Type;
+         Default   : Leander.Core.Trees.Tree_Type);
 
       ---------------------
       -- Annotate_Method --
@@ -24,9 +25,11 @@ package body Leander.Types.Class_Constraints.Annotation is
 
       procedure Annotate_Method
         (Name      : String;
-         Signature : Leander.Types.Trees.Tree_Type)
+         Signature : Leander.Types.Trees.Tree_Type;
+         Default   : Leander.Core.Trees.Tree_Type)
       is
          pragma Unreferenced (Name);
+         pragma Unreferenced (Default);
       begin
          Leander.Types.Kind_Inference.Annotate (Class_Env, Signature);
       end Annotate_Method;

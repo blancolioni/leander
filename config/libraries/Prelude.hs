@@ -48,6 +48,9 @@ snd (a,b) = b
 
 data Bool = False | True
 
+instance Eq Bool where
+   x == y = if x then y else not y
+   
 True && x = x
 False && x = False
 
@@ -74,7 +77,10 @@ data Maybe a = Nothing | Just a
 maybe n f Nothing = n
 maybe n f (Just z) = f z
 
---  maybe = \x1 -> \x2 -> \x3 -> 
+instance  Functor Maybe  where  
+    fmap f Nothing    =  Nothing  
+    fmap f (Just x)   =  Just (f x)
+	
 data  Either a b  =  Left a | Right b
 
 either f g (Left x) = f x
@@ -82,3 +88,5 @@ either f g (Right y) = g y
                              
 []     ++ ys = ys
 (x:xs) ++ ys = x : (xs ++ ys)
+
+testEqBool x = x == True
