@@ -41,7 +41,7 @@ foreign import #putchar :: Char -> World# -> World#
 putChar :: Char -> IO ()
 putChar ch = IO (\w -> (\w' -> ((),w')) (#putchar ch))
 
-testPutChar = putChar 'x' >> putChar '\n'
+testPutChar = if False then putChar 'x' >> putChar '\n' else  putChar 'y' >> putChar '\n'
 
 id x = x
 
@@ -61,11 +61,8 @@ fst (a,b) = a
 
 snd (a,b) = b
 
-data Bool = False | True
+data Bool = False | True deriving (Eq);
 
-instance Eq Bool where
-   x == y = if x then y else not y
-   
 True && x = x
 False && x = False
 

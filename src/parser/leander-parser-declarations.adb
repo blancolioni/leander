@@ -12,7 +12,7 @@ with Leander.Parser.Expressions;
 with Leander.Parser.Types;
 
 with Leander.Types.Class_Constraints;
-with Leander.Types.Instances;
+with Leander.Types.Instances.Derived;
 with Leander.Types.Trees;
 
 with Leander.Core.Cases;
@@ -266,6 +266,32 @@ package body Leander.Parser.Declarations is
                exit;
             end if;
          end loop;
+
+         if Tok = Tok_Deriving then
+            Scan;
+            if At_Constructor_Name then
+               Leander.Types.Instances.Derived.Derive_Instance
+                 (Env, Env.Type_Constructor_Binding (Name).Type_Pattern,
+                  Get_Identifier);
+            elsif Tok = Tok_Left_Paren then
+               Scan;
+               while At_Constructor_Name loop
+                  Leander.Types.Instances.Derived.Derive_Instance
+                    (Env, Env.Type_Constructor_Binding (Name).Type_Pattern,
+                     Scan_Identifier);
+                  if Tok = Tok_Comma then
+                     Scan;
+                  else
+                     exit;
+                  end if;
+               end loop;
+               if Tok = Tok_Right_Paren then
+                  Scan;
+               else
+                  Error ("missing ')'");
+               end if;
+            end if;
+         end if;
       end;
 
    end Parse_Data_Declaration;

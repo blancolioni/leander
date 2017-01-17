@@ -14,9 +14,9 @@ package Leander.Parser is
       Path : String;
       Env  : in out Leander.Environments.Environment);
 
-private
-
    function Current_Source_Reference return Leander.Source.Source_Reference;
+
+private
 
    function At_Constructor return Boolean;
    function At_Variable return Boolean;
