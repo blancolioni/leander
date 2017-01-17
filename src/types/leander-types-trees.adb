@@ -7,8 +7,9 @@ package body Leander.Types.Trees is
    ----------------------
 
    procedure Scan_Constraints
-     (Tree : Tree_Type;
-      Process : not null access
+     (Tree         : Tree_Type;
+      Include_Cons : Boolean;
+      Process      : not null access
         procedure (Constraint : Type_Constraint'Class;
                    Variable   : String))
    is
@@ -23,12 +24,13 @@ package body Leander.Types.Trees is
       procedure Scan_Tree (T : Tree_Type) is
       begin
          if T.Is_Leaf then
-            if T.Is_Variable
-              and then not Done.Contains (T.Variable_Name)
+            if (T.Is_Variable
+                or else (Include_Cons and then T.Is_Constructor))
+              and then not Done.Contains (T.Show)
             then
-               Done.Insert (T.Variable_Name);
+               Done.Insert (T.Show);
                for Constraint of T.Get_Node.Constraints loop
-                  Process (Constraint, T.Variable_Name);
+                  Process (Constraint, T.Show);
                end loop;
             end if;
          elsif T.Is_Application then
@@ -79,7 +81,7 @@ package body Leander.Types.Trees is
       end Add_Constraint_Image;
 
    begin
-      Scan_Constraints (Tree, Add_Constraint_Image'Access);
+      Scan_Constraints (Tree, False, Add_Constraint_Image'Access);
       if Constraint_Count = 1 then
          return To_String (Constraint_String) & " => " & Type_Image;
       elsif Constraint_Count > 1 then

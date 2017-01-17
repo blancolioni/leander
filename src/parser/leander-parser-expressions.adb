@@ -451,10 +451,11 @@ package body Leander.Parser.Expressions is
       elsif Tok = Tok_Let then
          declare
             Env    : Leander.Environments.Environment;
+            Indent : constant Positive := Tok_Indent;
          begin
             Env.Create ("let-env");
             Scan;
-            Leander.Parser.Declarations.Parse_Value_Bindings (Env);
+            Leander.Parser.Declarations.Parse_Value_Bindings (Env, Indent);
 
             if Tok = Tok_In then
                Scan;

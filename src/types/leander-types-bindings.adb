@@ -1,5 +1,19 @@
 package body Leander.Types.Bindings is
 
+   -------------------
+   -- Add_Assertion --
+   -------------------
+
+   procedure Add_Assertion
+     (List      : in out Type_Binding_List;
+      Name      : String;
+      Assertion : Type_Assertion'Class)
+   is
+   begin
+      List.Map.Element (Name).Head.First_Leaf.Update_Node.Add_Assertion
+        (Assertion);
+   end Add_Assertion;
+
    ---------------------
    -- Add_Constructor --
    ---------------------

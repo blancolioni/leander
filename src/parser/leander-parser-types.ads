@@ -6,6 +6,10 @@ package Leander.Parser.Types is
      (Env : Leander.Environments.Environment)
       return Leander.Types.Trees.Tree_Type;
 
+   function Parse_Atomic_Type
+     (Env : Leander.Environments.Environment)
+      return Leander.Types.Trees.Tree_Type;
+
    function Parse_Type_Constructor
      (Env    : Leander.Environments.Environment;
       Target : Leander.Types.Trees.Tree_Type)

@@ -6,6 +6,8 @@ with Leander.Unifiable;
 
 package Leander.Types is
 
+   type Type_Assertion is interface;
+
    type Type_Constraint is interface and Show_Interface;
 
    function Is_Subset_Of
@@ -43,7 +45,20 @@ package Leander.Types is
      (Node       : in out Type_Node;
       Constraint : Type_Constraint'Class);
 
+   procedure Add_Assertion
+     (Node      : in out Type_Node;
+      Assertion : Type_Assertion'Class);
+
+   procedure Scan_Assertions
+     (Node    : Type_Node'Class;
+      Process : not null access
+        procedure (Assertion : Type_Assertion'Class));
+
 private
+
+   package Assertion_Lists is
+     new Ada.Containers.Indefinite_Doubly_Linked_Lists
+       (Type_Assertion'Class);
 
    package Constraint_Lists is
      new Ada.Containers.Indefinite_Doubly_Linked_Lists
@@ -61,10 +76,9 @@ private
      and Show_Interface with
       record
          Class       : Type_Node_Class;
---           Kind        : Leander.Kinds.Trees.Tree_Type :=
---                           Leander.Kinds.Trees.Empty;
          Name        : Ada.Strings.Unbounded.Unbounded_String;
          Index       : Natural := 0;
+         Assertions  : Assertion_Lists.List;
          Constraints : Constraint_Lists.List;
       end record;
 

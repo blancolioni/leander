@@ -1,3 +1,5 @@
+with Ada.Text_IO;
+
 with Ada.Containers.Vectors;
 with Ada.Strings.Unbounded;
 
@@ -10,6 +12,7 @@ with Leander.Parser.Expressions;
 with Leander.Parser.Types;
 
 with Leander.Types.Class_Constraints;
+with Leander.Types.Instances;
 with Leander.Types.Trees;
 
 with Leander.Core.Cases;
@@ -29,6 +32,9 @@ package body Leander.Parser.Declarations is
    procedure Parse_Data_Declaration
      (Env : in out Leander.Environments.Environment);
 
+   procedure Parse_Instance_Declaration
+     (Env : in out Leander.Environments.Environment);
+
    procedure Skip_Declaration;
 
    --------------------
@@ -38,7 +44,8 @@ package body Leander.Parser.Declarations is
    function At_Declaration return Boolean is
       use Leander.Parser.Lexical.Set_Of_Tokens;
    begin
-      return Tok <= +(Tok_Identifier, Tok_Class, Tok_Data);
+      return At_Variable or else At_Constructor or else
+        Tok <= +(Tok_Class, Tok_Data, Tok_Instance);
    end At_Declaration;
 
    -----------------------------
@@ -51,6 +58,7 @@ package body Leander.Parser.Declarations is
       use Ada.Strings.Unbounded;
       Class    : Leander.Types.Class_Constraints.Class_Constraint;
       Var_Name : Unbounded_String;
+      Indent   : constant Positive := Tok_Indent + 1;
    begin
       pragma Assert (Tok = Tok_Class);
       Scan;
@@ -187,7 +195,7 @@ package body Leander.Parser.Declarations is
             Class_Env.Create_Temporary_Environment (Env, Name);
             Class_Env.Insert_Type_Variable (Tyvar, Class.Type_Variable);
 
-            Parse_Value_Bindings (Class_Env);
+            Parse_Value_Bindings (Class_Env, Indent);
             Class_Env.Scan_Local_Bindings
               (Copy_Binding'Access);
          end;
@@ -279,8 +287,10 @@ package body Leander.Parser.Declarations is
             Parse_Data_Declaration (Env);
          elsif Tok = Tok_Class then
             Parse_Class_Declaration (Env);
+         elsif Tok = Tok_Instance then
+            Parse_Instance_Declaration (Env);
          elsif Leander.Parser.Expressions.At_Pattern then
-            Parse_Value_Bindings (Env);
+            Parse_Value_Bindings (Env, 1);
          else
             raise Program_Error with
               "expected to be at a declaration";
@@ -288,12 +298,90 @@ package body Leander.Parser.Declarations is
       end if;
    end Parse_Declaration;
 
+   --------------------------------
+   -- Parse_Instance_Declaration --
+   --------------------------------
+
+   procedure Parse_Instance_Declaration
+     (Env : in out Leander.Environments.Environment)
+   is
+      Instance : Leander.Types.Instances.Type_Instance;
+      Indent   : constant Positive := Tok_Indent;
+   begin
+      pragma Assert (Tok = Tok_Instance);
+      Scan;
+      Instance.Create;
+
+      if At_Constructor_Name then
+         declare
+            Class_Name : constant String := Tok_Text;
+            Instance_Type : Leander.Types.Trees.Tree_Type;
+            Instance_Env  : Leander.Environments.Environment;
+         begin
+            Scan;
+            Instance_Type :=
+              Leander.Parser.Types.Parse_Atomic_Type (Env);
+
+            Instance.Set_Class_Assertion
+              (Instance_Type, Class_Name);
+
+            if Tok = Tok_Where then
+               Scan;
+            else
+               Error ("missing 'where'");
+            end if;
+
+            Instance_Env.Create_Temporary_Environment
+              (Env, Class_Name);
+
+            Parse_Value_Bindings (Instance_Env, Tok_Indent);
+
+            declare
+               procedure Process
+                 (Name  : String;
+                  Value : Leander.Core.Trees.Tree_Type);
+
+               -------------
+               -- Process --
+               -------------
+
+               procedure Process
+                 (Name  : String;
+                  Value : Leander.Core.Trees.Tree_Type)
+               is
+               begin
+                  Ada.Text_IO.Put_Line
+                    ("implementing: " & Class_Name & " " & Name
+                     & " = " & Value.Show);
+                  Instance.Implement (Name, Value);
+               end Process;
+
+            begin
+               Instance_Env.Scan_Local_Bindings (Process'Access);
+            end;
+
+            Ada.Text_IO.Put_Line
+              ("instance " & Class_Name & " " & Instance_Type.Show);
+
+            Env.Add_Type_Assertion
+              (Instance_Type.Head.Show, Instance);
+
+         end;
+      else
+         Error ("missing class name");
+         while Tok_Indent > Indent loop
+            Scan;
+         end loop;
+      end if;
+   end Parse_Instance_Declaration;
+
    --------------------------
    -- Parse_Value_Bindings --
    --------------------------
 
    procedure Parse_Value_Bindings
-     (Env : in out Leander.Environments.Environment)
+     (Env    : in out Leander.Environments.Environment;
+      Indent : Positive)
    is
 
       use Leander.Core.Trees;
@@ -304,7 +392,6 @@ package body Leander.Parser.Declarations is
                   Current_Source_Reference;
       Pat_Source : Leander.Source.Source_Reference :=
                      Current_Source_Reference;
-      Indent     : constant Positive := Tok_Indent;
       Pattern : Tree_Type :=
                   Leander.Parser.Expressions.Parse_Pattern;
       Current : Tree_Type := Pattern.First_Leaf;
@@ -357,7 +444,7 @@ package body Leander.Parser.Declarations is
          declare
             Indent : constant Positive := Tok_Indent;
          begin
-            while Tok_Indent >= Indent loop
+            while Tok_Indent > Indent loop
                Scan;
             end loop;
          end;

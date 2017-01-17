@@ -5,8 +5,6 @@ with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Hashed_Maps;
 
-with Leander.Core.Trees;
-
 with Leander.Errors;
 
 with Leander.Set_Of_Names;
@@ -47,13 +45,9 @@ package body Leander.Core.Type_Inference is
         Equivalent_Keys => "=",
         "="             => List_Of_Local_Bindings."=");
 
-   procedure Annotate
-     (Tree     : Trees.Tree_Type;
-      Env      : Leander.Environments.Environment);
-
    function Scan_Variable_Annotations
      (Tree : Trees.Tree_Type;
-      Env      : Leander.Environments.Environment)
+      Env  : Leander.Environments.Environment)
       return Array_Of_Annotations;
 
    function Unify
@@ -104,8 +98,6 @@ package body Leander.Core.Type_Inference is
         (Tree       : Trees.Tree_Type)
       is
       begin
---           Ada.Text_IO.Put_Line
---             ("bind: " & Tree.Show_With_Annotations);
          if Tree.Is_Application then
             Bind (Tree.Left);
             Bind (Tree.Right);
@@ -113,6 +105,17 @@ package body Leander.Core.Type_Inference is
          if Tree.Has_Annotation then
             Tree.Set_Annotation
               (Bind (Tree.Annotation, Vars, Next_Variable));
+            if Tree.Is_Leaf
+              and then not Tree.Get_Node.Original_Type.Is_Empty
+            then
+               Ada.Text_IO.Put_Line
+                 (Tree.Show & ": original type: "
+                  & Leander.Types.Trees.Show_Type
+                    (Tree.Get_Node.Original_Type));
+               Ada.Text_IO.Put_Line
+                 (Tree.Show & ": bound type: "
+                  & Leander.Types.Trees.Show_Type (Tree.Annotation));
+            end if;
          end if;
       end Bind;
 
@@ -626,33 +629,29 @@ package body Leander.Core.Type_Inference is
             end if;
          elsif Root.Is_Variable then
             declare
-               Name : constant String := Root.Variable_Name;
+               Name     : constant String := Root.Variable_Name;
+               Var_Type : Leander.Types.Trees.Tree_Type;
             begin
                if not Bound.Contains (Name)
                  or else Bound (Name).Is_Empty
                then
                   if Env.Has_Local_Signature (Name) then
-                     Root.Set_Annotation
-                       (Unbind (Env.Local_Signature (Name)));
+                     Var_Type := Env.Local_Signature (Name);
                   elsif Env.Has_Local_Binding (Name) then
-                     declare
-                        Tree : constant Trees.Tree_Type :=
-                                 Env.Local_Binding (Name);
-                     begin
-                        Root.Set_Annotation
-                          (Unbind (Tree.Annotation));
-                     end;
+                     Var_Type := Env.Local_Binding (Name).Annotation;
                   elsif Env.Has_Expression_Binding (Name) then
-                     Root.Set_Annotation
-                       (Unbind
-                          (Env.Expression_Binding (Name).Annotation));
+                     Var_Type :=
+                       Env.Expression_Binding (Name).Annotation;
                   else
                      Leander.Errors.Error
                        (Root.Get_Node.Source,
                         "undefined: " & Name);
                      Add_Binding;
-                     Root.Set_Annotation (Vector.Last_Element);
+                     Var_Type := Vector.Last_Element;
                   end if;
+
+                  Root.Update_Node.Original_Type := Var_Type;
+                  Root.Set_Annotation (Unbind (Root.Get_Node.Original_Type));
                else
                   Set_Named_Binding (Name);
                end if;

@@ -5,9 +5,10 @@ package body Leander.Core.Bindings is
    ------------
 
    procedure Insert
-     (List    : in out Binding_List;
-      Name    : String;
-      Binding : Leander.Core.Trees.Tree_Type)
+     (List       : in out Binding_List;
+      Name       : String;
+      Binding    : Leander.Core.Trees.Tree_Type;
+      Bound_Name : String := "")
    is
    begin
       if List.Has_Signature (Name) then
@@ -17,6 +18,9 @@ package body Leander.Core.Bindings is
             Rec.Has_Value := True;
             Rec.Value := Binding;
             Rec.Value.Set_Annotation (Rec.Signature);
+            Rec.Bound_Name :=
+              Ada.Strings.Unbounded.To_Unbounded_String
+                (if Bound_Name = "" then Name else Bound_Name);
             List.Map.Replace_Element
               (List.Map.Find (Name), Rec);
          end;
@@ -31,9 +35,9 @@ package body Leander.Core.Bindings is
    ------------
 
    procedure Insert
-     (List      : in out Binding_List;
-      Name      : String;
-      Signature : Leander.Types.Trees.Tree_Type)
+     (List          : in out Binding_List;
+      Name          : String;
+      Signature     : Leander.Types.Trees.Tree_Type)
    is
    begin
       if List.Has_Binding (Name) then

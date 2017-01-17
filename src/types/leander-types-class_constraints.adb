@@ -35,7 +35,9 @@ package body Leander.Types.Class_Constraints is
    begin
       Class.Class_Body.Methods.Insert (Name, Signature);
       if not Default.Is_Empty then
-         Class.Class_Body.Methods.Insert (Name, Default);
+         Class.Class_Body.Methods.Insert
+           (Name, Default,
+            Bound_Name => Name & "-default");
       end if;
    end Add_Method;
 
@@ -136,11 +138,16 @@ package body Leander.Types.Class_Constraints is
       end loop;
    end Scan;
 
+   ------------------
+   -- Scan_Methods --
+   ------------------
+
    procedure Scan_Methods
      (Class   : Class_Constraint'Class;
       Process : not null access
         procedure (Name : String;
-                   Signature : Leander.Types.Trees.Tree_Type))
+                   Signature : Leander.Types.Trees.Tree_Type;
+                   Default   : Leander.Core.Trees.Tree_Type))
    is
       procedure Local_Process
         (Name      : String;
@@ -156,9 +163,8 @@ package body Leander.Types.Class_Constraints is
          Tree      : Leander.Core.Trees.Tree_Type;
          Signature : Leander.Types.Trees.Tree_Type)
       is
-         pragma Unreferenced (Tree);
       begin
-         Process (Name, Signature);
+         Process (Name, Signature, Tree);
       end Local_Process;
 
    begin

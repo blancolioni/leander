@@ -35,17 +35,13 @@ package body Leander.Core.Compiler is
    -------------
 
    procedure Compile
-     (Env  : Leander.Environments.Environment;
-      Name : String;
+     (Env     : Leander.Environments.Environment;
+      Name    : String;
       Tree    : Leander.Core.Trees.Tree_Type;
       Machine : SK.Machine.SK_Machine)
    is
 
       procedure Add_Constraint_Abstraction
-        (Constraint : Leander.Types.Type_Constraint'Class;
-         Variable   : String);
-
-      procedure Add_Constraint_Argument
         (Constraint : Leander.Types.Type_Constraint'Class;
          Variable   : String);
 
@@ -77,22 +73,6 @@ package body Leander.Core.Compiler is
            (Machine, Name);
       end Add_Constraint_Abstraction;
 
-      -----------------------------
-      -- Add_Constraint_Argument --
-      -----------------------------
-
-      procedure Add_Constraint_Argument
-        (Constraint : Leander.Types.Type_Constraint'Class;
-         Variable   : String)
-      is
-         Name : constant String :=
-                  Constraint.Show & "-" & Variable & "-vt";
-      begin
-         SK.Machine.Assembler.Push
-           (Machine, Name);
-         SK.Machine.Assembler.Apply (Machine);
-      end Add_Constraint_Argument;
-
       -------------
       -- Compile --
       -------------
@@ -114,9 +94,78 @@ package body Leander.Core.Compiler is
             else
                Compile (T.Left);
                if T.Left.Is_Variable then
-                  Leander.Types.Trees.Scan_Constraints
-                    (T.Left.Annotation,
-                     Add_Constraint_Argument'Access);
+                  declare
+                     procedure Add_Constraint_Argument
+                       (Constraint : Leander.Types.Type_Constraint'Class;
+                        Variable   : String);
+
+                     function Corresponding_Leaf
+                       (Image    : String;
+                        Original : Leander.Types.Trees.Tree_Type;
+                        Bound    : Leander.Types.Trees.Tree_Type)
+                        return Leander.Types.Trees.Tree_Type;
+
+                     -----------------------------
+                     -- Add_Constraint_Argument --
+                     -----------------------------
+
+                     procedure Add_Constraint_Argument
+                       (Constraint : Leander.Types.Type_Constraint'Class;
+                        Variable   : String)
+                     is
+                        Target : constant Types.Trees.Tree_Type :=
+                                   Corresponding_Leaf
+                                     (Variable,
+                                      T.Left.Get_Node.Original_Type,
+                                      T.Left.Annotation);
+                        Name   : constant String :=
+                                   Constraint.Show & "-"
+                                   & Target.Show
+                                   & "-vt";
+                     begin
+                        SK.Machine.Assembler.Push
+                          (Machine, Name);
+                        SK.Machine.Assembler.Apply (Machine);
+                     end Add_Constraint_Argument;
+
+                     ------------------------
+                     -- Corresponding_Leaf --
+                     ------------------------
+
+                     function Corresponding_Leaf
+                       (Image    : String;
+                        Original : Leander.Types.Trees.Tree_Type;
+                        Bound    : Leander.Types.Trees.Tree_Type)
+                        return Leander.Types.Trees.Tree_Type
+                     is
+                     begin
+                        if Original.Is_Leaf then
+                           if Original.Show = Image then
+                              return Bound;
+                           else
+                              return Leander.Types.Trees.Empty;
+                           end if;
+                        else
+                           declare
+                              Left : constant Leander.Types.Trees.Tree_Type :=
+                                       Corresponding_Leaf
+                                         (Image, Original.Left, Bound.Left);
+                           begin
+                              if Left.Is_Empty then
+                                 return Corresponding_Leaf
+                                   (Image, Original.Right, Bound.Right);
+                              else
+                                 return Left;
+                              end if;
+                           end;
+                        end if;
+                     end Corresponding_Leaf;
+
+                  begin
+                     Leander.Types.Trees.Scan_Constraints
+                       (T.Left.Get_Node.Original_Type, False,
+                        Add_Constraint_Argument'Access);
+                  end;
                end if;
                Compile (T.Right);
                SK.Machine.Apply (Machine);
@@ -303,7 +352,8 @@ package body Leander.Core.Compiler is
          Compile (Tree);
          Leander.Types.Trees.Scan_Constraints
            (Tree.Annotation,
-            Add_Constraint_Abstraction'Access);
+            Include_Cons => False,
+            Process      => Add_Constraint_Abstraction'Access);
 
          Ada.Text_IO.Put_Line
            (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
