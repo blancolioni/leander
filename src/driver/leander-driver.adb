@@ -1,4 +1,5 @@
 with SK.Machine;
+with SK.Machine.Assembler;
 
 with Leander.Environments;
 
@@ -21,5 +22,9 @@ procedure Leander.Driver is
                SK.Machine.Create_Machine (65536);
 begin
    Env.Compile (Machine);
+   SK.Machine.Assembler.Push (Machine, "testPutChar");
+   SK.Machine.Push (Machine, SK.Initial_World);
+   SK.Machine.Apply (Machine);
+   SK.Machine.Evaluate (Machine);
    Leander.Repl.Start_Repl (Env);
 end Leander.Driver;

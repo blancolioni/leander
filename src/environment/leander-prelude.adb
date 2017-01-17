@@ -20,14 +20,24 @@ package body Leander.Prelude is
         ("Char", Leander.Primitives.Char_Type);
       Env.Declare_Primitive_Type
         ("Int", Leander.Primitives.Int_Type);
+      Env.Declare_Primitive_Type
+        ("World#", Leander.Primitives.World_Type);
       Env.Declare_Data_Type
         ("->", Leander.Primitives.Map_Type);
+      Env.Declare_Data_Type
+        ("()", Leander.Primitives.Trivial_Type);
+      Env.Insert_Constructor
+        ("()", "()", Leander.Primitives.Trivial_Con);
       Env.Declare_Data_Type
         ("[]", Leander.Primitives.List_Type);
       Env.Insert_Constructor
         ("[]", "[]", Leander.Primitives.Empty_List);
       Env.Insert_Constructor
         ("[]", ":", Leander.Primitives.Cons);
+--        Env.Declare_Data_Type
+--          ("IO", Leander.Primitives.IO_Type);
+--        Env.Insert_Constructor
+--          ("IO", "#IO", Leander.Primitives.IO_Con);
    end Load_Built_Ins;
 
    -------------------------

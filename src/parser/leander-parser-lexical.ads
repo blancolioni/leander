@@ -18,7 +18,7 @@ private package Leander.Parser.Lexical is
                  Keywords           => "else if then case of do type " &
                                        "class where instance data deriving " &
                                        "let in infix infixl infixr module " &
-                                       "newtype primitive " &
+                                       "import newtype primitive " &
                                        "= \ .. | -> <- => ::",
                  First_Symbol       => Tok_Left_Paren,
                  Symbols            => "( ) , ; [ ] ` { }",
@@ -27,7 +27,7 @@ private package Leander.Parser.Lexical is
                                        "_:!#$%&*+./<=>?@\^|-~",
                  Identifier_Body    => "abcdefghijklmnopqrstuvwxyz" &
                                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ" &
-                                       "0123456789" &
+                                       "0123456789'" &
                                        "_:!#$%&*+./<=>?@\^|-~",
                  Identifier_Group   => ":!$%&*+./<=>?@\^|-~",
                  Line_Comment_Start => "--",

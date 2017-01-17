@@ -233,6 +233,22 @@ package body Leander.Environments is
       Env.Local.Constructors.Insert (Name, Binding);
    end Insert_Constructor;
 
+   ---------------------------
+   -- Insert_Foreign_Import --
+   ---------------------------
+
+   procedure Insert_Foreign_Import
+     (Env          : in out Environment;
+      Name         : String;
+      Foreign_Name : String;
+      Signature    : Leander.Types.Trees.Tree_Type)
+   is
+      pragma Unreferenced (Foreign_Name);
+   begin
+      Env.Local.Values.Insert (Name, Signature);
+      Ada.Text_IO.Put_Line (Name & " :: " & Signature.Show);
+   end Insert_Foreign_Import;
+
    ----------------------
    -- Insert_Signature --
    ----------------------

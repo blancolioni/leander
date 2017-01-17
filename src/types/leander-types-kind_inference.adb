@@ -93,8 +93,8 @@ package body Leander.Types.Kind_Inference is
         (Tree       : Trees.Tree_Type)
       is
       begin
-         --           Ada.Text_IO.Put_Line
-         --             ("enter unify: " & Tree.Show_With_Annotations);
+--           Ada.Text_IO.Put_Line
+--             ("enter unify: " & Tree.Show_With_Annotations);
          if Tree.Is_Application then
             Unify (Tree.Right);
             declare
@@ -106,7 +106,10 @@ package body Leander.Types.Kind_Inference is
                            Unify (Left_A, Tree.Left.Annotation, Vars);
             begin
                if Unified.Is_Empty then
-                  raise Constraint_Error with "kind error";
+                  raise Constraint_Error with "kind error: "
+                    & Tree.Show & ": "
+                    & Left_A.Show
+                    & " with " & Tree.Left.Annotation.Show;
                end if;
                Tree.Left.Set_Annotation
                  (Unified);
@@ -118,6 +121,8 @@ package body Leander.Types.Kind_Inference is
                  (Tree.Annotation);
             end if;
          end if;
+--           Ada.Text_IO.Put_Line
+--             ("leave unify: " & Tree.Show_With_Annotations);
       end Unify;
 
    begin
@@ -252,6 +257,10 @@ package body Leander.Types.Kind_Inference is
                Type_Pat := Type_Pat.Left;
             end loop;
             for I in 1 .. Binding.Constructor_Count loop
+               Ada.Text_IO.Put_Line
+                 (Binding.Constructor_Name (I)
+                  & " :: "
+                  & Binding.Constructor_Type (I).Show);
                Annotate (Type_Env, Binding.Constructor_Type (I));
                Ada.Text_IO.Put_Line
                  (Binding.Constructor_Name (I)

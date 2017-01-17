@@ -144,6 +144,12 @@ package Leander.Environments is
       Name  : String;
       Value : Leander.Types.Trees.Tree_Type);
 
+   procedure Insert_Foreign_Import
+     (Env          : in out Environment;
+      Name         : String;
+      Foreign_Name : String;
+      Signature    : Leander.Types.Trees.Tree_Type);
+
    procedure Declare_Data_Type
      (Env       : in out Environment;
       Name      : String;

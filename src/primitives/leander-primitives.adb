@@ -6,12 +6,17 @@ with Leander.Kinds.Trees;
 
 package body Leander.Primitives is
 
-   Local_Int_Type   : Leander.Types.Trees.Tree_Type;
-   Local_Char_Type  : Leander.Types.Trees.Tree_Type;
-   Local_List_Type  : Leander.Types.Trees.Tree_Type;
-   Local_Empty_List : Leander.Types.Trees.Tree_Type;
-   Local_Cons       : Leander.Types.Trees.Tree_Type;
-   Local_Map_Type   : Leander.Types.Trees.Tree_Type;
+   Local_Trivial_Type : Leander.Types.Trees.Tree_Type;
+   Local_Trivial_Con  : Leander.Types.Trees.Tree_Type;
+   Local_Int_Type     : Leander.Types.Trees.Tree_Type;
+   Local_Char_Type    : Leander.Types.Trees.Tree_Type;
+   Local_List_Type    : Leander.Types.Trees.Tree_Type;
+   Local_Empty_List   : Leander.Types.Trees.Tree_Type;
+   Local_Cons         : Leander.Types.Trees.Tree_Type;
+   Local_Map_Type     : Leander.Types.Trees.Tree_Type;
+   Local_World_Type   : Leander.Types.Trees.Tree_Type;
+--     Local_IO_Type      : Leander.Types.Trees.Tree_Type;
+--     Local_IO_Con       : Leander.Types.Trees.Tree_Type;
 
    type Tuple_Entry_Record is
       record
@@ -148,6 +153,24 @@ package body Leander.Primitives is
       return Local_Int_Type;
    end Int_Type;
 
+   ------------
+   -- IO_Con --
+   ------------
+
+--     function IO_Con return Leander.Types.Trees.Tree_Type is
+--     begin
+--        return Local_IO_Con;
+--     end IO_Con;
+
+   -------------
+   -- IO_Type --
+   -------------
+
+--     function IO_Type return Leander.Types.Trees.Tree_Type is
+--     begin
+--        return Local_IO_Type;
+--     end IO_Type;
+
    ---------------
    -- List_Type --
    ---------------
@@ -165,6 +188,24 @@ package body Leander.Primitives is
    begin
       return Local_Map_Type;
    end Map_Type;
+
+   -----------------
+   -- Trivial_Con --
+   -----------------
+
+   function Trivial_Con return Leander.Types.Trees.Tree_Type is
+   begin
+      return Local_Trivial_Con;
+   end Trivial_Con;
+
+   ------------------
+   -- Trivial_Type --
+   ------------------
+
+   function Trivial_Type return Leander.Types.Trees.Tree_Type is
+   begin
+      return Local_Trivial_Type;
+   end Trivial_Type;
 
    ---------------
    -- Tuple_Con --
@@ -207,6 +248,15 @@ package body Leander.Primitives is
       return Tuples.Element (Arity).Type_Con;
    end Tuple_Type;
 
+   ----------------
+   -- World_Type --
+   ----------------
+
+   function World_Type return Leander.Types.Trees.Tree_Type is
+   begin
+      return Local_World_Type;
+   end World_Type;
+
    Type_Con_0  : constant Leander.Kinds.Trees.Tree_Type :=
                    Leander.Kinds.Trees.Leaf
                      (Leander.Kinds.Primitive);
@@ -240,6 +290,48 @@ begin
        (Leander.Types.Constructor
           ("Char"));
    Local_Char_Type.Set_Annotation (Type_Con_0);
+
+   Local_Trivial_Type :=
+     Leander.Types.Trees.Leaf
+       (Leander.Types.Constructor ("()"));
+   Local_Trivial_Type.Set_Annotation (Type_Con_0);
+
+   Local_Trivial_Con :=
+     Leander.Types.Trees.Leaf
+       (Leander.Types.Constructor ("()"));
+
+--     Local_IO_Con :=
+--       Leander.Types.Trees.Apply
+--         (Leander.Types.Trees.Apply
+--            (Leander.Types.Constructor ("->"),
+--             Leander.Types.Trees.Apply
+--               (Local_IO_Type, Local_World_Type)),
+--          Leander.Types.Trees.Apply
+--            (Local_List_Type, Type_Variable_A));
+
+   Local_World_Type :=
+     Leander.Types.Trees.Leaf
+       (Leander.Types.Constructor
+          ("World#"));
+   Local_World_Type.Set_Annotation (Type_Con_0);
+
+--     Local_IO_Type :=
+--       Leander.Types.Trees.Leaf
+--         (Leander.Types.Constructor ("IO"));
+--     Local_IO_Type.First_Leaf.Set_Annotation (Type_Con_1);
+--
+--     Local_IO_Con :=
+--       Leander.Types.Trees.Apply
+--         (Leander.Types.Trees.Apply
+--            (Leander.Types.Constructor ("->"),
+--             Local_World_Type),
+--          Leander.Types.Trees.Apply
+--            (Leander.Types.Trees.Apply
+--               (Leander.Types.Constructor ("->"),
+--                Type_Variable_A),
+--             Leander.Types.Trees.Apply
+--               (Local_IO_Type,
+--                Type_Variable_A)));
 
    Local_List_Type :=
      Leander.Types.Trees.Leaf
