@@ -2,6 +2,9 @@ with Leander.Types.Trees;
 
 package Leander.Primitives is
 
+   function Trivial_Type return Leander.Types.Trees.Tree_Type;
+   function Trivial_Con return Leander.Types.Trees.Tree_Type;
+
    function Char_Type return Leander.Types.Trees.Tree_Type;
    function Int_Type return Leander.Types.Trees.Tree_Type;
 
@@ -22,5 +25,9 @@ package Leander.Primitives is
    function Tuple_Con
      (Arity : Positive)
       return Leander.Types.Trees.Tree_Type;
+
+--     function IO_Type return Leander.Types.Trees.Tree_Type;
+--     function IO_Con return Leander.Types.Trees.Tree_Type;
+   function World_Type return Leander.Types.Trees.Tree_Type;
 
 end Leander.Primitives;

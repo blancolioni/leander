@@ -32,6 +32,9 @@ package body Leander.Parser.Declarations is
    procedure Parse_Data_Declaration
      (Env : in out Leander.Environments.Environment);
 
+   procedure Parse_Foreign_Import
+     (Env : in out Leander.Environments.Environment);
+
    procedure Parse_Instance_Declaration
      (Env : in out Leander.Environments.Environment);
 
@@ -289,6 +292,13 @@ package body Leander.Parser.Declarations is
             Parse_Class_Declaration (Env);
          elsif Tok = Tok_Instance then
             Parse_Instance_Declaration (Env);
+         elsif Tok = Tok_Identifier
+           and then Tok_Text = "foreign"
+           and then Next_Tok = Tok_Import
+         then
+            Scan;
+            Scan;
+            Parse_Foreign_Import (Env);
          elsif Leander.Parser.Expressions.At_Pattern then
             Parse_Value_Bindings (Env, 1);
          else
@@ -297,6 +307,39 @@ package body Leander.Parser.Declarations is
          end if;
       end if;
    end Parse_Declaration;
+
+   --------------------------
+   -- Parse_Foreign_Import --
+   --------------------------
+
+   procedure Parse_Foreign_Import
+     (Env : in out Leander.Environments.Environment)
+   is
+      Foreign_Name : constant String :=
+                       Tok_Text;
+   begin
+      if Tok = Tok_String_Literal then
+         Scan;
+      end if;
+      if Tok = Tok_Identifier then
+         declare
+            Local_Name : constant String := Tok_Text;
+            Local_Type : Leander.Types.Trees.Tree_Type;
+         begin
+            Scan;
+            if Tok = Tok_Colon_Colon then
+               Scan;
+               Local_Type := Leander.Parser.Types.Parse_Type (Env);
+               Env.Insert_Foreign_Import
+                 (Local_Name, Foreign_Name, Local_Type);
+            else
+               Error ("missing import type");
+            end if;
+         end;
+      else
+         Error ("missing name");
+      end if;
+   end Parse_Foreign_Import;
 
    --------------------------------
    -- Parse_Instance_Declaration --

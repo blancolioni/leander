@@ -27,7 +27,22 @@ class  Monad m  where
         -- Minimal complete definition:  
         --      (>>=), return  
     m >> k  =  m >>= \_ -> k  
+
+data IO a = IO (World# -> (a,World#))
+
+instance Monad IO where
+   return x = IO (\ w -> (x, w))
+   (IO f) >>= g = IO (\w -> case f w of
+                               (x,w') -> case g x of
+                                          (IO h) -> h w')
 	
+foreign import #putchar :: Char -> World# -> World#
+
+putChar :: Char -> IO ()
+putChar ch = IO (\w -> (\w' -> ((),w')) (#putchar ch))
+
+testPutChar = putChar 'x' >> putChar '\n'
+
 id x = x
 
 equal x y = x == y

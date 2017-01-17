@@ -5,10 +5,16 @@ with Leander.Kinds.Trees;
 
 with Leander.Core;
 
+with Leander.Primitives;
+
 package body Leander.Parser.Types is
 
    function At_Atomic_Type return Boolean
    is (At_Name or else Tok = Tok_Left_Bracket or else Tok = Tok_Left_Paren);
+
+   -----------------------
+   -- Parse_Atomic_Type --
+   -----------------------
 
    function Parse_Atomic_Type
      (Env : Leander.Environments.Environment)
@@ -34,9 +40,34 @@ package body Leander.Parser.Types is
            Leander.Types.Trees.Leaf
              (Leander.Types.Constructor (Tok_Text));
          Scan;
+      elsif Tok = Tok_Left_Paren and then Next_Tok = Tok_Right_Paren then
+         Scan;
+         Scan;
+         Expr := Leander.Types.Trees.Leaf (Leander.Types.Constructor ("()"));
       elsif Tok = Tok_Left_Paren then
          Scan;
          Expr := Parse_Type (Env);
+         if Tok = Tok_Comma then
+            declare
+               Args : array (1 .. 10) of Leander.Types.Trees.Tree_Type;
+               Count : Natural := 0;
+            begin
+               loop
+                  Count := Count + 1;
+                  Args (Count) := Expr;
+                  if Tok = Tok_Comma then
+                     Scan;
+                     Expr := Parse_Type (Env);
+                  else
+                     exit;
+                  end if;
+               end loop;
+               Expr := Leander.Primitives.Tuple_Type (Count);
+               for I in 1 .. Count loop
+                  Expr := Expr.Apply (Args (I));
+               end loop;
+            end;
+         end if;
          if Tok = Tok_Right_Paren then
             Scan;
          else
@@ -125,9 +156,9 @@ package body Leander.Parser.Types is
    begin
       pragma Assert (At_Constructor);
       Scan;
-      while Tok_Indent > Indent and then At_Variable loop
+      while Tok_Indent > Indent and then At_Atomic_Type loop
          Count := Count + 1;
-         Vars (Count) := Parse_Type (Env);
+         Vars (Count) := Parse_Atomic_Type (Env);
       end loop;
       declare
          Result : Leander.Types.Trees.Tree_Type := Target;

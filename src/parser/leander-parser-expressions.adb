@@ -181,6 +181,11 @@ package body Leander.Parser.Expressions is
             Scan;
             return E;
          end;
+      elsif Tok = Tok_Left_Paren and then Next_Tok = Tok_Right_Paren then
+         Scan;
+         Scan;
+         return Leander.Core.Trees.Leaf
+           (Leander.Core.Constructor (Current, "()"));
       elsif Tok = Tok_Left_Paren then
          Scan;
          declare

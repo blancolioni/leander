@@ -12,7 +12,7 @@ package body Leander.Parser is
 
    function Is_Alphanumeric_Identifier (Name : String) return Boolean
    is (Ada.Characters.Handling.Is_Letter (Name (Name'First))
-       or else Name (Name'First) = '_');
+       or else Name (Name'First) in '_' | '#');
 
    function Is_Symbolic_Identifier (Name : String) return Boolean
    is (not Is_Alphanumeric_Identifier (Name));
