@@ -105,17 +105,6 @@ package body Leander.Core.Type_Inference is
          if Tree.Has_Annotation then
             Tree.Set_Annotation
               (Bind (Tree.Annotation, Vars, Next_Variable));
-            if Tree.Is_Leaf
-              and then not Tree.Get_Node.Original_Type.Is_Empty
-            then
-               Ada.Text_IO.Put_Line
-                 (Tree.Show & ": original type: "
-                  & Leander.Types.Trees.Show_Type
-                    (Tree.Get_Node.Original_Type));
-               Ada.Text_IO.Put_Line
-                 (Tree.Show & ": bound type: "
-                  & Leander.Types.Trees.Show_Type (Tree.Annotation));
-            end if;
          end if;
       end Bind;
 
@@ -409,8 +398,6 @@ package body Leander.Core.Type_Inference is
                      end if;
                   end loop;
                   if Ready then
-                     --                    Ada.Text_IO.Put_Line
-                     --                      ("Annotating: " & Name);
                      Annotate
                        (Tree     => Env.Local_Binding (Name),
                         Env      => Env);
