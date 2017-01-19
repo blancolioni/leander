@@ -83,10 +83,18 @@ package body Leander.Annotation_Trees is
          else
             return Tree.Left.Right.Show & " -> " & Tree.Right.Show;
          end if;
-      elsif Is_Leaf (Right (Tree)) then
-         return Show (Left (Tree)) & " " & Show (Right (Tree));
       else
-         return Show (Left (Tree)) & " (" & Show (Right (Tree)) & ")";
+         declare
+            Show_Left : constant String := Show (Left (Tree));
+         begin
+            if Show_Left (Show_Left'Last) = '{' then
+               return Show_Left & Show (Right (Tree)) & "}";
+            elsif Is_Leaf (Right (Tree)) then
+               return Show_Left & " " & Show (Right (Tree));
+            else
+               return Show_Left & " (" & Show (Right (Tree)) & ")";
+            end if;
+         end;
       end if;
    end Show;
 
@@ -98,7 +106,7 @@ package body Leander.Annotation_Trees is
       Annotation_Img : constant String :=
                          (if Tree.Has_Annotation
                           then "::" & Tree.Annotation.Show
-                          else "");
+                          else "::?");
       Tree_Img       : constant String :=
                          (if Is_Empty (Tree)
                           then "<>"
