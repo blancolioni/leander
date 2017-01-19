@@ -257,10 +257,6 @@ package body Leander.Types.Kind_Inference is
                Type_Pat := Type_Pat.Left;
             end loop;
             for I in 1 .. Binding.Constructor_Count loop
-               Ada.Text_IO.Put_Line
-                 (Binding.Constructor_Name (I)
-                  & " :: "
-                  & Binding.Constructor_Type (I).Show);
                Annotate (Type_Env, Binding.Constructor_Type (I));
                Ada.Text_IO.Put_Line
                  (Binding.Constructor_Name (I)

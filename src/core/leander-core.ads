@@ -57,6 +57,10 @@ package Leander.Core is
      (Node : Core_Node'Class)
       return Leander.Source.Source_Reference;
 
+   function New_Variable
+     (Source : Leander.Source.Source_Reference)
+      return Core_Node;
+
 private
 
    function "+"
