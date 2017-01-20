@@ -48,7 +48,9 @@ package body Leander.Parser.Declarations is
       use Leander.Parser.Lexical.Set_Of_Tokens;
    begin
       return At_Variable or else At_Constructor or else
-        Tok <= +(Tok_Class, Tok_Data, Tok_Instance);
+        Tok <= +(Tok_Class, Tok_Data, Tok_Foreign,
+                 Tok_Infix, Tok_Infixl, Tok_Infixr,
+                 Tok_Instance);
    end At_Declaration;
 
    -----------------------------
@@ -337,8 +339,7 @@ package body Leander.Parser.Declarations is
             Parse_Class_Declaration (Env);
          elsif Tok = Tok_Instance then
             Parse_Instance_Declaration (Env);
-         elsif Tok = Tok_Identifier
-           and then Tok_Text = "foreign"
+         elsif Tok = Tok_Foreign
            and then Next_Tok = Tok_Import
          then
             Scan;
@@ -346,6 +347,59 @@ package body Leander.Parser.Declarations is
             Parse_Foreign_Import (Env);
          elsif Leander.Parser.Expressions.At_Pattern then
             Parse_Value_Bindings (Env, 1);
+         elsif Tok = Tok_Infixl
+           or else Tok = Tok_Infixr
+           or else Tok = Tok_Infix
+         then
+            declare
+               use Leander.Parser.Expressions;
+               Assoc : constant Associativity_Type :=
+                         (if Tok = Tok_Infixl
+                          then Left
+                          elsif Tok = Tok_Infixr
+                          then Right
+                          else None);
+               Priority : Priority_Range :=
+                            Priority_Range'Last;
+            begin
+               Scan;
+               if Tok = Tok_Integer_Literal then
+                  declare
+                     Value : constant Natural :=
+                               Natural'Value (Tok_Text);
+                  begin
+                     if Value > Natural (Priority_Range'Last) then
+                        Error ("priority must be in range 0 .. 9");
+                     else
+                        Priority := Priority_Range (Value);
+                     end if;
+                  end;
+                  Scan;
+               else
+                  Error ("missing priority");
+               end if;
+
+               if not At_Operator then
+                  Error ("missing operator list");
+               else
+                  while At_Operator loop
+                     declare
+                        Name : constant String := Scan_Identifier;
+                     begin
+                        Add_Fixity (Name, Assoc, Priority);
+                        if Tok = Tok_Comma then
+                           Scan;
+                           if not At_Operator then
+                              Error ("missing operator name");
+                           end if;
+                        else
+                           exit;
+                        end if;
+                     end;
+                  end loop;
+               end if;
+            end;
+
          else
             raise Program_Error with
               "expected to be at a declaration";
