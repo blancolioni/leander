@@ -1,4 +1,3 @@
-with Ada.Text_IO;
 with Ada.Strings.Fixed.Hash;
 
 with Ada.Containers.Doubly_Linked_Lists;
@@ -8,6 +7,7 @@ with Ada.Containers.Indefinite_Hashed_Maps;
 with Leander.Errors;
 
 with Leander.Set_Of_Names;
+with Leander.Logging;
 
 package body Leander.Core.Type_Inference is
 
@@ -116,7 +116,7 @@ package body Leander.Core.Type_Inference is
         (Tree       : Trees.Tree_Type)
       is
       begin
---           Ada.Text_IO.Put_Line
+--         Leander.Logging.Log
 --             ("enter unify: " & Tree.Show_With_Annotations);
          if Tree.Is_Application then
             if Tree.Left.Is_Leaf
@@ -167,7 +167,7 @@ package body Leander.Core.Type_Inference is
                end if;
             end if;
          end if;
---           Ada.Text_IO.Put_Line
+--           Leander.Logging.Log
 --             ("exit unify: " & Tree.Show_With_Annotations);
       end Unify;
 
@@ -361,7 +361,7 @@ package body Leander.Core.Type_Inference is
          begin
             if Dependency_Maps.Element (Position).Is_Empty  then
                if Env.Has_Local_Signature (Name) then
-                  Ada.Text_IO.Put_Line
+                  Leander.Logging.Log
                     (Name
                      & " :: "
                      & Leander.Types.Trees.Show_Type
@@ -370,7 +370,7 @@ package body Leander.Core.Type_Inference is
                   Annotate
                     (Tree     => Env.Local_Binding (Name),
                      Env      => Env);
-                  Ada.Text_IO.Put_Line
+                  Leander.Logging.Log
                     (Dependency_Maps.Key (Position)
                      & " :: "
                      & Leander.Types.Trees.Show_Type
@@ -401,13 +401,13 @@ package body Leander.Core.Type_Inference is
                      Annotate
                        (Tree     => Env.Local_Binding (Name),
                         Env      => Env);
-                     Ada.Text_IO.Put_Line
+                     Leander.Logging.Log
                        (Name
                         & " :: "
                         & Leander.Types.Trees.Show_Type
                           (Env.Local_Binding (Name).Annotation));
                   else
-                     Ada.Text_IO.Put_Line
+                     Leander.Logging.Log
                        ("Not ready: " & Name);
                   end if;
                end if;
@@ -590,8 +590,11 @@ package body Leander.Core.Type_Inference is
 
       begin
          if Root.Is_Application then
-            Add_Binding;
-            Root.Set_Annotation (Vector.Last_Element);
+            if not Root.Has_Annotation then
+               Add_Binding;
+               Root.Set_Annotation (Vector.Last_Element);
+            end if;
+
             Scan_Variables (Root.Left);
             if Root.Left.Is_Leaf
               and then Root.Left.Get_Node.Class = Algebraic_Case
@@ -733,7 +736,7 @@ package body Leander.Core.Type_Inference is
       Right   : constant Leander.Types.Trees.Tree_Type :=
                   Dereference (Right_Annotation, Bindings);
    begin
---        Ada.Text_IO.Put_Line
+--        Leander.Logging.Log
 --          ("Unify: " & Left.Show & " with " & Right.Show);
       if Left.Is_Binding then
          Left.Merge_Tree_Constraints (Right);

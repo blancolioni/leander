@@ -1,11 +1,11 @@
-with Ada.Text_IO;
-
 with Leander.Types.Kind_Inference;
 with Leander.Types.Class_Constraints.Compiler;
 with Leander.Types.Instances.Compiler;
 
 with Leander.Core.Compiler;
 with Leander.Core.Type_Inference;
+
+with Leander.Logging;
 
 package body Leander.Environments is
 
@@ -66,6 +66,8 @@ package body Leander.Environments is
       is
       begin
          if not Tree.Is_Empty then
+            Leander.Logging.Log
+              ("Compiling: " & Name & " = " & Tree.Show);
             Leander.Core.Compiler.Compile
               (Env, Name, Tree, Machine);
          end if;
@@ -111,7 +113,7 @@ package body Leander.Environments is
          end Compile_Instance_Assertion;
 
       begin
-         Ada.Text_IO.Put_Line
+         Leander.Logging.Log
            ("compiling instances for " & Binding.Type_Pattern.Show);
 
          Binding.Type_Pattern.Head.Scan_Assertions
@@ -224,11 +226,12 @@ package body Leander.Environments is
      (Env       : in out Environment;
       Type_Name : String;
       Name      : String;
-      Con_Type  : Leander.Types.Trees.Tree_Type)
+      Con_Type  : Leander.Types.Trees.Tree_Type;
+      Con_Arity : Natural)
    is
       Binding : constant Leander.Types.Bindings.Constructor_Binding'Class :=
                   Env.Local.Types.Add_Constructor
-                    (Type_Name, Name, Con_Type);
+                    (Type_Name, Name, Con_Type, Con_Arity);
    begin
       Env.Local.Constructors.Insert (Name, Binding);
    end Insert_Constructor;
@@ -246,7 +249,7 @@ package body Leander.Environments is
       pragma Unreferenced (Foreign_Name);
    begin
       Env.Local.Values.Insert (Name, Signature);
-      Ada.Text_IO.Put_Line (Name & " :: " & Signature.Show);
+      Leander.Logging.Log (Name & " :: " & Signature.Show);
    end Insert_Foreign_Import;
 
    ----------------------
@@ -260,7 +263,7 @@ package body Leander.Environments is
    is
    begin
       Env.Local.Values.Insert (Name, Value);
-      Ada.Text_IO.Put_Line (Name & " :: " & Value.Show);
+      Leander.Logging.Log (Name & " :: " & Value.Show);
    end Insert_Signature;
 
    --------------------------
@@ -286,7 +289,7 @@ package body Leander.Environments is
       Value : Leander.Core.Trees.Tree_Type)
    is
    begin
-      Ada.Text_IO.Put_Line (Name & " = " & Value.Show);
+      Leander.Logging.Log (Name & " = " & Value.Show);
       Env.Local.Values.Insert (Name, Value);
    end Insert_Value;
 

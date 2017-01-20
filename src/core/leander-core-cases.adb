@@ -46,7 +46,7 @@ package body Leander.Core.Cases is
       Expression : Leander.Core.Trees.Tree_Type)
    is
    begin
---        Ada.Text_IO.Put_Line
+--        Leander.Logging.Log
 --          ("  " & Pattern.Show & " -> " & Expression.Show);
 
       Builder.Pats.Append (Pattern);
@@ -62,7 +62,7 @@ package body Leander.Core.Cases is
       Expression : Leander.Core.Trees.Tree_Type)
    is
    begin
---        Ada.Text_IO.Put_Line ("case " & Expression.Show & " of");
+--        Leander.Logging.Log ("case " & Expression.Show & " of");
       Builder.Case_Expr := Expression;
    end Set_Case_Expression;
 
@@ -264,7 +264,7 @@ package body Leander.Core.Cases is
             "invalid type mixing in patterns");
          return Builder.Case_Expr;
       elsif Builder.Trivial_Constructor_Case then
---           Ada.Text_IO.Put_Line
+--           Leander.Logging.Log
 --             ("trivial constructor case: "
 --                & Builder.Exps (1).Show);
          return Builder.Exps (1);
@@ -287,7 +287,7 @@ package body Leander.Core.Cases is
                  Apply (Result, Exp_Args (I).Get_Node);
             end loop;
 
---              Ada.Text_IO.Put_Line
+--              Leander.Logging.Log
 --                ("simple constructor case: "
 --                 & Result.Show);
             return Result;

@@ -1,11 +1,12 @@
 with Ada.Strings.Fixed.Hash;
-with Ada.Text_IO;
 
 with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Hashed_Maps;
 
 with Leander.Types.Bindings;
 with Leander.Types.Class_Constraints.Annotation;
+
+with Leander.Logging;
 
 package body Leander.Types.Kind_Inference is
 
@@ -73,7 +74,7 @@ package body Leander.Types.Kind_Inference is
         (Tree       : Trees.Tree_Type)
       is
       begin
-         --           Ada.Text_IO.Put_Line
+         --           Leander.Logging.Log
          --             ("bind: " & Tree.Show_With_Annotations);
          if Tree.Is_Application then
             Bind (Tree.Left);
@@ -93,7 +94,7 @@ package body Leander.Types.Kind_Inference is
         (Tree       : Trees.Tree_Type)
       is
       begin
---           Ada.Text_IO.Put_Line
+--           Leander.Logging.Log
 --             ("enter unify: " & Tree.Show_With_Annotations);
          if Tree.Is_Application then
             Unify (Tree.Right);
@@ -121,7 +122,7 @@ package body Leander.Types.Kind_Inference is
                  (Tree.Annotation);
             end if;
          end if;
---           Ada.Text_IO.Put_Line
+--           Leander.Logging.Log
 --             ("leave unify: " & Tree.Show_With_Annotations);
       end Unify;
 
@@ -258,7 +259,7 @@ package body Leander.Types.Kind_Inference is
             end loop;
             for I in 1 .. Binding.Constructor_Count loop
                Annotate (Type_Env, Binding.Constructor_Type (I));
-               Ada.Text_IO.Put_Line
+               Leander.Logging.Log
                  (Binding.Constructor_Name (I)
                   & " :: "
                   & Binding.Constructor_Type (I).Show);
@@ -278,7 +279,7 @@ package body Leander.Types.Kind_Inference is
          if Binding.Is_Algebraic  then
             Binding.Annotate_Type_Constructor;
          end if;
-         Ada.Text_IO.Put_Line
+         Leander.Logging.Log
            (Name & " :: " & Binding.Kind.Show);
       end Annotate_Type_Declaration;
 
@@ -453,7 +454,7 @@ package body Leander.Types.Kind_Inference is
       Right   : constant Leander.Kinds.Trees.Tree_Type :=
                   Dereference (Right_Annotation, Bindings);
    begin
-      --        Ada.Text_IO.Put_Line
+      --        Leander.Logging.Log
       --          ("Unify: " & Left.Show & " with " & Right.Show);
       if Left.Is_Binding then
          Left.Merge_Tree_Constraints (Right);

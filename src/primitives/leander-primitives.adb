@@ -1,8 +1,9 @@
 with Ada.Containers.Vectors;
-with Ada.Text_IO;
 
 with Leander.Core;
 with Leander.Kinds.Trees;
+
+with Leander.Logging;
 
 package body Leander.Primitives is
 
@@ -114,9 +115,9 @@ package body Leander.Primitives is
                     (Leander.Kinds.Primitive));
             end loop;
 
-            Ada.Text_IO.Put_Line
+            Leander.Logging.Log
               (Tycon.Show & " :: " & Tycon.Annotation.Show);
-            Ada.Text_IO.Put_Line
+            Leander.Logging.Log
               (Con.Show);
 
             Tuples (Arity) :=

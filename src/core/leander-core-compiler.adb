@@ -1,11 +1,10 @@
-with Ada.Text_IO;
-
 with SK.Machine.Assembler;
 
 with Leander.Types.Bindings;
 with Leander.Types.Trees;
 
 with Leander.Errors;
+with Leander.Logging;
 
 package body Leander.Core.Compiler is
 
@@ -30,6 +29,16 @@ package body Leander.Core.Compiler is
        and then Tree.Left.Is_Leaf
        and then Tree.Left.Get_Node.Class = Lambda);
 
+   function Is_Newtype_Constructor
+     (Env  : Leander.Environments.Environment;
+      Tree : Trees.Tree_Type)
+      return Boolean;
+
+   procedure Compile_Tree
+     (Env     : Leander.Environments.Environment;
+      Tree    : Leander.Core.Trees.Tree_Type;
+      Machine : SK.Machine.SK_Machine);
+
    -------------
    -- Compile --
    -------------
@@ -37,6 +46,44 @@ package body Leander.Core.Compiler is
    procedure Compile
      (Env     : Leander.Environments.Environment;
       Name    : String;
+      Tree    : Leander.Core.Trees.Tree_Type;
+      Machine : SK.Machine.SK_Machine)
+   is
+   begin
+      Compile_Tree (Env, Tree, Machine);
+
+      Leander.Logging.Log
+        (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
+      SK.Machine.Bind (Machine, Name);
+   end Compile;
+
+   -----------------------------
+   -- Compile_Instance_Method --
+   -----------------------------
+
+   procedure Compile_Instance_Method
+     (Env           : Leander.Environments.Environment;
+      Name          : String;
+      Instance_Name : String;
+      Tree          : Leander.Core.Trees.Tree_Type;
+      Machine       : SK.Machine.SK_Machine)
+   is
+   begin
+      Compile_Tree (Env, Tree, Machine);
+
+      SK.Machine.Assembler.Lambda (Machine, Instance_Name);
+
+      Leander.Logging.Log
+        (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
+      SK.Machine.Bind (Machine, Name);
+   end Compile_Instance_Method;
+
+   ------------------
+   -- Compile_Tree --
+   ------------------
+
+   procedure Compile_Tree
+     (Env     : Leander.Environments.Environment;
       Tree    : Leander.Core.Trees.Tree_Type;
       Machine : SK.Machine.SK_Machine)
    is
@@ -83,14 +130,30 @@ package body Leander.Core.Compiler is
             --  class method
             null;
          elsif T.Is_Application then
-            if Is_Lambda (T) then
-               Compile (T.Right);
-               SK.Machine.Assembler.Lambda
-                 (Machine, -T.Left.Get_Node.Name);
+            if Is_Lambda (T.Left)
+              and then T.Right.Is_Application
+              and then T.Right.Right.Show
+                = -T.Left.Left.Get_Node.Name
+            then
+               Leander.Logging.Log
+                 ("replacing: " & T.Show);
+               Leander.Logging.Log
+                 ("     with: " & T.Right.Left.Show);
+               Compile (T.Right.Left);
+            elsif Is_Lambda (T) then
+               declare
+                  X : constant String :=
+                        -T.Left.Get_Node.Name;
+               begin
+                  Compile (T.Right);
+                  SK.Machine.Assembler.Lambda (Machine, X);
+               end;
             elsif Is_Algebraic_Case (T) then
                Compile_Algebraic_Case (T.Right);
             elsif Is_Primitive_Case (T) then
                null;
+            elsif False and then Is_Newtype_Constructor (Env, T) then
+               Compile (T.Right);
             else
                Compile (T.Left);
                if T.Left.Is_Variable then
@@ -301,15 +364,46 @@ package body Leander.Core.Compiler is
             else
                declare
                   use Leander.Types.Bindings;
-                  It  : Trees.Tree_Type := Pats (I);
+                  Pat_Args  : constant Trees.Array_Of_Trees :=
+                                Pats (I).Arguments;
+                  First_Arg : Positive := Pat_Args'First;
+                  E         : Trees.Tree_Type := Exps (I);
                begin
-                  Compile (Exps (I));
-                  while It.Is_Application loop
+                  if False then
+                     Leander.Logging.Log
+                       ("compiling case expr: "
+                        & Pats (I).Show & " -> " & E.Show);
+
+                     for I in Pat_Args'Range loop
+                        if E.Is_Application
+                          and then E.Right.Is_Variable
+                          and then E.Right.Variable_Name
+                            = Pat_Args (I).Variable_Name
+                        then
+                           Leander.Logging.Log
+                             ("dropping because \"
+                              & Pat_Args (I).Variable_Name & ".E "
+                              & E.Right.Variable_Name
+                              & " ==> E");
+                           E := E.Left;
+                        else
+                           First_Arg := I;
+                           exit;
+                        end if;
+                     end loop;
+                  end if;
+
+                  Compile (E);
+
+                  for I in First_Arg .. Pat_Args'Last loop
                      SK.Machine.Assembler.Lambda
-                       (Machine, It.Right.Variable_Name);
-                     It := It.Left;
+                       (Machine, Pat_Args (I).Variable_Name);
                   end loop;
+
                end;
+               Leander.Logging.Log
+                 ("final expression: "
+                  & SK.Machine.Show_Stack_Top (Machine));
             end if;
             SK.Machine.Assembler.Apply (Machine);
          end loop;
@@ -325,6 +419,7 @@ package body Leander.Core.Compiler is
          use Leander.Types.Bindings;
          Con_Type     : constant Leander.Types.Trees.Tree_Type :=
                           Binding.Constructor_Type;
+         Con_Arity    : constant Natural :=  Binding.Constructor_Arity;
          Con_Index    : constant Types.Bindings.Constructor_Count_Range :=
                           Binding.Constructor_Index;
          Type_Head    : constant Leander.Types.Type_Node :=
@@ -339,15 +434,26 @@ package body Leander.Core.Compiler is
          else
             SK.Machine.Assembler.Push
               (Machine, X_Con (Con_Index));
+            for I in 1 .. Con_Arity loop
+               SK.Machine.Assembler.Push
+                 (Machine, "c" & Integer'Image (-I));
+               SK.Machine.Assembler.Apply (Machine);
+            end loop;
+
             for I in reverse 1 .. Type_Binding.Constructor_Count loop
                SK.Machine.Assembler.Lambda (Machine, X_Con (I));
+            end loop;
+
+            for I in 1 .. Con_Arity loop
+               SK.Machine.Assembler.Lambda
+                 (Machine, "c" & Integer'Image (-I));
             end loop;
          end if;
       end Compile_Constructor_Expression;
 
    begin
       if not Tree.Has_Annotation then
-         Ada.Text_IO.Put_Line ("skipping: " & Tree.Show);
+         Leander.Logging.Log ("skipping: " & Tree.Show);
       else
          Compile (Tree);
          Leander.Types.Trees.Scan_Constraints
@@ -355,10 +461,41 @@ package body Leander.Core.Compiler is
             Include_Cons => False,
             Process      => Add_Constraint_Abstraction'Access);
 
-         Ada.Text_IO.Put_Line
-           (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
-         SK.Machine.Bind (Machine, Name);
       end if;
-   end Compile;
+   end Compile_Tree;
+
+   ----------------------------
+   -- Is_Newtype_Constructor --
+   ----------------------------
+
+   function Is_Newtype_Constructor
+     (Env  : Leander.Environments.Environment;
+      Tree : Trees.Tree_Type)
+      return Boolean
+   is
+   begin
+      if Tree.Left.Is_Leaf
+        and then Tree.Left.Is_Constructor
+      then
+         declare
+            use Leander.Types.Bindings;
+            Binding : constant Constructor_Binding'Class :=
+                        Env.Constructor_Binding (-Tree.Left.Get_Node.Name);
+
+            Con_Type     : constant Leander.Types.Trees.Tree_Type :=
+                             Binding.Constructor_Type;
+            Type_Head    : constant Leander.Types.Type_Node :=
+                             Con_Type.Last_Map.Head;
+            Type_Binding : constant Types.Bindings.Type_Binding'Class :=
+                             Env.Type_Constructor_Binding
+                               (Type_Head.Constructor_Name);
+         begin
+            return Type_Binding.Constructor_Count = 1
+              and then Binding.Constructor_Arity = 1;
+         end;
+      else
+         return False;
+      end if;
+   end Is_Newtype_Constructor;
 
 end Leander.Core.Compiler;

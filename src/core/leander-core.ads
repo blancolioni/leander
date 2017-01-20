@@ -99,6 +99,11 @@ private
       return Boolean
    is (Node.Class = Variable);
 
+   overriding function Is_Primitive
+     (Node : Core_Node)
+      return Boolean
+   is (Node.Class = Literal);
+
    overriding function Is_Binding
      (Node : Core_Node)
       return Boolean

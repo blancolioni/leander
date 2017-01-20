@@ -2,6 +2,8 @@ with Leander.Types.Trees;
 
 package Leander.Parser.Types is
 
+   function At_Atomic_Type return Boolean;
+
    function Parse_Type
      (Env : Leander.Environments.Environment)
       return Leander.Types.Trees.Tree_Type;

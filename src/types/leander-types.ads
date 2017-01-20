@@ -94,6 +94,11 @@ private
       return Boolean
    is (Node.Class = Variable);
 
+   overriding function Is_Primitive
+     (Node : Type_Node)
+      return Boolean
+   is (False);
+
    overriding function Is_Binding
      (Node : Type_Node)
       return Boolean

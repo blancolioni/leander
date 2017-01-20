@@ -58,6 +58,8 @@ package Leander.Annotation_Trees is
    overriding function Show (Tree : Tree_Type) return String;
    function Show_With_Annotations (Tree : Tree_Type) return String;
 
+   function Clean_Copy (Tree : Tree_Type) return Tree_Type;
+
    function Has_Annotation (Tree : Tree_Type) return Boolean;
    function Annotation (Tree : Tree_Type) return Annotation_Type
      with Pre => Tree.Has_Annotation;
@@ -110,6 +112,11 @@ private
      (Tree : Tree_Type)
       return Boolean
    is (Tree.Is_Leaf and then Tree.Node.Node.Is_Variable);
+
+   overriding function Is_Primitive
+     (Tree : Tree_Type)
+      return Boolean
+   is (Tree.Is_Leaf and then Tree.Node.Node.Is_Primitive);
 
    overriding function Is_Constructor
      (Tree : Tree_Type)

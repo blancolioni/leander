@@ -27,13 +27,13 @@ package body Leander.Prelude is
       Env.Declare_Data_Type
         ("()", Leander.Primitives.Trivial_Type);
       Env.Insert_Constructor
-        ("()", "()", Leander.Primitives.Trivial_Con);
+        ("()", "()", Leander.Primitives.Trivial_Con, 0);
       Env.Declare_Data_Type
         ("[]", Leander.Primitives.List_Type);
       Env.Insert_Constructor
-        ("[]", "[]", Leander.Primitives.Empty_List);
+        ("[]", "[]", Leander.Primitives.Empty_List, 0);
       Env.Insert_Constructor
-        ("[]", ":", Leander.Primitives.Cons);
+        ("[]", ":", Leander.Primitives.Cons, 2);
 --        Env.Declare_Data_Type
 --          ("IO", Leander.Primitives.IO_Type);
 --        Env.Insert_Constructor
@@ -68,7 +68,7 @@ package body Leander.Prelude is
       if not Env.Has_Type_Constructor_Binding (Name) then
          Env.Declare_Data_Type (Name, Leander.Primitives.Tuple_Type (Arity));
          Env.Insert_Constructor
-           (Name, Name, Leander.Primitives.Tuple_Con (Arity));
+           (Name, Name, Leander.Primitives.Tuple_Con (Arity), Arity);
       end if;
    end Use_Tuple;
 

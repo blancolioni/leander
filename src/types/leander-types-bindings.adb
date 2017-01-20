@@ -22,13 +22,15 @@ package body Leander.Types.Bindings is
      (List      : in out Type_Binding_List;
       Type_Name : String;
       Con_Name  : String;
-      Con_Type  : Leander.Types.Trees.Tree_Type)
+      Con_Type  : Leander.Types.Trees.Tree_Type;
+      Con_Arity : Natural)
       return Constructor_Binding'Class
    is
       Binding : Type_Binding renames List.Map (Type_Name);
       Con : constant Constructor_Binding := Constructor_Binding'
         (Con_Type => Con_Type,
-         Index    => Binding.Constructor_Count + 1);
+         Index    => Binding.Constructor_Count + 1,
+         Arity    => Con_Arity);
    begin
       Binding.Con_Map.Insert (Con_Name, Con);
       Binding.Con_Vector.Append (Con_Name);

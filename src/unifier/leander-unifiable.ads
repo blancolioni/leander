@@ -8,6 +8,10 @@ package Leander.Unifiable is
      (Node : Unifiable_Interface) return Boolean
       is abstract;
 
+   function Is_Primitive
+     (Node : Unifiable_Interface) return Boolean
+      is abstract;
+
    function Is_Variable
      (Node : Unifiable_Interface) return Boolean
       is abstract;

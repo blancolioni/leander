@@ -1,5 +1,3 @@
-with Ada.Text_IO;
-
 with Ada.Containers.Vectors;
 with Ada.Strings.Unbounded;
 
@@ -16,11 +14,13 @@ with Leander.Types.Instances.Derived;
 with Leander.Types.Trees;
 
 with Leander.Core.Cases;
+with Leander.Core.Lets;
 with Leander.Core.Trees;
 
 with Leander.Primitives;
 
 with Leander.Errors;
+with Leander.Logging;
 
 package body Leander.Parser.Declarations is
 
@@ -250,14 +250,33 @@ package body Leander.Parser.Declarations is
             else
                declare
                   Con_Name : constant String := Tok_Text;
-                  Con_Type : constant Leander.Types.Trees.Tree_Type :=
-                               Leander.Parser.Types.Parse_Type_Constructor
-                                 (Env, Tycon);
+                  Con_Type : Leander.Types.Trees.Tree_Type;
+                  Con_Args : array (1 .. 10) of Leander.Types.Trees.Tree_Type;
+                  Count    : Natural := 0;
+                  Indent   : constant Positive := Tok_Indent;
                begin
+                  Scan;
+                  while Tok_Indent > Indent
+                    and then Parser.Types.At_Atomic_Type loop
+                     Count := Count + 1;
+                     Con_Args (Count) :=
+                       Parser.Types.Parse_Atomic_Type (Env);
+                  end loop;
+
+                  Con_Type := Tycon;
+
+                  for I in reverse 1 .. Count loop
+                     Con_Type :=
+                       Leander.Core.Map_Operator.Apply
+                         (Con_Args (I)).Apply (Con_Type);
+                  end loop;
+
                   Env.Insert_Constructor
                     (Type_Name => Name,
                      Name      => Con_Name,
-                     Con_Type  => Con_Type);
+                     Con_Type  => Con_Type,
+                     Con_Arity => Count);
+
                end;
             end if;
             if Tok = Tok_Vertical_Bar then
@@ -419,7 +438,7 @@ package body Leander.Parser.Declarations is
                   Value : Leander.Core.Trees.Tree_Type)
                is
                begin
-                  Ada.Text_IO.Put_Line
+                  Leander.Logging.Log
                     ("implementing: " & Class_Name & " " & Name
                      & " = " & Value.Show);
                   Instance.Implement (Name, Value);
@@ -429,7 +448,7 @@ package body Leander.Parser.Declarations is
                Instance_Env.Scan_Local_Bindings (Process'Access);
             end;
 
-            Ada.Text_IO.Put_Line
+            Leander.Logging.Log
               ("instance " & Class_Name & " " & Instance_Type.Show);
 
             Env.Add_Type_Assertion
@@ -532,8 +551,26 @@ package body Leander.Parser.Declarations is
             else
                Error ("missing '='");
             end if;
-            Exps.Append
-              (Leander.Parser.Expressions.Parse_Expression);
+            declare
+               Exp : Leander.Core.Trees.Tree_Type :=
+                       Leander.Parser.Expressions.Parse_Expression;
+            begin
+               if Tok = Tok_Where then
+                  declare
+                     Indent    : constant Positive := Tok_Indent;
+                     Where_Env : Leander.Environments.Environment;
+                  begin
+                     Where_Env.Create_Temporary_Environment
+                       (Env, "where");
+                     Scan;
+                     Parse_Value_Bindings (Where_Env, Indent);
+                     Exp := Leander.Core.Lets.Let_Expression (Where_Env, Exp);
+                  end;
+               end if;
+
+               Exps.Append (Exp);
+            end;
+
             if Leander.Parser.Expressions.At_Pattern
               and then Tok_Indent >= Indent
             then
