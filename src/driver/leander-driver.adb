@@ -11,10 +11,13 @@ with Leander.Parser.Modules;
 
 with Leander.Repl;
 
+with Leander.Logging;
 with Leander.Paths;
 
 procedure Leander.Driver is
 begin
+
+   Leander.Logging.Start_Logging;
 
    if False then
       SK.Debug.Enable (SK.Debug.Compiler);
@@ -34,7 +37,7 @@ begin
       SK.Machine.Assembler.Push (Machine, "runIO");
       SK.Machine.Assembler.Push (Machine, SK.Initial_World);
       SK.Machine.Apply (Machine);
-      SK.Machine.Assembler.Push (Machine, "testPutStrLn");
+      SK.Machine.Assembler.Push (Machine, "testPrint");
       SK.Machine.Apply (Machine);
       --        SK.Machine.Assembler.Push (Machine, "f");
 --        SK.Machine.Push (Machine, SK.Initial_World);
@@ -64,4 +67,11 @@ begin
       Leander.Repl.Start_Repl (Env);
    end;
 
+   Leander.Logging.Stop_Logging;
+
+exception
+
+   when others =>
+      Leander.Logging.Stop_Logging;
+      raise;
 end Leander.Driver;

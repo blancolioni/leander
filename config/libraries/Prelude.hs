@@ -123,6 +123,10 @@ putStr s = mapM_ putChar s
 
 putStrLn s = putStr s >> putChar '\n'
 
+print = putStrLn . show
+
+testPrint = print True
+
 join (IO f) g = IO (\w -> case f w of
                                (x,w') -> case g x of
                                           (IO h) -> h w')

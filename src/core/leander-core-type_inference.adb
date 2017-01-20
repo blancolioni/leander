@@ -380,7 +380,7 @@ package body Leander.Core.Type_Inference is
          end;
       end loop;
 
-      for I in 1 .. 2 loop
+      for I in 1 .. 4 loop
          for Position in Dependencies.Iterate loop
             declare
                Ready : Boolean := True;
