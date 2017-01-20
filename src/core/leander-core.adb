@@ -29,7 +29,7 @@ package body Leander.Core is
          when Constructor | Variable | Literal =>
             return -Node.Name;
          when Lambda =>
-            return "\" & (-Node.Name) & " ->";
+            return "\" & (-Node.Name) & " -> {";
          when Let =>
             return "let {";
          when Algebraic_Case =>

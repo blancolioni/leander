@@ -1,10 +1,11 @@
 with Ada.Containers.Vectors;
-with Ada.Text_IO;
 
 with SK.Machine.Assembler;
 
 with Leander.Core.Compiler;
 with Leander.Core.Type_Inference;
+
+with Leander.Logging;
 
 package body Leander.Types.Instances.Compiler is
 
@@ -53,7 +54,7 @@ package body Leander.Types.Instances.Compiler is
          Method : constant Leander.Core.Trees.Tree_Type :=
                     (if Instance.Has_Method_Body (Name)
                      then Instance.Method_Body (Name)
-                     else Default);
+                     else Default.Clean_Copy);
       begin
          Method.Set_Annotation (To_Instance_Type (Signature));
          Leander.Core.Type_Inference.Annotate (Method, Env);
@@ -84,18 +85,19 @@ package body Leander.Types.Instances.Compiler is
 
    begin
 
-      Ada.Text_IO.Put_Line
+      Leander.Logging.Log
         ("Compiling " & Instance.Class_Name & "-"
          & Instance.Type_Tree.Show);
 
       Class.Scan_Methods (Add_Method'Access);
 
       for I in 1 .. Methods.Last_Index loop
-         Leander.Core.Compiler.Compile
-           (Env     => Env,
-            Name    => Method_Name (I),
-            Tree    => Methods (I),
-            Machine => Machine);
+         Leander.Core.Compiler.Compile_Instance_Method
+           (Env           => Env,
+            Name          => Method_Name (I),
+            Instance_Name => Method_Name (0),
+            Tree          => Methods (I),
+            Machine       => Machine);
       end loop;
 
       SK.Machine.Assembler.Push
@@ -106,7 +108,7 @@ package body Leander.Types.Instances.Compiler is
       end loop;
       SK.Machine.Assembler.Lambda (Machine, "-op-");
 
-      Ada.Text_IO.Put_Line
+      Leander.Logging.Log
         (Method_Name (0) & " = " & SK.Machine.Show_Stack_Top (Machine));
 
       SK.Machine.Bind (Machine, Method_Name (0));

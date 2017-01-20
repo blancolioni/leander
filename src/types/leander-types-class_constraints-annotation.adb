@@ -1,6 +1,6 @@
-with Ada.Text_IO;
-
 with Leander.Types.Kind_Inference;
+
+with Leander.Logging;
 
 package body Leander.Types.Class_Constraints.Annotation is
 
@@ -42,7 +42,7 @@ package body Leander.Types.Class_Constraints.Annotation is
          Binding.Type_Variable);
       Binding.Scan_Methods (Annotate_Method'Access);
 
-      Ada.Text_IO.Put_Line
+      Leander.Logging.Log
         (Binding.Show & " " & Binding.Type_Variable.Show_With_Annotations);
    end Annotate;
 

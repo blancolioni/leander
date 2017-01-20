@@ -1,4 +1,4 @@
-with Ada.Text_IO;
+with Leander.Logging;
 
 package body Leander.Types.Class_Constraints is
 
@@ -192,7 +192,7 @@ package body Leander.Types.Class_Constraints is
         Leander.Types.Trees.Apply
           (Leander.Types.Constructor (Name),
            Class.Class_Body.Type_Variable);
-      Ada.Text_IO.Put_Line
+      Leander.Logging.Log
         ("class: " & Leander.Types.Type_Constraint'Class (Class).Show
          & " " & Class.Type_Variable.Show_With_Annotations);
 

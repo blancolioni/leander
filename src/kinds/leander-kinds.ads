@@ -56,6 +56,11 @@ private
       return Boolean
    is (False);
 
+   overriding function Is_Primitive
+     (Annotation : Kind_Annotation)
+      return Boolean
+   is (False);
+
    overriding function Is_Constructor
      (Annotation : Kind_Annotation)
       return Boolean
@@ -137,6 +142,11 @@ private
      (Node : Kind_Node)
       return Boolean
    is (Node.Class = Variable);
+
+   overriding function Is_Primitive
+     (Node : Kind_Node)
+      return Boolean
+   is (False);
 
    overriding function Is_Constructor
      (Node : Kind_Node)

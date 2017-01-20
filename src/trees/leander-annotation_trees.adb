@@ -1,5 +1,28 @@
 package body Leander.Annotation_Trees is
 
+   ----------------
+   -- Clean_Copy --
+   ----------------
+
+   function Clean_Copy (Tree : Tree_Type) return Tree_Type is
+   begin
+      if Tree.Is_Empty then
+         return Empty;
+      elsif Tree.Is_Leaf then
+         declare
+            Result : constant Tree_Type :=
+                       Leaf (Tree.Node.Node);
+         begin
+            if Tree.Is_Primitive then
+               Result.Set_Annotation (Tree.Annotation);
+            end if;
+            return Result;
+         end;
+      else
+         return Apply (Tree.Left.Clean_Copy, Tree.Right.Clean_Copy);
+      end if;
+   end Clean_Copy;
+
    -----------------------
    -- Merge_Constraints --
    -----------------------

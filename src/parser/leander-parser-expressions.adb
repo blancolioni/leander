@@ -80,8 +80,62 @@ package body Leander.Parser.Expressions is
       Current : constant Leander.Source.Source_Reference :=
                   Current_Source_Reference;
 
+      function Parse_Rest_Of_List
+        return Leander.Core.Trees.Tree_Type;
+
       function Parse_Rest_Of_Tuple
         return Leander.Core.Trees.Array_Of_Trees;
+
+      ------------------------
+      -- Parse_Rest_Of_List --
+      ------------------------
+
+      function Parse_Rest_Of_List
+        return Leander.Core.Trees.Tree_Type
+      is
+      begin
+         if At_Expression then
+            declare
+               Head : constant Leander.Core.Trees.Tree_Type :=
+                        Parse_Expression;
+            begin
+               if Tok = Tok_Comma then
+                  Scan;
+
+                  declare
+                     Cons : constant Leander.Core.Core_Node :=
+                              Leander.Core.Constructor
+                                (Head.Get_Node.Source, ":");
+                  begin
+                     return Leander.Core.Trees.Apply
+                       (Leander.Core.Trees.Apply (Cons, Head),
+                        Parse_Rest_Of_List);
+                  end;
+               else
+                  if Tok = Tok_Right_Bracket then
+                     Scan;
+                  else
+                     Error ("missing ']'");
+                  end if;
+                  declare
+                     Cons : constant Leander.Core.Core_Node :=
+                              Leander.Core.Constructor
+                                (Head.Get_Node.Source, ":");
+                     Empty : constant Leander.Core.Core_Node :=
+                               Leander.Core.Constructor
+                                 (Head.Get_Node.Source, "[]");
+                  begin
+                     return Leander.Core.Trees.Apply
+                       (Leander.Core.Trees.Apply (Cons, Head), Empty);
+                  end;
+               end if;
+            end;
+         else
+            Error ("expected an expression");
+            return Leander.Core.Trees.Leaf
+              (Leander.Core.Constructor (Current, "[]"));
+         end if;
+      end Parse_Rest_Of_List;
 
       -------------------------
       -- Parse_Rest_Of_Tuple --
@@ -229,17 +283,8 @@ package body Leander.Parser.Expressions is
                return Expr;
             end;
          else
-            Error ("lists not implemented yet");
-            while Tok /= Tok_Right_Bracket
-              and then Tok /= Tok_End_Of_File
-            loop
-               Scan;
-            end loop;
-            if Tok = Tok_Right_Bracket then
-               Scan;
-            end if;
-            return Leander.Core.Trees.Leaf
-              (Leander.Core.Variable (Current, "_"));
+            Scan;
+            return Parse_Rest_Of_List;
          end if;
       else
          Error ("expected atomic expression");

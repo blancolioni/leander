@@ -1,12 +1,35 @@
+with Ada.Containers.Indefinite_Hashed_Maps;
+with Ada.Strings.Fixed.Hash;
+
 with Leander.Parser;
 with Leander.Source;
+
+with Leander.Primitives;
 
 with Leander.Core.Cases;
 with Leander.Types.Bindings;
 
 package body Leander.Types.Instances.Derived is
 
+   type Deriver is access
+     procedure
+       (Binding  : Leander.Types.Bindings.Type_Binding'Class;
+        Instance : in out Leander.Types.Instances.Type_Instance'Class);
+
+   package Derivation_Maps is
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Deriver,
+        Hash            => Ada.Strings.Fixed.Hash,
+        Equivalent_Keys => "=");
+
+   Deriver_Map : Derivation_Maps.Map;
+
    procedure Derive_Eq
+     (Binding  : Leander.Types.Bindings.Type_Binding'Class;
+      Instance : in out Leander.Types.Instances.Type_Instance'Class);
+
+   procedure Derive_Show
      (Binding  : Leander.Types.Bindings.Type_Binding'Class;
       Instance : in out Leander.Types.Instances.Type_Instance'Class);
 
@@ -86,20 +109,77 @@ package body Leander.Types.Instances.Derived is
    is
       Instance : Leander.Types.Instances.Type_Instance;
    begin
-      Instance.Create;
-      Instance.Set_Class_Assertion (Tree, Class_Name);
-
-      if Class_Name = "Eq" then
-         Derive_Eq
-           (Env.Type_Constructor_Binding (Tree.Head.Show), Instance);
-      else
+      if not Deriver_Map.Contains (Class_Name) then
          raise Constraint_Error with
            "invalid class for deriving: " & Class_Name;
       end if;
+
+      Instance.Create;
+      Instance.Set_Class_Assertion (Tree, Class_Name);
+
+      Deriver_Map.Element (Class_Name)
+           (Env.Type_Constructor_Binding (Tree.Head.Show), Instance);
 
       Env.Add_Type_Assertion
         (Tree.Head.Show, Instance);
 
    end Derive_Instance;
 
+   procedure Derive_Show
+     (Binding  : Leander.Types.Bindings.Type_Binding'Class;
+      Instance : in out Leander.Types.Instances.Type_Instance'Class)
+   is
+      use Leander.Core, Leander.Core.Trees;
+
+      Current : constant Leander.Source.Source_Reference :=
+                  Leander.Parser.Current_Source_Reference;
+      Builder : Leander.Core.Cases.Case_Builder;
+
+      function Var (Name : String) return Leander.Core.Core_Node
+      is (Variable (Current, Name));
+
+      function Con (Name : String) return Leander.Core.Core_Node
+      is (Constructor (Current, Name));
+
+   begin
+
+      Builder.Set_Case_Expression (Leaf (Var ("show-1")));
+
+      for I in 1 .. Binding.Constructor_Count loop
+         declare
+            Con_Name : constant String :=
+                         Binding.Constructor_Name (I);
+            Pat      : constant Tree_Type :=
+                         Leaf (Con (Con_Name));
+            Exp      : Tree_Type := Leaf (Con ("[]"));
+         begin
+            for Ch of reverse Con_Name loop
+               declare
+                  Elem : constant Tree_Type :=
+                           Leaf
+                             (Literal
+                                (Current,
+                                 Natural'Image
+                                   (Character'Pos (Ch))));
+               begin
+                  Elem.Set_Annotation (Leander.Primitives.Char_Type);
+                  Exp := Apply (Apply (Con (":"), Elem), Exp);
+               end;
+            end loop;
+
+            Builder.Add_Alt (Pat, Exp);
+         end;
+      end loop;
+
+      declare
+         Fn : Tree_Type := Builder.Transform;
+      begin
+         Fn := Apply (Lambda (Current, "show-1"), Fn);
+         Instance.Implement ("show", Fn);
+      end;
+   end Derive_Show;
+
+begin
+   Deriver_Map.Insert ("Eq", Derive_Eq'Access);
+   Deriver_Map.Insert ("Show", Derive_Show'Access);
 end Leander.Types.Instances.Derived;

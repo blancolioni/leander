@@ -20,6 +20,10 @@ package Leander.Types.Bindings is
      (Binding : Constructor_Binding)
       return Constructor_Index_Range;
 
+   function Constructor_Arity
+     (Binding : Constructor_Binding)
+      return Natural;
+
    type Constructor_Binding_List is tagged private;
 
    function Has_Binding
@@ -78,6 +82,13 @@ package Leander.Types.Bindings is
      with Pre => Binding.Is_Algebraic
      and then Index <= Binding.Constructor_Count;
 
+   function Constructor_Arity
+     (Binding : Type_Binding;
+      Index   : Constructor_Index_Range)
+      return Natural
+     with Pre => Binding.Is_Algebraic
+     and then Index <= Binding.Constructor_Count;
+
    type Type_Binding_List is tagged private;
 
    function Has_Binding
@@ -133,7 +144,8 @@ package Leander.Types.Bindings is
      (List      : in out Type_Binding_List;
       Type_Name : String;
       Con_Name  : String;
-      Con_Type  : Leander.Types.Trees.Tree_Type)
+      Con_Type  : Leander.Types.Trees.Tree_Type;
+      Con_Arity : Natural)
       return Constructor_Binding'Class;
 
    procedure Scan_Bindings
@@ -148,6 +160,7 @@ private
       record
          Con_Type : Leander.Types.Trees.Tree_Type;
          Index    : Constructor_Index_Range;
+         Arity    : Natural;
       end record;
 
    function Constructor_Type
@@ -159,6 +172,11 @@ private
      (Binding : Constructor_Binding)
       return Constructor_Index_Range
    is (Binding.Index);
+
+   function Constructor_Arity
+     (Binding : Constructor_Binding)
+      return Natural
+   is (Binding.Arity);
 
    package Constructor_Binding_Maps is
      new Ada.Containers.Indefinite_Hashed_Maps
@@ -226,6 +244,12 @@ private
       Index   : Constructor_Index_Range)
       return Leander.Types.Trees.Tree_Type
    is (Binding.Con_Map.Element (Binding.Con_Vector (Index)).Constructor_Type);
+
+   function Constructor_Arity
+     (Binding : Type_Binding;
+      Index   : Constructor_Index_Range)
+      return Natural
+   is (Binding.Con_Map.Element (Binding.Con_Vector (Index)).Constructor_Arity);
 
    package Type_Binding_Maps is
      new Ada.Containers.Indefinite_Hashed_Maps

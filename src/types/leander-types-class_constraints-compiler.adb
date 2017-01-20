@@ -1,6 +1,6 @@
-with Ada.Text_IO;
-
 with SK.Machine.Assembler;
+
+with Leander.Logging;
 
 package body Leander.Types.Class_Constraints.Compiler is
 
@@ -45,12 +45,14 @@ package body Leander.Types.Class_Constraints.Compiler is
          Method_Index := Method_Index + 1;
          SK.Machine.Assembler.Push (Machine, "vt");
          SK.Machine.Assembler.Push (Machine, Method_Name (Method_Index));
+         SK.Machine.Assembler.Push (Machine, "vt");
+         SK.Machine.Apply (Machine);
          for I in reverse 1 .. Method_Count loop
             SK.Machine.Assembler.Lambda (Machine, Method_Name (I));
          end loop;
          SK.Machine.Assembler.Apply (Machine);
          SK.Machine.Assembler.Lambda (Machine, "vt");
-         Ada.Text_IO.Put_Line
+         Leander.Logging.Log
            (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
 
          SK.Machine.Bind (Machine, Name);

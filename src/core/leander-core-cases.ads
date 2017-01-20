@@ -2,10 +2,6 @@ private with Ada.Containers.Vectors;
 
 with Leander.Core.Trees;
 
-------------------------
--- Leander.Core.Cases --
-------------------------
-
 package Leander.Core.Cases is
 
    type Case_Builder is tagged limited private;
