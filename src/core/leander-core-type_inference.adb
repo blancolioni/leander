@@ -360,13 +360,7 @@ package body Leander.Core.Type_Inference is
             Name : constant String := Dependency_Maps.Key (Position);
          begin
             if Dependency_Maps.Element (Position).Is_Empty  then
-               if Env.Has_Local_Signature (Name) then
-                  Leander.Logging.Log
-                    (Name
-                     & " :: "
-                     & Leander.Types.Trees.Show_Type
-                       (Env.Local_Signature (Name)));
-               else
+               if Env.Has_Local_Binding (Name) then
                   Annotate
                     (Tree     => Env.Local_Binding (Name),
                      Env      => Env);

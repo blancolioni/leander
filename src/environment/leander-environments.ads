@@ -218,7 +218,7 @@ private
      (Env  : Environment;
       Name : String)
       return Boolean
-   is (Env.Local.Values.Has_Binding (Name));
+   is (Env.Local.Values.Has_Value (Name));
 
    function Local_Binding
      (Env  : Environment;
