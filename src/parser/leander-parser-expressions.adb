@@ -15,10 +15,6 @@ with Leander.Primitives;
 
 package body Leander.Parser.Expressions is
 
-   type Associativity_Type is (Left, Right, None);
-   pragma Unreferenced (Right, None);
-   type Priority_Range is range 0 .. 9;
-
    type Fixity_Record is
       record
          Associativity : Associativity_Type := Left;
@@ -46,6 +42,19 @@ package body Leander.Parser.Expressions is
 
    function Parse_Pattern return Leander.Core.Trees.Tree_Type
      renames Parse_Expression;
+
+   ----------------
+   -- Add_Fixity --
+   ----------------
+
+   procedure Add_Fixity
+     (Operator      : String;
+      Associativity : Associativity_Type;
+      Priority      : Priority_Range)
+   is
+   begin
+      Fixities.Insert (Operator, (Associativity, Priority));
+   end Add_Fixity;
 
    --------------------------
    -- At_Atomic_Expression --
@@ -586,4 +595,6 @@ package body Leander.Parser.Expressions is
 
    end Parse_Left_Expression;
 
+begin
+   Add_Fixity (":", Right, 5);
 end Leander.Parser.Expressions;
