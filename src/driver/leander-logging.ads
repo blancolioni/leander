@@ -1,6 +1,8 @@
 package Leander.Logging is
 
-   procedure Log (Message : String)
-   is null;
+   procedure Start_Logging;
+   procedure Stop_Logging;
+
+   procedure Log (Message : String);
 
 end Leander.Logging;
