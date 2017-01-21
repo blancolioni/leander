@@ -401,8 +401,8 @@ package body Leander.Parser.Declarations is
             end;
 
          else
-            raise Program_Error with
-              "expected to be at a declaration";
+            Internal_Error
+              ("expected to be at a declaration at " & Tok_Text);
          end if;
       end if;
    end Parse_Declaration;
