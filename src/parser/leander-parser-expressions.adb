@@ -121,11 +121,6 @@ package body Leander.Parser.Expressions is
                         Parse_Rest_Of_List);
                   end;
                else
-                  if Tok = Tok_Right_Bracket then
-                     Scan;
-                  else
-                     Error ("missing ']'");
-                  end if;
                   declare
                      Cons : constant Leander.Core.Core_Node :=
                               Leander.Core.Constructor
@@ -251,50 +246,177 @@ package body Leander.Parser.Expressions is
            (Leander.Core.Constructor (Current, "()"));
       elsif Tok = Tok_Left_Paren then
          Scan;
+         if At_Operator then
+            declare
+               Name : constant String := Scan_Identifier;
+            begin
+               if At_Expression then
+                  declare
+                     Expr : Leander.Core.Trees.Tree_Type :=
+                              Parse_Left_Expression;
+                     X    : constant String := New_Variable;
+                  begin
+                     Expr :=
+                       Leander.Core.Trees.Apply
+                         (Leander.Core.Trees.Apply
+                            (Leander.Core.Variable (Current, Name),
+                             Leander.Core.Variable (Current, X)),
+                          Expr);
+                     Expr :=
+                       Leander.Core.Trees.Apply
+                         (Leander.Core.Lambda (Current, X),
+                          Expr);
+                     if Tok = Tok_Right_Paren then
+                        Scan;
+                     else
+                        Error ("missing ')'");
+                     end if;
+                     return Expr;
+                  end;
+               else
+                  Error ("missing expression");
+                  return Leander.Core.Trees.Empty;
+               end if;
+            end;
+         else
+            declare
+               use type Leander.Core.Trees.Array_Of_Trees;
+               Expr : Leander.Core.Trees.Tree_Type := Parse_Expression;
+            begin
+               if Tok = Tok_Comma then
+                  Scan;
+                  declare
+                     Tuple : constant Leander.Core.Trees.Array_Of_Trees :=
+                               Expr & Parse_Rest_Of_Tuple;
+                  begin
+                     Leander.Prelude.Use_Tuple (Tuple'Length);
+                     Expr :=
+                       Leander.Core.Trees.Leaf
+                         (Leander.Core.Constructor
+                            (Current,
+                             Leander.Primitives.Tuple_Name (Tuple'Length)));
+                     for I in Tuple'Range loop
+                        Expr := Expr.Apply (Tuple (I));
+                     end loop;
+                  end;
+               end if;
+               if Tok = Tok_Right_Paren then
+                  Scan;
+               else
+                  Error ("missing ')'");
+               end if;
+               return Expr;
+            end;
+         end if;
+      elsif Tok = Tok_Left_Bracket then
          declare
-            use type Leander.Core.Trees.Array_Of_Trees;
-            Expr : Leander.Core.Trees.Tree_Type := Parse_Expression;
+            use Leander.Core, Leander.Core.Trees;
+            Expr : Tree_Type;
          begin
-            if Tok = Tok_Comma then
-               Scan;
-               declare
-                  Tuple : constant Leander.Core.Trees.Array_Of_Trees :=
-                            Expr & Parse_Rest_Of_Tuple;
-               begin
-                  Leander.Prelude.Use_Tuple (Tuple'Length);
+            Scan;
+            if Tok = Tok_Right_Bracket then
+               Expr :=
+                 Leander.Core.Trees.Leaf
+                   (Leander.Core.Constructor
+                      (Current, "[]"));
+            else
+               Expr := Parse_Expression;
+
+               if Tok = Tok_Right_Bracket then
                   Expr :=
-                    Leander.Core.Trees.Leaf
-                      (Leander.Core.Constructor
-                         (Current,
-                          Leander.Primitives.Tuple_Name (Tuple'Length)));
-                  for I in Tuple'Range loop
-                     Expr := Expr.Apply (Tuple (I));
-                  end loop;
-               end;
+                    Apply
+                      (Apply
+                         (Constructor (Current, ":"),
+                          Expr),
+                       Constructor (Current, "[]"));
+
+               elsif Tok = Tok_Dot_Dot then
+                  Scan;
+
+                  if At_Expression then
+                     declare
+                        Finish : constant Tree_Type := Parse_Expression;
+                     begin
+                        Expr :=
+                          Apply
+                            (Apply (Variable (Current, "enumFromTo"), Expr),
+                             Finish);
+                     end;
+                  else
+                     Expr :=
+                       Apply (Variable (Current, "enumFrom"), Expr);
+                  end if;
+
+               elsif Tok = Tok_Comma then
+                  Scan;
+
+                  declare
+                     Next : Tree_Type := Parse_Expression;
+                  begin
+                     if Tok = Tok_Right_Bracket then
+                        Next :=
+                          Apply
+                            (Apply
+                               (Constructor (Current, ":"),
+                                Next),
+                             Constructor (Current, "[]"));
+
+                        Expr :=
+                          Apply
+                            (Apply
+                               (Constructor (Current, ":"),
+                                Expr),
+                             Next);
+                     elsif Tok = Tok_Dot_Dot then
+                        Scan;
+                        if Tok = Tok_Right_Bracket then
+                           Expr :=
+                             Apply (Variable (Current, "enumFromThen"),
+                                    Expr).
+                             Apply (Next);
+                        elsif At_Expression then
+                           declare
+                              Finish : constant Tree_Type := Parse_Expression;
+                           begin
+                              Expr :=
+                                Apply (Variable (Current, "enumFromThenTo"),
+                                       Expr).
+                                Apply (Next).
+                                Apply (Finish);
+                           end;
+                        else
+                           Error ("expected an expression");
+                        end if;
+                     elsif At_Expression then
+                        declare
+                           Rest : Tree_Type :=
+                                    Parse_Rest_Of_List;
+                        begin
+                           Rest :=
+                             Apply (Variable (Current, ":"),
+                                    Next)
+                             .Apply (Rest);
+
+                           Expr :=
+                             Apply (Variable (Current, ":"),
+                                    Expr)
+                             .Apply (Rest);
+                        end;
+                     else
+                        Error ("expected an expression");
+                     end if;
+                  end;
+               else
+                  Error ("expected a list");
+               end if;
             end if;
-            if Tok = Tok_Right_Paren then
+            if Tok = Tok_Right_Bracket then
                Scan;
             else
-               Error ("missing ')'");
+               Error ("missing ']'");
             end if;
             return Expr;
          end;
-      elsif Tok = Tok_Left_Bracket then
-         if Next_Tok = Tok_Right_Bracket then
-            declare
-               Expr : constant Leander.Core.Trees.Tree_Type :=
-                        Leander.Core.Trees.Leaf
-                          (Leander.Core.Constructor
-                             (Current, "[]"));
-            begin
-               Scan;
-               Scan;
-               return Expr;
-            end;
-         else
-            Scan;
-            return Parse_Rest_Of_List;
-         end if;
       else
          Error ("expected atomic expression");
          Scan;
@@ -589,8 +711,8 @@ package body Leander.Parser.Expressions is
             end;
          end;
       else
-         raise Constraint_Error with
-           "expected to be at an expression";
+         Internal_Error ("expected to be at an expression: " & Tok_Text);
+         return Leander.Core.Trees.Empty;
       end if;
 
    end Parse_Left_Expression;
