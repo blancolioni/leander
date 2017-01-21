@@ -1,4 +1,4 @@
---  with Ada.Text_IO;
+--  with Leander.Logging;
 
 with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Containers.Indefinite_Hashed_Maps;
@@ -124,6 +124,9 @@ package body Leander.Core.Cases is
       end if;
 
       for Pat of Builder.Pats loop
+         if Pat.Head.Class = Literal then
+            return False;
+         end if;
          if Pat.Head.Show /= Con then
             return False;
          end if;
@@ -725,7 +728,7 @@ package body Leander.Core.Cases is
       First_Pat        : constant Tree_Type := Builder.Pats.First_Element;
       Con_Name         : constant String := First_Pat.Head.Show;
       First_Args       : constant Array_Of_Trees := First_Pat.Arguments;
-      Column_Count     : constant Positive := First_Args'Length;
+      Column_Count     : constant Natural := First_Args'Length;
       Variable_Columns : array (First_Args'Range) of Tree_Type :=
                            (others => Empty);
       Variable_Count   : Natural := 0;

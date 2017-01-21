@@ -97,6 +97,9 @@ package body Leander.Core.Compiler is
       procedure Compile_Algebraic_Case
         (Top : Leander.Core.Trees.Tree_Type);
 
+      procedure Compile_Primitive_Case
+        (Top : Leander.Core.Trees.Tree_Type);
+
       procedure Compile_Constructor_Expression
         (Binding : Leander.Types.Bindings.Constructor_Binding'Class);
 
@@ -151,7 +154,7 @@ package body Leander.Core.Compiler is
             elsif Is_Algebraic_Case (T) then
                Compile_Algebraic_Case (T.Right);
             elsif Is_Primitive_Case (T) then
-               null;
+               Compile_Primitive_Case (T.Right);
             elsif False and then Is_Newtype_Constructor (Env, T) then
                Compile (T.Right);
             else
@@ -400,9 +403,9 @@ package body Leander.Core.Compiler is
                   end loop;
 
                end;
-               Leander.Logging.Log
-                 ("final expression: "
-                  & SK.Machine.Show_Stack_Top (Machine));
+--                 Leander.Logging.Log
+--                   ("final expression: "
+--                    & SK.Machine.Show_Stack_Top (Machine));
             end if;
             SK.Machine.Assembler.Apply (Machine);
          end loop;
@@ -450,6 +453,62 @@ package body Leander.Core.Compiler is
          end if;
       end Compile_Constructor_Expression;
 
+      ----------------------------
+      -- Compile_Primitive_Case --
+      ----------------------------
+
+      procedure Compile_Primitive_Case
+        (Top : Leander.Core.Trees.Tree_Type)
+      is
+         X : constant String := "-p-";
+
+         procedure Compile_Alts (Alt_It : Leander.Core.Trees.Tree_Type);
+
+         ------------------
+         -- Compile_Alts --
+         ------------------
+
+         procedure Compile_Alts (Alt_It : Leander.Core.Trees.Tree_Type) is
+         begin
+            if Alt_It.Is_Empty then
+               SK.Machine.Assembler.Push (Machine, SK.Fail_Object);
+            else
+               declare
+                  Alt : constant Trees.Tree_Type := Alt_It.Left;
+                  Pat : constant Trees.Tree_Type := Alt.Left;
+                  Exp : constant Trees.Tree_Type := Alt.Right;
+               begin
+                  pragma Assert (Pat.Is_Leaf);
+                  if Pat.Is_Variable then
+                     Compile (Exp);
+                     SK.Machine.Assembler.Lambda (Machine, Pat.Show);
+                     SK.Machine.Assembler.Push (Machine, X);
+                     SK.Machine.Apply (Machine);
+                  else
+                     SK.Machine.Assembler.Push (Machine, SK.Select_Object (2));
+                     SK.Machine.Assembler.Push (Machine, "neq?");
+                     SK.Machine.Assembler.Push (Machine, X);
+                     SK.Machine.Assembler.Apply (Machine);
+                     SK.Machine.Assembler.Push
+                       (Machine, Natural'Value (Pat.Show));
+                     SK.Machine.Assembler.Apply (Machine);
+                     SK.Machine.Assembler.Apply (Machine);
+                     Compile (Exp);
+                     SK.Machine.Assembler.Apply (Machine);
+                     Compile_Alts (Alt_It.Right);
+                     SK.Machine.Assembler.Apply (Machine);
+                  end if;
+               end;
+            end if;
+         end Compile_Alts;
+
+      begin
+         Compile_Alts (Top.Right);
+         SK.Machine.Assembler.Lambda (Machine, X);
+         Compile (Top.Left);
+         SK.Machine.Apply (Machine);
+      end Compile_Primitive_Case;
+
    begin
       if not Tree.Has_Annotation then
          Leander.Logging.Log ("skipping: " & Tree.Show);
@@ -459,7 +518,6 @@ package body Leander.Core.Compiler is
            (Tree.Annotation,
             Include_Cons => False,
             Process      => Add_Constraint_Abstraction'Access);
-
       end if;
    end Compile_Tree;
 

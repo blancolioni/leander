@@ -11,6 +11,8 @@ with Leander.Logging;
 
 package body Leander.Core.Type_Inference is
 
+   Log_Unification : constant Boolean := False;
+
    type Array_Of_Annotations is
      array (Positive range <>) of Leander.Types.Trees.Tree_Type;
 
@@ -87,6 +89,9 @@ package body Leander.Core.Type_Inference is
       procedure Unify_Algebraic_Case
         (Tree       : Trees.Tree_Type);
 
+      procedure Unify_Primitive_Case
+        (Tree       : Trees.Tree_Type);
+
       procedure Bind
         (Tree       : Trees.Tree_Type);
 
@@ -116,13 +121,20 @@ package body Leander.Core.Type_Inference is
         (Tree       : Trees.Tree_Type)
       is
       begin
---         Leander.Logging.Log
---             ("enter unify: " & Tree.Show_With_Annotations);
+         if Log_Unification then
+            Leander.Logging.Log
+              ("enter unify: " & Tree.Show_With_Annotations);
+         end if;
+
          if Tree.Is_Application then
             if Tree.Left.Is_Leaf
               and then Tree.Left.Get_Node.Class = Algebraic_Case
             then
                Unify_Algebraic_Case (Tree);
+            elsif Tree.Left.Is_Leaf
+              and then Tree.Left.Get_Node.Class = Primitive_Case
+            then
+               Unify_Primitive_Case (Tree);
             else
                Unify (Tree.Right);
                if Tree.Left.Is_Leaf
@@ -167,8 +179,12 @@ package body Leander.Core.Type_Inference is
                end if;
             end if;
          end if;
---           Leander.Logging.Log
---             ("exit unify: " & Tree.Show_With_Annotations);
+
+         if Log_Unification then
+            Leander.Logging.Log
+              ("exit unify: " & Tree.Show_With_Annotations);
+         end if;
+
       end Unify;
 
       --------------------------
@@ -200,6 +216,36 @@ package body Leander.Core.Type_Inference is
             end;
          end loop;
       end Unify_Algebraic_Case;
+
+      --------------------------
+      -- Unify_Primitive_Case --
+      --------------------------
+
+      procedure Unify_Primitive_Case
+        (Tree       : Trees.Tree_Type)
+      is
+         Case_Expr   : constant Trees.Tree_Type := Tree.Right.Left;
+         Result_Type : constant Leander.Types.Trees.Tree_Type :=
+                         Tree.Annotation;
+         It          : Trees.Tree_Type := Tree.Right.Right;
+      begin
+         Unify (Case_Expr);
+         while not It.Is_Empty loop
+            declare
+               Alt : constant Trees.Tree_Type := It.Left;
+               Pat : constant Trees.Tree_Type := Alt.Left;
+               Exp : constant Trees.Tree_Type := Alt.Right;
+            begin
+               It := It.Right;
+               Unify (Pat);
+               Pat.Set_Annotation
+                 (Unify (Pat.Annotation, Case_Expr.Annotation, Vars));
+               Unify (Exp);
+               Exp.Set_Annotation
+                 (Unify (Result_Type, Exp.Annotation, Vars));
+            end;
+         end loop;
+      end Unify_Primitive_Case;
 
    begin
       Unify (Tree);
@@ -431,6 +477,9 @@ package body Leander.Core.Type_Inference is
       procedure Scan_Algebraic_Alts
         (Root : Trees.Tree_Type);
 
+      procedure Scan_Primitive_Alts
+        (Root : Trees.Tree_Type);
+
       function Unbind
         (Bound_Type : Leander.Types.Trees.Tree_Type)
          return Leander.Types.Trees.Tree_Type;
@@ -501,6 +550,9 @@ package body Leander.Core.Type_Inference is
             begin
                It := It.Right;
 
+               Leander.Logging.Log
+                 ("scanning: " & Pat.Show & " -> " & Exp.Show);
+
                if Pat.Is_Variable then
                   Enter_Local_Binding (Pat.Variable_Name, Pat);
                else
@@ -538,7 +590,7 @@ package body Leander.Core.Type_Inference is
                                  .Constructor_Type));
                         else
                            Leander.Errors.Error
-                             (Root.Get_Node.Source,
+                             (Root.Head.Source,
                               "undefined: " & Name);
                            Add_Binding;
                            Pat_It.Set_Annotation (Vector.Last_Element);
@@ -550,6 +602,44 @@ package body Leander.Core.Type_Inference is
             end;
          end loop;
       end Scan_Algebraic_Alts;
+
+      -------------------------
+      -- Scan_Primitive_Alts --
+      -------------------------
+
+      procedure Scan_Primitive_Alts
+        (Root : Trees.Tree_Type)
+      is
+         It : Trees.Tree_Type := Root;
+      begin
+         while not It.Is_Empty loop
+            declare
+               Alt : constant Trees.Tree_Type := It.Left;
+               Pat : constant Trees.Tree_Type := Alt.Left;
+               Exp : constant Trees.Tree_Type := Alt.Right;
+            begin
+               It := It.Right;
+
+               Leander.Logging.Log
+                 ("scanning: " & Pat.Show & " -> " & Exp.Show);
+
+               if Pat.Is_Variable then
+                  Enter_Local_Binding (Pat.Variable_Name, Pat);
+               elsif Pat.Is_Leaf then
+                  null;
+               else
+                  Leander.Errors.Error
+                    (Pat.Head.Source, "bad primitive pattern: " & Pat.Show);
+               end if;
+               Scan_Variables (Exp);
+               if Pat.Is_Variable then
+                  Leave_Local_Binding (Pat.Variable_Name);
+               else
+                  null;
+               end if;
+            end;
+         end loop;
+      end Scan_Primitive_Alts;
 
       --------------------
       -- Scan_Variables --
@@ -589,13 +679,18 @@ package body Leander.Core.Type_Inference is
                Root.Set_Annotation (Vector.Last_Element);
             end if;
 
-            Scan_Variables (Root.Left);
             if Root.Left.Is_Leaf
               and then Root.Left.Get_Node.Class = Algebraic_Case
             then
                Scan_Variables (Root.Right.Left);
                Scan_Algebraic_Alts (Root.Right.Right);
+            elsif Root.Left.Is_Leaf
+              and then Root.Left.Get_Node.Class = Primitive_Case
+            then
+               Scan_Variables (Root.Right.Left);
+               Scan_Primitive_Alts (Root.Right.Right);
             else
+               Scan_Variables (Root.Left);
                if Root.Left.Is_Leaf
                  and then Root.Left.Get_Node.Class = Lambda
                then
@@ -657,6 +752,10 @@ package body Leander.Core.Type_Inference is
             end;
          elsif Root.Get_Node.Class = Lambda then
             Set_Named_Binding (-Root.Get_Node.Name);
+         elsif Root.Get_Node.Class = Literal then
+            null;
+         else
+            Leander.Logging.Log ("cannot scan: " & Root.Show);
          end if;
       end Scan_Variables;
 
