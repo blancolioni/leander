@@ -269,16 +269,8 @@ package body Leander.Core.Compiler is
                            end Constrain;
 
                         begin
-                           Leander.Logging.Log
-                             ("Constraining: "
-                              & Variable
-                              & " :: "
-                              & Leander.Types.Trees.Show_Type (Target));
                            Constrain (Target);
                            SK.Machine.Assembler.Apply (Machine);
-                           Leander.Logging.Log
-                             ("Constraint: "
-                              & SK.Machine.Show_Stack_Top (Machine));
                         end Add_Constraint_Argument;
 
                         ------------------------
@@ -315,12 +307,6 @@ package body Leander.Core.Compiler is
                         end Corresponding_Leaf;
 
                      begin
-                        Leander.Logging.Log
-                          ("Checking constraints for "
-                           & T.Show & " :: "
-                           & Leander.Types.Trees.Show_Type
-                             (T.Annotation));
-
                         Leander.Types.Trees.Scan_Constraints
                           (T.Get_Node.Original_Type, False,
                            Add_Constraint_Argument'Access);
