@@ -34,6 +34,8 @@ package body Leander.Parser.Expressions is
    function At_Atomic_Pattern return Boolean renames At_Atomic_Expression;
 
    function Parse_Atomic_Expression return Leander.Core.Trees.Tree_Type;
+   function Parse_Do_Expression (Indent : Positive)
+                                 return Leander.Core.Trees.Tree_Type;
    function Parse_Case_Expression return Leander.Core.Trees.Tree_Type;
    function Parse_Left_Expression return Leander.Core.Trees.Tree_Type;
 
@@ -476,6 +478,70 @@ package body Leander.Parser.Expressions is
       end;
    end Parse_Case_Expression;
 
+   function Parse_Do_Expression
+     (Indent : Positive)
+      return Leander.Core.Trees.Tree_Type
+   is
+   begin
+      if not At_Expression then
+         Error ("missing do expression");
+         return Leander.Core.Trees.Empty;
+      end if;
+
+      declare
+         Current : constant Leander.Source.Source_Reference :=
+                     Current_Source_Reference;
+         E : constant Leander.Core.Trees.Tree_Type :=
+               Parse_Expression;
+      begin
+         if Tok = Tok_Left_Arrow then
+            declare
+               Builder : Leander.Core.Cases.Case_Builder;
+               Case_Variable : constant String := New_Variable;
+               Case_Expr : constant Leander.Core.Trees.Tree_Type :=
+                             Leander.Core.Trees.Leaf
+                               (Leander.Core.Variable
+                                  (Current, Case_Variable));
+               Left_E        : Leander.Core.Trees.Tree_Type;
+               Right_E       : Leander.Core.Trees.Tree_Type;
+               Rest_E        : Leander.Core.Trees.Tree_Type;
+            begin
+               Builder.Set_Case_Expression (Case_Expr);
+               Scan;
+               Left_E := Parse_Expression;
+
+               if Tok_Indent < Indent then
+                  Error ("do expression cannot end with binding");
+               else
+                  Rest_E := Parse_Do_Expression (Indent);
+               end if;
+               Builder.Add_Alt (E, Rest_E);
+               Right_E := Builder.Transform;
+               Right_E :=
+                 Leander.Core.Trees.Apply
+                   (Leander.Core.Lambda (Current, Case_Variable),
+                    Right_E);
+               Left_E :=
+                 Leander.Core.Trees.Apply
+                   (Leander.Core.Variable (Current, ">>="), Left_E);
+               Left_E := Left_E.Apply (Right_E);
+               return Left_E;
+            end;
+         elsif At_Expression and then Tok_Indent >= Indent then
+            declare
+               Right_E : constant Leander.Core.Trees.Tree_Type :=
+                           Parse_Do_Expression (Indent);
+            begin
+               return Leander.Core.Trees.Apply
+                 (Leander.Core.Variable (Current, ">>"), E)
+                   .Apply (Right_E);
+            end;
+         else
+            return E;
+         end if;
+      end;
+   end Parse_Do_Expression;
+
    ----------------------
    -- Parse_Expression --
    ----------------------
@@ -630,6 +696,9 @@ package body Leander.Parser.Expressions is
          end;
       elsif Tok = Tok_Case then
          return Parse_Case_Expression;
+      elsif Tok = Tok_Do then
+         Scan;
+         return Parse_Do_Expression (Tok_Indent);
       elsif Tok = Tok_Let then
          declare
             Env    : Leander.Environments.Environment;
