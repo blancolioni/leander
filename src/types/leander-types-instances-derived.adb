@@ -9,6 +9,8 @@ with Leander.Primitives;
 with Leander.Core.Cases;
 with Leander.Types.Bindings;
 
+with Leander.Logging;
+
 package body Leander.Types.Instances.Derived is
 
    type Deriver is access
@@ -26,6 +28,10 @@ package body Leander.Types.Instances.Derived is
    Deriver_Map : Derivation_Maps.Map;
 
    procedure Derive_Eq
+     (Binding  : Leander.Types.Bindings.Type_Binding'Class;
+      Instance : in out Leander.Types.Instances.Type_Instance'Class);
+
+   procedure Derive_Ord
      (Binding  : Leander.Types.Bindings.Type_Binding'Class;
       Instance : in out Leander.Types.Instances.Type_Instance'Class);
 
@@ -125,6 +131,75 @@ package body Leander.Types.Instances.Derived is
 
    end Derive_Instance;
 
+   ----------------
+   -- Derive_Ord --
+   ----------------
+
+   procedure Derive_Ord
+     (Binding  : Leander.Types.Bindings.Type_Binding'Class;
+      Instance : in out Leander.Types.Instances.Type_Instance'Class)
+   is
+      use Leander.Core;
+      Current : constant Leander.Source.Source_Reference :=
+                  Leander.Parser.Current_Source_Reference;
+      Left : Leander.Core.Cases.Case_Builder;
+
+      function Var (Name : String) return Leander.Core.Trees.Tree_Type
+      is (Leander.Core.Trees.Leaf (Variable (Current, Name)));
+
+      function Con (Name : String) return Leander.Core.Trees.Tree_Type
+      is (Leander.Core.Trees.Leaf (Constructor (Current, Name)));
+
+   begin
+
+      Left.Set_Case_Expression (Var ("ord-1"));
+
+      for Left_Index in 1 .. Binding.Constructor_Count loop
+         declare
+            use type Leander.Types.Bindings.Constructor_Count_Range;
+            Left_Con : constant String :=
+                         Binding.Constructor_Name (Left_Index);
+            Right : Leander.Core.Cases.Case_Builder;
+         begin
+            Right.Set_Case_Expression (Var ("ord-2"));
+            for Right_Index in 1 .. Left_Index loop
+               declare
+                  Right_Con : constant String :=
+                                Binding.Constructor_Name (Right_Index);
+               begin
+                  Right.Add_Alt
+                    (Con (Right_Con),
+                     Con (if Right_Index < Left_Index
+                       then "GT" else "EQ"));
+               end;
+            end loop;
+            Right.Add_Alt
+              (Var ("_"), Con ("LT"));
+            Left.Add_Alt (Con (Left_Con), Right.Transform);
+         end;
+      end loop;
+
+      declare
+         Fn : Leander.Core.Trees.Tree_Type := Left.Transform;
+      begin
+         Fn :=
+           Leander.Core.Trees.Apply
+             (Leander.Core.Lambda (Current, "ord-2"),
+              Fn);
+         Fn :=
+           Leander.Core.Trees.Apply
+             (Leander.Core.Lambda (Current, "ord-1"),
+              Fn);
+         Leander.Logging.Log ("compare = " & Fn.Show);
+         Instance.Implement ("compare", Fn);
+      end;
+
+   end Derive_Ord;
+
+   -----------------
+   -- Derive_Show --
+   -----------------
+
    procedure Derive_Show
      (Binding  : Leander.Types.Bindings.Type_Binding'Class;
       Instance : in out Leander.Types.Instances.Type_Instance'Class)
@@ -181,5 +256,6 @@ package body Leander.Types.Instances.Derived is
 
 begin
    Deriver_Map.Insert ("Eq", Derive_Eq'Access);
+   Deriver_Map.Insert ("Ord", Derive_Ord'Access);
    Deriver_Map.Insert ("Show", Derive_Show'Access);
 end Leander.Types.Instances.Derived;
