@@ -17,7 +17,12 @@ package Leander.Types.Instances is
 
    procedure Add_Constraint
      (Instance   : in out Type_Instance'Class;
-      Constraint : Type_Constraint'Class);
+      Constraint : Leander.Types.Trees.Tree_Type);
+
+   procedure Scan_Constraints
+     (Instance : Type_Instance'Class;
+      Process  : not null access
+        procedure (Constraint : Leander.Types.Trees.Tree_Type));
 
    procedure Implement
      (Instance : in out Type_Instance'Class;

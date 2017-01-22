@@ -29,7 +29,7 @@ package body Leander.Types.Instances.Compiler is
       function Method_Name (Index : Natural) return String
       is (Instance.Class_Name
           & "-"
-          & Instance.Type_Tree.Show
+          & Instance.Type_Tree.Head.Show
           & (if Index = 0 then "-vt"
              else Integer'Image (-Index)));
 
@@ -41,6 +41,30 @@ package body Leander.Types.Instances.Compiler is
       function To_Instance_Type
         (Signature : Leander.Types.Trees.Tree_Type)
          return Leander.Types.Trees.Tree_Type;
+
+      procedure Abstract_Type_Constraints
+        (T : Leander.Types.Trees.Tree_Type);
+
+      procedure Apply_Type_Constraints
+        (T : Leander.Types.Trees.Tree_Type);
+
+      -------------------------------
+      -- Abstract_Type_Constraints --
+      -------------------------------
+
+      procedure Abstract_Type_Constraints
+        (T : Leander.Types.Trees.Tree_Type)
+      is
+      begin
+         for Constraint of T.Head.Constraints loop
+            declare
+               Name : constant String :=
+                        Constraint.Show & "-" & T.Head.Show & "-vt";
+            begin
+               SK.Machine.Assembler.Lambda (Machine, Name);
+            end;
+         end loop;
+      end Abstract_Type_Constraints;
 
       ----------------
       -- Add_Method --
@@ -57,9 +81,29 @@ package body Leander.Types.Instances.Compiler is
                      else Default.Clean_Copy);
       begin
          Method.Set_Annotation (To_Instance_Type (Signature));
+         Leander.Logging.Log (Name & " :: " & Method.Annotation.Show);
          Leander.Core.Type_Inference.Annotate (Method, Env);
          Methods.Append (Method);
       end Add_Method;
+
+      ----------------------------
+      -- Apply_Type_Constraints --
+      ----------------------------
+
+      procedure Apply_Type_Constraints
+        (T : Leander.Types.Trees.Tree_Type)
+      is
+      begin
+         for Constraint of T.Head.Constraints loop
+            declare
+               Name : constant String :=
+                        Constraint.Show & "-" & T.Head.Show & "-vt";
+            begin
+               SK.Machine.Assembler.Push (Machine, Name);
+               SK.Machine.Apply (Machine);
+            end;
+         end loop;
+      end Apply_Type_Constraints;
 
       ----------------------
       -- To_Instance_Type --
@@ -74,7 +118,7 @@ package body Leander.Types.Instances.Compiler is
            and then Signature.Is_Variable
            and then Signature.Variable_Name = Class.Type_Variable.Show
          then
-            return Instance.Type_Tree.First_Leaf;
+            return Instance.Type_Tree;
          elsif Signature.Is_Application then
             return To_Instance_Type (Signature.Left).Apply
               (To_Instance_Type (Signature.Right));
@@ -104,9 +148,15 @@ package body Leander.Types.Instances.Compiler is
         (Machine, "-op-");
       for I in 1 .. Methods.Last_Index loop
          SK.Machine.Assembler.Push (Machine, Method_Name (I));
+         Instance.Scan_Constraints (Apply_Type_Constraints'Access);
          SK.Machine.Assembler.Apply (Machine);
       end loop;
       SK.Machine.Assembler.Lambda (Machine, "-op-");
+
+      declare
+      begin
+         Instance.Scan_Constraints (Abstract_Type_Constraints'Access);
+      end;
 
       Leander.Logging.Log
         (Method_Name (0) & " = " & SK.Machine.Show_Stack_Top (Machine));

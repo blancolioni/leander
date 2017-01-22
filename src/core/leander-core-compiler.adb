@@ -35,8 +35,13 @@ package body Leander.Core.Compiler is
       return Boolean;
 
    procedure Compile_Tree
-     (Env     : Leander.Environments.Environment;
-      Tree    : Leander.Core.Trees.Tree_Type;
+     (Env      : Leander.Environments.Environment;
+      Tree     : Leander.Core.Trees.Tree_Type;
+      Machine  : SK.Machine.SK_Machine;
+      Instance : Boolean);
+
+   procedure Compile_Constraint_Abstractions
+     (Tree    : Leander.Core.Trees.Tree_Type;
       Machine : SK.Machine.SK_Machine);
 
    -------------
@@ -50,12 +55,52 @@ package body Leander.Core.Compiler is
       Machine : SK.Machine.SK_Machine)
    is
    begin
-      Compile_Tree (Env, Tree, Machine);
+      if not Tree.Has_Annotation then
+         Leander.Logging.Log ("skipping: " & Tree.Show);
+      else
+         Compile_Tree (Env, Tree, Machine, False);
+         Compile_Constraint_Abstractions (Tree, Machine);
 
-      Leander.Logging.Log
-        (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
-      SK.Machine.Bind (Machine, Name);
+         Leander.Logging.Log
+           (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
+         SK.Machine.Bind (Machine, Name);
+      end if;
    end Compile;
+
+   -------------------------------------
+   -- Compile_Constraint_Abstractions --
+   -------------------------------------
+
+   procedure Compile_Constraint_Abstractions
+     (Tree    : Leander.Core.Trees.Tree_Type;
+      Machine : SK.Machine.SK_Machine)
+   is
+
+      procedure Add_Constraint_Abstraction
+        (Constraint : Leander.Types.Type_Constraint'Class;
+         Variable   : String);
+
+      --------------------------------
+      -- Add_Constraint_Abstraction --
+      --------------------------------
+
+      procedure Add_Constraint_Abstraction
+        (Constraint : Leander.Types.Type_Constraint'Class;
+         Variable   : String)
+      is
+         Name : constant String :=
+                  Constraint.Show & "-" & Variable & "-vt";
+      begin
+         SK.Machine.Assembler.Lambda
+           (Machine, Name);
+      end Add_Constraint_Abstraction;
+
+   begin
+      Leander.Types.Trees.Scan_Constraints
+        (Tree.Annotation,
+         Include_Cons => False,
+         Process      => Add_Constraint_Abstraction'Access);
+   end Compile_Constraint_Abstractions;
 
    -----------------------------
    -- Compile_Instance_Method --
@@ -69,9 +114,11 @@ package body Leander.Core.Compiler is
       Machine       : SK.Machine.SK_Machine)
    is
    begin
-      Compile_Tree (Env, Tree, Machine);
+      Compile_Tree (Env, Tree, Machine, True);
 
       SK.Machine.Assembler.Lambda (Machine, Instance_Name);
+
+      Compile_Constraint_Abstractions (Tree, Machine);
 
       Leander.Logging.Log
         (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
@@ -83,14 +130,11 @@ package body Leander.Core.Compiler is
    ------------------
 
    procedure Compile_Tree
-     (Env     : Leander.Environments.Environment;
-      Tree    : Leander.Core.Trees.Tree_Type;
-      Machine : SK.Machine.SK_Machine)
+     (Env      : Leander.Environments.Environment;
+      Tree     : Leander.Core.Trees.Tree_Type;
+      Machine  : SK.Machine.SK_Machine;
+      Instance : Boolean)
    is
-
-      procedure Add_Constraint_Abstraction
-        (Constraint : Leander.Types.Type_Constraint'Class;
-         Variable   : String);
 
       procedure Compile (T : Leander.Core.Trees.Tree_Type);
 
@@ -107,21 +151,6 @@ package body Leander.Core.Compiler is
         (Index : Leander.Types.Bindings.Constructor_Index_Range)
                   return String
       is ("k" & Integer'Image (-Positive (Index)));
-
-      --------------------------------
-      -- Add_Constraint_Abstraction --
-      --------------------------------
-
-      procedure Add_Constraint_Abstraction
-        (Constraint : Leander.Types.Type_Constraint'Class;
-         Variable   : String)
-      is
-         Name : constant String :=
-                  Constraint.Show & "-" & Variable & "-vt";
-      begin
-         SK.Machine.Assembler.Lambda
-           (Machine, Name);
-      end Add_Constraint_Abstraction;
 
       -------------
       -- Compile --
@@ -203,14 +232,53 @@ package body Leander.Core.Compiler is
                                         (Variable,
                                          Node.Original_Type,
                                          T.Annotation);
-                           Name   : constant String :=
-                                      Constraint.Show & "-"
-                                      & Target.Show
-                                      & "-vt";
+
+                           function Name
+                             (Constrained_Type : Types.Trees.Tree_Type)
+                              return String
+                           is (Constraint.Show & "-"
+                               & Constrained_Type.Show
+                               & "-vt");
+
+                           procedure Constrain
+                             (It : Leander.Types.Trees.Tree_Type);
+
+                           ---------------
+                           -- Constrain --
+                           ---------------
+
+                           procedure Constrain
+                             (It : Leander.Types.Trees.Tree_Type)
+                           is
+                              T : constant Leander.Types.Trees.Tree_Type :=
+                                    (if It.Is_Leaf then It else It.Right);
+                           begin
+
+                              if not It.Is_Leaf then
+                                 Constrain (It.Left);
+                              end if;
+
+                              if not Instance or else It.Is_Leaf then
+                                 SK.Machine.Assembler.Push
+                                   (Machine, Name (T));
+                              end if;
+
+                              if not It.Is_Leaf and then not Instance then
+                                 SK.Machine.Assembler.Apply (Machine);
+                              end if;
+                           end Constrain;
+
                         begin
-                           SK.Machine.Assembler.Push
-                             (Machine, Name);
+                           Leander.Logging.Log
+                             ("Constraining: "
+                              & Variable
+                              & " :: "
+                              & Leander.Types.Trees.Show_Type (Target));
+                           Constrain (Target);
                            SK.Machine.Assembler.Apply (Machine);
+                           Leander.Logging.Log
+                             ("Constraint: "
+                              & SK.Machine.Show_Stack_Top (Machine));
                         end Add_Constraint_Argument;
 
                         ------------------------
@@ -247,6 +315,12 @@ package body Leander.Core.Compiler is
                         end Corresponding_Leaf;
 
                      begin
+                        Leander.Logging.Log
+                          ("Checking constraints for "
+                           & T.Show & " :: "
+                           & Leander.Types.Trees.Show_Type
+                             (T.Annotation));
+
                         Leander.Types.Trees.Scan_Constraints
                           (T.Get_Node.Original_Type, False,
                            Add_Constraint_Argument'Access);
@@ -510,15 +584,7 @@ package body Leander.Core.Compiler is
       end Compile_Primitive_Case;
 
    begin
-      if not Tree.Has_Annotation then
-         Leander.Logging.Log ("skipping: " & Tree.Show);
-      else
-         Compile (Tree);
-         Leander.Types.Trees.Scan_Constraints
-           (Tree.Annotation,
-            Include_Cons => False,
-            Process      => Add_Constraint_Abstraction'Access);
-      end if;
+      Compile (Tree);
    end Compile_Tree;
 
    ----------------------------

@@ -387,18 +387,19 @@ package body Leander.Parser.Expressions is
                         else
                            Error ("expected an expression");
                         end if;
-                     elsif At_Expression then
+                     elsif Tok = Tok_Comma then
+                        Scan;
                         declare
                            Rest : Tree_Type :=
                                     Parse_Rest_Of_List;
                         begin
                            Rest :=
-                             Apply (Variable (Current, ":"),
+                             Apply (Constructor (Current, ":"),
                                     Next)
                              .Apply (Rest);
 
                            Expr :=
-                             Apply (Variable (Current, ":"),
+                             Apply (Constructor (Current, ":"),
                                     Expr)
                              .Apply (Rest);
                         end;

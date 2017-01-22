@@ -38,6 +38,12 @@ package body Leander.Parser.Declarations is
    procedure Parse_Instance_Declaration
      (Env : in out Leander.Environments.Environment);
 
+   procedure Parse_Constraints
+     (Env : in out Leander.Environments.Environment;
+      Add_Constraint : not null access
+        procedure (Constraint_Name : String;
+                   Variable_Name   : String));
+
    procedure Skip_Declaration;
 
    --------------------
@@ -208,6 +214,75 @@ package body Leander.Parser.Declarations is
       end;
 
    end Parse_Class_Declaration;
+
+   procedure Parse_Constraints
+     (Env : in out Leander.Environments.Environment;
+      Add_Constraint : not null access
+        procedure (Constraint_Name : String;
+                   Variable_Name   : String))
+   is
+   begin
+      if At_Constructor_Name
+        and then Next_Tok = Tok_Identifier
+        and then Next_Tok (2) = Tok_Double_Right_Arrow
+      then
+         if Env.Has_Class_Binding (Tok_Text) then
+            Add_Constraint (Tok_Text, Tok_Text (1));
+         else
+            Error ("no such class: " & Tok_Text);
+         end if;
+
+         Scan;
+         if not At_Variable_Name then
+            Error ("expected a type variable");
+         end if;
+         Scan;
+         Scan;
+      elsif Tok = Tok_Left_Paren then
+         Scan;
+         while At_Constructor_Name loop
+            if not Env.Has_Class_Binding (Tok_Text) then
+               Error ("no such class: " & Tok_Text);
+            end if;
+            declare
+               Class_Name : constant String := Tok_Text;
+            begin
+               Scan;
+               if At_Variable_Name then
+                  declare
+                     Var_Name : constant String := Tok_Text;
+                  begin
+                     Scan;
+                     Add_Constraint (Class_Name, Var_Name);
+                  end;
+               else
+                  Error ("expected a type variable");
+               end if;
+            end;
+
+            if Tok = Tok_Comma then
+               Scan;
+               if not At_Constructor_Name then
+                  Error ("missing class context");
+               end if;
+            elsif At_Constructor_Name then
+               Error ("missing ','");
+            end if;
+         end loop;
+
+         if Tok = Tok_Right_Paren then
+            Scan;
+         else
+            Error ("missing ')'");
+         end if;
+
+         if Tok = Tok_Double_Right_Arrow then
+            Scan;
+         else
+            Error ("missing '=>'");
+         end if;
+      end if;
+   end Parse_Constraints;
 
    ----------------------------
    -- Parse_Data_Declaration --
@@ -453,6 +528,26 @@ package body Leander.Parser.Declarations is
       pragma Assert (Tok = Tok_Instance);
       Scan;
       Instance.Create;
+
+      declare
+         procedure Add (Constraint_Name, Variable_Name : String);
+
+         ---------
+         -- Add --
+         ---------
+
+         procedure Add (Constraint_Name, Variable_Name : String) is
+            Variable : Leander.Types.Type_Node :=
+                         Leander.Types.Variable (Variable_Name);
+         begin
+            Variable.Add_Constraint
+              (Env.Class_Binding (Constraint_Name));
+            Instance.Add_Constraint (Leander.Types.Trees.Leaf (Variable));
+         end Add;
+
+      begin
+         Parse_Constraints (Env, Add'Access);
+      end;
 
       if At_Constructor_Name then
          declare

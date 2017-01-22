@@ -4,7 +4,8 @@ package body Leander.Types.Instances is
 
    type Instance_Body_Record is
       record
-         Constraints : Constraint_Lists.List;
+         Constraints : Leander.Types.Trees.Tree_Type :=
+                         Leander.Types.Trees.Empty;
          Type_Expr   : Leander.Types.Trees.Tree_Type;
          Class_Name  : Ada.Strings.Unbounded.Unbounded_String;
          Methods     : Leander.Core.Bindings.Binding_List;
@@ -16,10 +17,11 @@ package body Leander.Types.Instances is
 
    procedure Add_Constraint
      (Instance   : in out Type_Instance'Class;
-      Constraint : Type_Constraint'Class)
+      Constraint : Leander.Types.Trees.Tree_Type)
    is
    begin
-      Instance.Instance_Body.Constraints.Append (Constraint);
+      Instance.Instance_Body.Constraints :=
+        Constraint.Apply (Instance.Instance_Body.Constraints);
    end Add_Constraint;
 
    ----------------
@@ -85,6 +87,23 @@ package body Leander.Types.Instances is
    begin
       return Instance.Instance_Body.Methods.Binding (Name);
    end Method_Body;
+
+   ----------------------
+   -- Scan_Constraints --
+   ----------------------
+
+   procedure Scan_Constraints
+     (Instance : Type_Instance'Class;
+      Process  : not null access
+        procedure (Constraint : Leander.Types.Trees.Tree_Type))
+   is
+      It : Leander.Types.Trees.Tree_Type := Instance.Instance_Body.Constraints;
+   begin
+      while not It.Is_Empty loop
+         Process (It.Left);
+         It := It.Right;
+      end loop;
+   end Scan_Constraints;
 
    -------------------------
    -- Set_Class_Assertion --

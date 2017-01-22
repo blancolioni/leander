@@ -106,6 +106,8 @@ package body Leander.Annotation_Trees is
          else
             return Tree.Left.Right.Show & " -> " & Tree.Right.Show;
          end if;
+      elsif Tree.Left.Show = "[]" then
+         return "[" & Tree.Right.Show & "]";
       else
          declare
             Show_Left : constant String := Show (Left (Tree));
