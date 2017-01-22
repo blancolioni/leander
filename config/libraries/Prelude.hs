@@ -1,6 +1,11 @@
 systemName = "Leander"
 
 foreign import #putchar :: Char -> World# -> World#
+foreign import #intEq :: Int -> Int -> Int
+foreign import #objGE :: Int -> Int -> Int
+foreign import #objGT :: Int -> Int -> Int
+foreign import #objLE :: Int -> Int -> Int
+foreign import #objLT :: Int -> Int -> Int
 
 infixr 9  .  
 infixr 8  ^, ^^, **
@@ -25,7 +30,7 @@ fix f = f (fix f)
  
 -- Equality and Ordered classes  
  
- class  Eq a  where  
+class  Eq a  where  
     (==), (/=) :: a -> a -> Bool  
  
         -- Minimal complete definition:  
@@ -42,7 +47,7 @@ class  (Eq a) => Ord a  where
         --      (<=) or compare  
         -- Using compare can be more efficient for complex types.  
     compare x y  = if x == y then EQ
-                   else if X <= y then LT
+                   else if x <= y then LT
                    else GT
  
     x <= y           =  compare x y /= GT  
@@ -79,8 +84,19 @@ class  Enum a  where
     enumFromThen x y =  map toEnum [fromEnum x, fromEnum y ..]  
     enumFromThenTo x y z =  
                         map toEnum [fromEnum x, fromEnum y .. fromEnum z]
-                        
-                        
+               
+primBoolToBool 0 = False
+primBoolToBool _ = True
+			   
+instance Eq Int where
+    x == y = primBoolToBool (#intEq x y)
+	
+instance Ord Int where
+    x < y = primBoolToBool (#objLT x y)
+    x > y = primBoolToBool (#objGT x y)
+    x <= y = primBoolToBool (#objLE x y)
+    x >= y = primBoolToBool (#objGE x y)
+							   
 class  Show a  where  
     showsPrec        :: Int -> a -> [Char] -> [Char]  
     show             :: a -> [Char]
@@ -169,19 +185,6 @@ putStrLn s = putStr s >> putChar '\n'
 
 print = putStrLn . show
 
-testPrintBoolList = print [True, False] --  [1,2,3]
-testPrintBool = print True
-
-testPrint = testPrintBoolList
-
-runIO w (IO f) = case f w of
-                   (x,w') -> w'
-                   
-testPutStrLn = doTestPutStrLn "Hello, world"
-
-doTestPutStrLn [] = putChar '\n'
-doTestPutStrLn (x:xs) = putChar x >> doTestPutStrLn xs
-
 id x = x
 
 equal x y = x == y
@@ -200,7 +203,7 @@ fst (a,b) = a
 
 snd (a,b) = b
 
-data Bool = False | True deriving (Eq,Show)
+data Bool = False | True deriving (Eq,Ord,Show)
 
 True && x = x
 False && x = False
@@ -272,4 +275,19 @@ foldl f z (x:xs) =  foldl f (f z x) xs
  
 foldr f z []     =  z  
 foldr f z (x:xs) =  f x (foldr f z xs)
+
+testPrintBoolList = print "Hello, world!" >> print [True, False] >> print (True < False)
+                       >> print (1 == 2) >> print (2 == 2) >> print (1 > 2) >> print (2 > 1)
+					   
+testPrintBool = print True
+
+testPrint = testPrintBoolList
+
+runIO w (IO f) = case f w of
+                   (x,w') -> w'
+                   
+testPutStrLn = doTestPutStrLn "Hello, world"
+
+doTestPutStrLn [] = putChar '\n'
+doTestPutStrLn (x:xs) = putChar x >> doTestPutStrLn xs
 
