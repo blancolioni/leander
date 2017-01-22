@@ -110,6 +110,11 @@ package body Leander.Core.Type_Inference is
          if Tree.Has_Annotation then
             Tree.Set_Annotation
               (Bind (Tree.Annotation, Vars, Next_Variable));
+            if Tree.Is_Variable
+              and then Tree.Get_Node.Original_Type.Is_Binding
+            then
+               Tree.Update_Node.Original_Type := Tree.Annotation;
+            end if;
          end if;
       end Bind;
 
@@ -550,9 +555,6 @@ package body Leander.Core.Type_Inference is
             begin
                It := It.Right;
 
-               Leander.Logging.Log
-                 ("scanning: " & Pat.Show & " -> " & Exp.Show);
-
                if Pat.Is_Variable then
                   Enter_Local_Binding (Pat.Variable_Name, Pat);
                else
@@ -619,9 +621,6 @@ package body Leander.Core.Type_Inference is
                Exp : constant Trees.Tree_Type := Alt.Right;
             begin
                It := It.Right;
-
-               Leander.Logging.Log
-                 ("scanning: " & Pat.Show & " -> " & Exp.Show);
 
                if Pat.Is_Variable then
                   Enter_Local_Binding (Pat.Variable_Name, Pat);
