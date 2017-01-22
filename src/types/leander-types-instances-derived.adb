@@ -9,8 +9,6 @@ with Leander.Primitives;
 with Leander.Core.Cases;
 with Leander.Types.Bindings;
 
-with Leander.Logging;
-
 package body Leander.Types.Instances.Derived is
 
    type Deriver is access
@@ -190,7 +188,6 @@ package body Leander.Types.Instances.Derived is
            Leander.Core.Trees.Apply
              (Leander.Core.Lambda (Current, "ord-1"),
               Fn);
-         Leander.Logging.Log ("compare = " & Fn.Show);
          Instance.Implement ("compare", Fn);
       end;
 
