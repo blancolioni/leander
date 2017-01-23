@@ -215,6 +215,10 @@ package body Leander.Parser.Declarations is
 
    end Parse_Class_Declaration;
 
+   -----------------------
+   -- Parse_Constraints --
+   -----------------------
+
    procedure Parse_Constraints
      (Env : in out Leander.Environments.Environment;
       Add_Constraint : not null access
@@ -695,14 +699,9 @@ package body Leander.Parser.Declarations is
            and then Tok /= Tok_Comma and then Tok /= Tok_Colon_Colon
          then
             Pats.Append (Pattern);
-            if Tok = Tok_Equal then
-               Scan;
-            else
-               Error ("missing '='");
-            end if;
             declare
                Exp : Leander.Core.Trees.Tree_Type :=
-                       Leander.Parser.Expressions.Parse_Expression;
+                       Leander.Parser.Expressions.Parse_Guarded_Expression;
             begin
                if Tok = Tok_Where then
                   declare
@@ -784,10 +783,10 @@ package body Leander.Parser.Declarations is
 
                      for I in 1 .. Pats.Last_Index loop
                         declare
-                           Pat  : Tree_Type := Pats (I);
-                           Exp  : constant Tree_Type := Exps (I);
-                           Args : constant Array_Of_Trees :=
-                                    Pattern_Arguments (Pat);
+                           Pat   : Tree_Type := Pats (I);
+                           Exp   : constant Tree_Type := Exps (I);
+                           Args  : constant Array_Of_Trees :=
+                                     Pattern_Arguments (Pat);
                         begin
                            if Args'Length /= Pat_Count then
                               Leander.Errors.Error

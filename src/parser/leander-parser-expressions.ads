@@ -6,6 +6,7 @@ private package Leander.Parser.Expressions is
    function Parse_Expression return Leander.Core.Trees.Tree_Type;
    function Parse_Atomic_Pattern return Leander.Core.Trees.Tree_Type;
    function Parse_Pattern return Leander.Core.Trees.Tree_Type;
+   function Parse_Guarded_Expression return Leander.Core.Trees.Tree_Type;
 
    type Associativity_Type is (Left, Right, None);
    type Priority_Range is range 0 .. 9;

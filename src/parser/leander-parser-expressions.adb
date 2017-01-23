@@ -116,7 +116,7 @@ package body Leander.Parser.Expressions is
                   declare
                      Cons : constant Leander.Core.Core_Node :=
                               Leander.Core.Constructor
-                                (Head.Get_Node.Source, ":");
+                                (Head.Head.Source, ":");
                   begin
                      return Leander.Core.Trees.Apply
                        (Leander.Core.Trees.Apply (Cons, Head),
@@ -126,10 +126,10 @@ package body Leander.Parser.Expressions is
                   declare
                      Cons : constant Leander.Core.Core_Node :=
                               Leander.Core.Constructor
-                                (Head.Get_Node.Source, ":");
+                                (Head.Head.Source, ":");
                      Empty : constant Leander.Core.Core_Node :=
                                Leander.Core.Constructor
-                                 (Head.Get_Node.Source, "[]");
+                                 (Head.Head.Source, "[]");
                   begin
                      return Leander.Core.Trees.Apply
                        (Leander.Core.Trees.Apply (Cons, Head), Empty);
@@ -646,6 +646,68 @@ package body Leander.Parser.Expressions is
 
       return Value_Stack.First_Element;
    end Parse_Expression;
+
+   ------------------------------
+   -- Parse_Guarded_Expression --
+   ------------------------------
+
+   function Parse_Guarded_Expression return Leander.Core.Trees.Tree_Type is
+
+      function Parse_Guards return Leander.Core.Trees.Tree_Type;
+
+      ------------------
+      -- Parse_Guards --
+      ------------------
+
+      function Parse_Guards return Leander.Core.Trees.Tree_Type is
+         pragma Assert (Tok = Tok_Vertical_Bar);
+         Guard : Leander.Core.Trees.Tree_Type;
+         Exp   : Leander.Core.Trees.Tree_Type;
+         Rest  : Leander.Core.Trees.Tree_Type;
+      begin
+         Scan;
+         Guard := Parse_Expression;
+         if Tok = Tok_Equal then
+            Scan;
+         else
+            Error ("missing '='");
+         end if;
+         Exp := Parse_Expression;
+         if Tok = Tok_Vertical_Bar then
+            Rest := Parse_Guarded_Expression;
+         else
+            Rest :=
+              Leander.Core.Trees.Leaf
+                (Leander.Core.Variable (Exp.Head.Source, "#fail"));
+         end if;
+
+         declare
+            Builder : Leander.Core.Cases.Case_Builder;
+         begin
+            Builder.Set_Case_Expression (Guard);
+            Builder.Add_Alt
+              (Leander.Core.Trees.Leaf
+                 (Leander.Core.Constructor (Guard.Head.Source, "True")),
+                  Exp);
+            Builder.Add_Alt
+              (Leander.Core.Trees.Leaf
+                 (Leander.Core.Constructor (Guard.Head.Source, "False")),
+                  Rest);
+            return Builder.Transform;
+         end;
+      end Parse_Guards;
+
+   begin
+      if Tok /= Tok_Vertical_Bar then
+         if Tok = Tok_Equal then
+            Scan;
+         else
+            Error ("missing '='");
+         end if;
+         return Parse_Expression;
+      end if;
+      return Parse_Guards;
+   end Parse_Guarded_Expression;
 
    ---------------------------
    -- Parse_Left_Expression --
