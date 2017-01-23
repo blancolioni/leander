@@ -593,7 +593,7 @@ package body Leander.Core.Type_Inference is
                         else
                            Leander.Errors.Error
                              (Root.Head.Source,
-                              "undefined: " & Name);
+                              "undefined constructor: " & Name);
                            Add_Binding;
                            Pat_It.Set_Annotation (Vector.Last_Element);
                         end if;
@@ -723,7 +723,7 @@ package body Leander.Core.Type_Inference is
                   else
                      Leander.Errors.Error
                        (Root.Get_Node.Source,
-                        "undefined: " & Name);
+                        "undefined variable: " & Name);
                      Add_Binding;
                      Var_Type := Vector.Last_Element;
                   end if;
@@ -744,7 +744,7 @@ package body Leander.Core.Type_Inference is
                else
                   Leander.Errors.Error
                     (Root.Get_Node.Source,
-                     "undefined: " & Name);
+                     "undefined constructor: " & Name);
                   Add_Binding;
                   Root.Set_Annotation (Vector.Last_Element);
                end if;

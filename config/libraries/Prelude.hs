@@ -14,6 +14,9 @@ foreign import #intFirst :: Int
 foreign import #intLast :: Int
 
 foreign import #fail :: a
+foreign import #undefined :: a
+
+foreign import #initWorld :: World#
 
 infixr 9  .  
 infixr 8  ^, ^^, **
@@ -33,6 +36,8 @@ infixr 0  $, $!, `seq`
 
 
 fix f = f (fix f)
+
+undefined = #undefined
 
 -- Standard types, classes, instances and related functions  
  
@@ -199,7 +204,7 @@ mapM_ f xs       =  sequence_ (map f xs)
 
 f =<< x          =  x >>= f
 
-data IO a = IO (World# -> (a,World#))
+data IO a = IO { worldFunction :: World# -> (a,World#) }
 
 instance Monad IO where
    return x = IO (\ w -> (x, w))
@@ -331,7 +336,7 @@ foldr f z (x:xs) =  f x (foldr f z xs)
 
 data TestRecord = Rec { boolField :: Bool, textField :: [Char] }
 
-testRecValue = Rec True "test record"
+testRecValue = Rec { boolField = True, textField = "test record" }
 
 tests = [("print a list of Bool", print [True,False])
         ,("True is less than False", print (True < False))
@@ -348,6 +353,7 @@ tests = [("print a list of Bool", print [True,False])
 --        ,("alphabet", print ['A' .. 'Z'])
         ]
         
+
 selfTest = do
   putStrLn systemName
   mapM_ (\ x -> case x of (label,test) -> putStr label >> putStr ": " >> test) tests
