@@ -45,6 +45,10 @@ package body Leander.Parser.Expressions is
    function Parse_Pattern return Leander.Core.Trees.Tree_Type
      renames Parse_Expression;
 
+   function Parse_Record_Constructor
+     (Con_Name : String)
+      return Leander.Core.Trees.Tree_Type;
+
    ----------------
    -- Add_Fixity --
    ----------------
@@ -178,20 +182,23 @@ package body Leander.Parser.Expressions is
       end Parse_Rest_Of_Tuple;
 
    begin
-      if At_Identifier then
+      if At_Constructor_Name then
          declare
-            Name : constant String := Scan_Identifier;
+            Con_Name : constant String := Scan_Identifier;
          begin
-            if Name (Name'First) in 'A' .. 'Z'
-              or else Name (Name'First) = ':'
-            then
-               return Leander.Core.Trees.Leaf
-                 (Leander.Core.Constructor (Current, Name));
+            if Tok = Tok_Left_Brace then
+               return Parse_Record_Constructor (Con_Name);
             else
                return Leander.Core.Trees.Leaf
-                 (Leander.Core.Variable (Current, Name));
+                 (Leander.Core.Constructor (Current, Con_Name));
             end if;
          end;
+      elsif At_Constructor then
+         return Leander.Core.Trees.Leaf
+           (Leander.Core.Constructor (Current, Scan_Identifier));
+      elsif At_Variable then
+         return Leander.Core.Trees.Leaf
+           (Leander.Core.Variable (Current, Scan_Identifier));
       elsif Tok = Tok_Integer_Literal then
          declare
             Literal : constant String := Tok_Text;
@@ -848,6 +855,74 @@ package body Leander.Parser.Expressions is
       end if;
 
    end Parse_Left_Expression;
+
+   ------------------------------
+   -- Parse_Record_Constructor --
+   ------------------------------
+
+   function Parse_Record_Constructor
+     (Con_Name : String)
+      return Leander.Core.Trees.Tree_Type
+   is
+      use Leander.Core, Leander.Core.Trees;
+      Expr : Tree_Type :=
+               Leaf (Variable (Current_Source_Reference,
+                     "undefined-" & Con_Name));
+      Indent : Positive;
+   begin
+      pragma Assert (Tok = Tok_Left_Brace);
+      Scan;
+      Indent := Tok_Indent;
+      while Tok = Tok_Identifier loop
+         declare
+            Field_Name : constant String := Tok_Text;
+            Fn_Name    : constant String :=
+                           Con_Name & "-update-" & Field_Name;
+         begin
+            Scan;
+            if Tok = Tok_Equal then
+               Scan;
+            else
+               Error ("missing '='");
+            end if;
+
+            declare
+               Field_Value : constant Tree_Type :=
+                               Parse_Expression;
+            begin
+               Expr := Apply (Variable (Current_Source_Reference, Fn_Name),
+                              Field_Value)
+                 .Apply (Expr);
+            end;
+
+            if Tok = Tok_Comma then
+               Scan;
+               if Tok = Tok_Right_Brace then
+                  Error ("extra ',' ignored");
+                  exit;
+               elsif Tok /= Tok_Identifier then
+                  if Tok_Indent < Indent then
+                     exit;
+                  else
+                     Error ("expected field name");
+                     exit;
+                  end if;
+               end if;
+            else
+               exit;
+            end if;
+         end;
+      end loop;
+
+      if Tok = Tok_Right_Brace then
+         Scan;
+      else
+         Error ("missing '}'");
+      end if;
+
+      return Expr;
+
+   end Parse_Record_Constructor;
 
 begin
    Add_Fixity (":", Right, 5);
