@@ -7,6 +7,12 @@ foreign import #objGT :: Int -> Int -> Int
 foreign import #objLE :: Int -> Int -> Int
 foreign import #objLT :: Int -> Int -> Int
 
+foreign import #charVal :: Int -> Char
+foreign import #charPos :: Char -> Int
+
+foreign import #intFirst :: Int
+foreign import #intLast :: Int
+
 foreign import #fail :: a
 
 infixr 9  .  
@@ -82,26 +88,17 @@ class  Enum a  where
         -- NOTE: these default methods only make sense for types  
         --       that map injectively into Int using fromEnum  
         --       and toEnum.  
-    succ             =  toEnum . (+1) . fromEnum  
-    pred             =  toEnum . (subtract 1) . fromEnum  
-    enumFrom x       =  map toEnum [fromEnum x ..]  
-    enumFromTo x y   =  map toEnum [fromEnum x .. fromEnum y]  
-    enumFromThen x y =  map toEnum [fromEnum x, fromEnum y ..]  
-    enumFromThenTo x y z =  
-                        map toEnum [fromEnum x, fromEnum y .. fromEnum z]
-               
-primBoolToBool 0 = False
-primBoolToBool _ = True
-			   
-instance Eq Int where
-    x == y = primBoolToBool (#intEq x y)
-	
-instance Ord Int where
-    x < y = primBoolToBool (#objLT x y)
-    x > y = primBoolToBool (#objGT x y)
-    x <= y = primBoolToBool (#objLE x y)
-    x >= y = primBoolToBool (#objGE x y)
-							   
+    succ                 =  toEnum . (+1) . fromEnum  
+    pred                 =  toEnum . (subtract 1) . fromEnum  
+    enumFrom x           =  map toEnum [fromEnum x ..]  
+    enumFromTo x y       =  map toEnum [fromEnum x .. fromEnum y]  
+    enumFromThen x y     =  map toEnum [fromEnum x, fromEnum y ..]  
+    enumFromThenTo x y z = map toEnum [fromEnum x, fromEnum y .. fromEnum z]        
+    
+class  Bounded a  where  
+    minBound         :: a  
+    maxBound         :: a
+    
 class  Show a  where  
     showsPrec        :: Int -> a -> [Char] -> [Char]  
     show             :: a -> [Char]
@@ -129,6 +126,38 @@ showChar         =  (:)
 
 showString       :: [Char] -> [Char] -> [Char]
 showString       =  (++)
+
+instance Enum Char where
+    toEnum = #charVal
+    fromEnum = #charPos
+    
+primBoolToBool 0 = False
+primBoolToBool _ = True
+			   
+instance Eq Int where
+    x == y = primBoolToBool (#intEq x y)
+	
+instance Ord Int where
+    x < y = primBoolToBool (#objLT x y)
+    x > y = primBoolToBool (#objGT x y)
+    x <= y = primBoolToBool (#objLE x y)
+    x >= y = primBoolToBool (#objGE x y)
+    
+instance Bounded Int where
+    minBound = #intFirst
+    maxBound = #intLast
+
+instance Enum Int where
+    toEnum = id
+    fromEnum = id
+    succ = (+1)
+    pred = (subtract 1)
+    enumFrom x = enumFromThen x (x + 1)
+    enumFromTo x y = enumFromThenTo x (x + 1) y
+    enumFromThen x y = enumFromThenTo x y maxBound
+    enumFromThenTo x y z | y < x = []
+                         | z - (y - x) < y = [x]
+                         | otherwise = x : enumFromThenTo y (y + (y - x)) z
 
 instance  Show Char  where  
     showsPrec p '\'' = showString "'\\''"  
