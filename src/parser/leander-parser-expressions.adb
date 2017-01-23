@@ -46,8 +46,10 @@ package body Leander.Parser.Expressions is
      renames Parse_Expression;
 
    function Parse_Record_Constructor
-     (Con_Name : String)
-      return Leander.Core.Trees.Tree_Type;
+     (Con_Name    : String;
+      Start_Value : Leander.Core.Trees.Tree_Type)
+      return Leander.Core.Trees.Tree_Type
+     with Pre => Con_Name = "" xor Start_Value.Is_Empty;
 
    ----------------
    -- Add_Fixity --
@@ -181,23 +183,27 @@ package body Leander.Parser.Expressions is
          end if;
       end Parse_Rest_Of_Tuple;
 
+      Result : Leander.Core.Trees.Tree_Type;
+
    begin
       if At_Constructor_Name then
          declare
             Con_Name : constant String := Scan_Identifier;
          begin
             if Tok = Tok_Left_Brace then
-               return Parse_Record_Constructor (Con_Name);
+               Result :=
+                 Parse_Record_Constructor
+                   (Con_Name, Leander.Core.Trees.Empty);
             else
-               return Leander.Core.Trees.Leaf
+               Result := Leander.Core.Trees.Leaf
                  (Leander.Core.Constructor (Current, Con_Name));
             end if;
          end;
       elsif At_Constructor then
-         return Leander.Core.Trees.Leaf
+         Result := Leander.Core.Trees.Leaf
            (Leander.Core.Constructor (Current, Scan_Identifier));
       elsif At_Variable then
-         return Leander.Core.Trees.Leaf
+         Result := Leander.Core.Trees.Leaf
            (Leander.Core.Variable (Current, Scan_Identifier));
       elsif Tok = Tok_Integer_Literal then
          declare
@@ -209,7 +215,7 @@ package body Leander.Parser.Expressions is
          begin
             Scan;
             Expr.Set_Annotation (Leander.Primitives.Int_Type);
-            return Expr;
+            Result := Expr;
          end;
       elsif Tok = Tok_Character_Literal then
          declare
@@ -221,7 +227,7 @@ package body Leander.Parser.Expressions is
          begin
             Scan;
             Expr.Set_Annotation (Leander.Primitives.Char_Type);
-            return Expr;
+            Result := Expr;
          end;
       elsif Tok = Tok_String_Literal then
          declare
@@ -246,12 +252,12 @@ package body Leander.Parser.Expressions is
                end;
             end loop;
             Scan;
-            return E;
+            Result := E;
          end;
       elsif Tok = Tok_Left_Paren and then Next_Tok = Tok_Right_Paren then
          Scan;
          Scan;
-         return Leander.Core.Trees.Leaf
+         Result := Leander.Core.Trees.Leaf
            (Leander.Core.Constructor (Current, "()"));
       elsif Tok = Tok_Left_Paren then
          Scan;
@@ -280,11 +286,11 @@ package body Leander.Parser.Expressions is
                      else
                         Error ("missing ')'");
                      end if;
-                     return Expr;
+                     Result := Expr;
                   end;
                else
                   Error ("missing expression");
-                  return Leander.Core.Trees.Empty;
+                  Result := Leander.Core.Trees.Empty;
                end if;
             end;
          else
@@ -314,7 +320,7 @@ package body Leander.Parser.Expressions is
                else
                   Error ("missing ')'");
                end if;
-               return Expr;
+               Result := Expr;
             end;
          end if;
       elsif Tok = Tok_Left_Bracket then
@@ -425,14 +431,24 @@ package body Leander.Parser.Expressions is
             else
                Error ("missing ']'");
             end if;
-            return Expr;
+            Result := Expr;
          end;
       else
          Error ("expected atomic expression");
          Scan;
-         return Leander.Core.Trees.Leaf
+         Result := Leander.Core.Trees.Leaf
            (Leander.Core.Variable (Current, "_"));
       end if;
+
+      if Tok = Tok_Left_Brace then
+         Result :=
+           Parse_Record_Constructor
+             (Con_Name    => "",
+              Start_Value => Result);
+      end if;
+
+      return Result;
+
    end Parse_Atomic_Expression;
 
    ---------------------------
@@ -484,6 +500,10 @@ package body Leander.Parser.Expressions is
          return Builder.Transform;
       end;
    end Parse_Case_Expression;
+
+   -------------------------
+   -- Parse_Do_Expression --
+   -------------------------
 
    function Parse_Do_Expression
      (Indent : Positive)
@@ -861,13 +881,16 @@ package body Leander.Parser.Expressions is
    ------------------------------
 
    function Parse_Record_Constructor
-     (Con_Name : String)
+     (Con_Name    : String;
+      Start_Value : Leander.Core.Trees.Tree_Type)
       return Leander.Core.Trees.Tree_Type
    is
       use Leander.Core, Leander.Core.Trees;
       Expr : Tree_Type :=
-               Leaf (Variable (Current_Source_Reference,
-                     "undefined-" & Con_Name));
+               (if not Start_Value.Is_Empty then Start_Value
+                else Leaf
+                  (Variable (Current_Source_Reference,
+                   "undefined-" & Con_Name)));
       Indent : Positive;
    begin
       pragma Assert (Tok = Tok_Left_Brace);
@@ -877,7 +900,9 @@ package body Leander.Parser.Expressions is
          declare
             Field_Name : constant String := Tok_Text;
             Fn_Name    : constant String :=
-                           Con_Name & "-update-" & Field_Name;
+                           (if Con_Name = ""
+                            then "update-" & Field_Name
+                            else Con_Name & "-update-" & Field_Name);
          begin
             Scan;
             if Tok = Tok_Equal then
