@@ -242,7 +242,7 @@ fst (a,b) = a
 
 snd (a,b) = b
 
-data Bool = False | True deriving (Eq,Ord,Show)
+data Bool = False | True deriving (Eq,Ord,Show,Enum)
 
 True && x = x
 False && x = False
@@ -348,7 +348,7 @@ tests = [("print a list of Bool", print [True,False])
         ,("head [False,True]", print (head [False,True]))
         ,("tail [False,True]", print (tail [False,True]))
         ,("test record 1", print (boolField testRecValue))
-        ,("test record 2", putStrLn (textField testRecValue))
+        ,("test record 2", putStrLn (textField testRecValue { textField = "updated test record" }))
 --        ,("toEnum [0,1]", print (True : map toEnum [0,1]))
 --        ,("alphabet", print ['A' .. 'Z'])
         ]
