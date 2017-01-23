@@ -252,8 +252,27 @@ not True = False
  
 data  Ordering  =  LT | EQ | GT deriving (Eq,Show)
 
-null [] = True
-null x = False
+-- head             :: [a] -> a  
+head (x:_)       =  x  
+head []          =  error "Prelude.head: empty list"
+
+--  tail             :: [a] -> [a]  
+tail (_:xs)      =  xs  
+tail []          =  error "Prelude.tail: empty list"
+
+-- last             :: [a] -> a  
+last []          =  error "Prelude.last: empty list"
+last (x:xs)      = case xs of []     -> x
+                              (y:ys) -> last ys
+
+-- init             :: [a] -> [a]  
+init [x]         =  []  
+init (x:xs)      =  x : init xs  
+init []          =  error "Prelude.init: empty list"
+
+null             :: [a] -> Bool  
+null []          =  True  
+null (_:_)       =  False
 
 --  length [] = 0
 --  length (_:xs) = 1 + length xs
@@ -317,6 +336,9 @@ tests = [("print a list of Bool", print [True,False])
         ,("1 > 2", print (1 > 2))
         ,("2 > 1", print (2 > 1))
         ,("max False True", print (max False True))
+        ,("head [False,True]", print (head [False,True]))
+        ,("tail [False,True]", print (tail [False,True]))
+--        ,("alphabet", print ['A' .. 'Z'])
         ]
         
 selfTest = do
