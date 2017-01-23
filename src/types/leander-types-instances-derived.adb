@@ -25,6 +25,10 @@ package body Leander.Types.Instances.Derived is
 
    Deriver_Map : Derivation_Maps.Map;
 
+   procedure Derive_Enum
+     (Binding  : Leander.Types.Bindings.Type_Binding'Class;
+      Instance : in out Leander.Types.Instances.Type_Instance'Class);
+
    procedure Derive_Eq
      (Binding  : Leander.Types.Bindings.Type_Binding'Class;
       Instance : in out Leander.Types.Instances.Type_Instance'Class);
@@ -36,6 +40,63 @@ package body Leander.Types.Instances.Derived is
    procedure Derive_Show
      (Binding  : Leander.Types.Bindings.Type_Binding'Class;
       Instance : in out Leander.Types.Instances.Type_Instance'Class);
+
+   procedure Derive_Enum
+     (Binding  : Leander.Types.Bindings.Type_Binding'Class;
+      Instance : in out Leander.Types.Instances.Type_Instance'Class)
+   is
+      use Leander.Core, Leander.Core.Trees;
+
+      Current : constant Leander.Source.Source_Reference :=
+                  Leander.Parser.Current_Source_Reference;
+
+      To_Enum_Builder : Leander.Core.Cases.Case_Builder;
+      From_Enum_Builder : Leander.Core.Cases.Case_Builder;
+
+      ---------
+      -- Var --
+      ---------
+
+      function Var (Name : String) return Leander.Core.Core_Node
+      is (Variable (Current, Name));
+
+      function Con (Name : String) return Leander.Core.Core_Node
+      is (Constructor (Current, Name));
+
+   begin
+
+      From_Enum_Builder.Set_Case_Expression (Leaf (Var ("enum")));
+      To_Enum_Builder.Set_Case_Expression (Leaf (Var ("int")));
+
+      for I in 1 .. Binding.Constructor_Count loop
+         declare
+            use Leander.Types.Bindings;
+            Con_Name : constant String :=
+                         Binding.Constructor_Name (I);
+            Type_Exp : constant Tree_Type :=
+                         Leaf (Con (Con_Name));
+            Int_Exp  : constant Tree_Type :=
+                         Leaf
+                           (Literal
+                              (Current,
+                               Constructor_Count_Range'Image (I - 1)));
+         begin
+            Int_Exp.Set_Annotation (Leander.Primitives.Int_Type);
+            From_Enum_Builder.Add_Alt (Type_Exp, Int_Exp);
+            To_Enum_Builder.Add_Alt (Int_Exp.Clean_Copy, Type_Exp.Clean_Copy);
+         end;
+      end loop;
+
+      declare
+         From_Enum : Tree_Type := From_Enum_Builder.Transform;
+         To_Enum   : Tree_Type := To_Enum_Builder.Transform;
+      begin
+         From_Enum := Apply (Lambda (Current, "enum"), From_Enum);
+         Instance.Implement ("fromEnum", From_Enum);
+         To_Enum := Apply (Lambda (Current, "int"), To_Enum);
+         Instance.Implement ("toEnum", To_Enum);
+      end;
+   end Derive_Enum;
 
    ---------------
    -- Derive_Eq --
@@ -252,6 +313,7 @@ package body Leander.Types.Instances.Derived is
    end Derive_Show;
 
 begin
+   Deriver_Map.Insert ("Enum", Derive_Enum'Access);
    Deriver_Map.Insert ("Eq", Derive_Eq'Access);
    Deriver_Map.Insert ("Ord", Derive_Ord'Access);
    Deriver_Map.Insert ("Show", Derive_Show'Access);
