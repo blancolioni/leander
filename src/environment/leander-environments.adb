@@ -236,6 +236,24 @@ package body Leander.Environments is
       Env.Local.Constructors.Insert (Name, Binding);
    end Insert_Constructor;
 
+   ------------------------
+   -- Insert_Constructor --
+   ------------------------
+
+   procedure Insert_Constructor
+     (Env       : in out Environment;
+      Type_Name : String;
+      Con_Name  : String;
+      Binding   : Leander.Types.Bindings.Constructor_Binding'Class)
+   is
+      New_Binding : Leander.Types.Bindings.Constructor_Binding :=
+                      Leander.Types.Bindings.Constructor_Binding
+                        (Binding);
+   begin
+      Env.Local.Types.Add_Constructor (Type_Name, Con_Name, New_Binding);
+      Env.Local.Constructors.Insert (Con_Name, New_Binding);
+   end Insert_Constructor;
+
    ---------------------------
    -- Insert_Foreign_Import --
    ---------------------------

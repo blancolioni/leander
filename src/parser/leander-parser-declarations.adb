@@ -1,4 +1,5 @@
 with Ada.Containers.Vectors;
+with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 with Ada.Strings.Unbounded;
 
 with Leander.Prelude;
@@ -9,7 +10,9 @@ with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 with Leander.Parser.Expressions;
 with Leander.Parser.Types;
 
+with Leander.Types.Bindings;
 with Leander.Types.Class_Constraints;
+with Leander.Types.Compiler;
 with Leander.Types.Instances.Derived;
 with Leander.Types.Trees;
 
@@ -23,6 +26,9 @@ with Leander.Errors;
 with Leander.Logging;
 
 package body Leander.Parser.Declarations is
+
+   package String_Lists is
+     new Ada.Containers.Indefinite_Doubly_Linked_Lists (String);
 
    function At_Declaration return Boolean;
 
@@ -337,27 +343,85 @@ package body Leander.Parser.Declarations is
                   Indent   : constant Positive := Tok_Indent;
                begin
                   Scan;
-                  while Tok_Indent > Indent
-                    and then Parser.Types.At_Atomic_Type loop
-                     Count := Count + 1;
-                     Con_Args (Count) :=
-                       Parser.Types.Parse_Atomic_Type (Env);
-                  end loop;
+                  if Tok = Tok_Left_Brace then
+                     declare
+                        Con : Leander.Types.Bindings.Constructor_Binding;
+                     begin
+                        Scan;
+                        while At_Variable_Name loop
+                           declare
+                              Vars : String_Lists.List;
+                              Field_Type : Leander.Types.Trees.Tree_Type;
+                           begin
+                              while At_Variable_Name loop
+                                 Vars.Append (Scan_Identifier);
+                              end loop;
+                              if Tok = Tok_Colon_Colon then
+                                 Scan;
+                              else
+                                 Error ("missing '::'");
+                              end if;
 
-                  Con_Type := Tycon;
+                              Field_Type :=
+                                Leander.Parser.Types.Parse_Type (Env);
 
-                  for I in reverse 1 .. Count loop
-                     Con_Type :=
-                       Leander.Core.Map_Operator.Apply
-                         (Con_Args (I)).Apply (Con_Type);
-                  end loop;
+                              for Var_Name of Vars loop
+                                 Con.Add_Field (Var_Name, Field_Type);
+                              end loop;
 
-                  Env.Insert_Constructor
-                    (Type_Name => Name,
-                     Name      => Con_Name,
-                     Con_Type  => Con_Type,
-                     Con_Arity => Count);
+                              if Tok = Tok_Comma then
+                                 Scan;
+                                 if not At_Variable_Name then
+                                    if Tok = Tok_Right_Brace then
+                                       Error ("extra ',' ignored");
+                                    else
+                                       Error ("missing field");
+                                    end if;
+                                 end if;
+                              elsif At_Variable_Name then
+                                 if Tok_Indent < Indent then
+                                    exit;
+                                 else
+                                    Error ("missing ','");
+                                 end if;
+                              end if;
+                           end;
+                        end loop;
 
+                        if Tok = Tok_Right_Brace then
+                           Scan;
+                        else
+                           Error ("missing '}'");
+                        end if;
+
+                        Env.Insert_Constructor
+                          (Type_Name => Name,
+                           Con_Name  => Con_Name,
+                           Binding   => Con);
+
+                     end;
+                  else
+                     while Tok_Indent > Indent
+                       and then Parser.Types.At_Atomic_Type loop
+                        Count := Count + 1;
+                        Con_Args (Count) :=
+                          Parser.Types.Parse_Atomic_Type (Env);
+                     end loop;
+
+                     Con_Type := Tycon;
+
+                     for I in reverse 1 .. Count loop
+                        Con_Type :=
+                          Leander.Core.Map_Operator.Apply
+                            (Con_Args (I)).Apply (Con_Type);
+                     end loop;
+
+                     Env.Insert_Constructor
+                       (Type_Name => Name,
+                        Name      => Con_Name,
+                        Con_Type  => Con_Type,
+                        Con_Arity => Count);
+                  end if;
                end;
             end if;
             if Tok = Tok_Vertical_Bar then
@@ -366,6 +430,9 @@ package body Leander.Parser.Declarations is
                exit;
             end if;
          end loop;
+
+         Leander.Types.Compiler.Compile_Algebraic_Type
+           (Env, Name);
 
          if Tok = Tok_Deriving then
             Scan;

@@ -1,7 +1,9 @@
 private with Ada.Containers.Indefinite_Hashed_Maps;
 private with Ada.Containers.Indefinite_Vectors;
+private with Ada.Containers.Vectors;
 private with Ada.Strings.Fixed.Hash;
 
+with Leander.Source;
 with Leander.Types.Trees;
 
 package Leander.Types.Bindings is
@@ -24,6 +26,20 @@ package Leander.Types.Bindings is
      (Binding : Constructor_Binding)
       return Natural;
 
+   function Constructor_Field_Name
+     (Binding : Constructor_Binding;
+      Index   : Positive)
+      return String;
+
+   procedure Add_Component
+     (Constructor    : in out Constructor_Binding'Class;
+      Component_Type : Leander.Types.Trees.Tree_Type);
+
+   procedure Add_Field
+     (Constructor : in out Constructor_Binding'Class;
+      Field_Name  : String;
+      Field_Type  : Leander.Types.Trees.Tree_Type);
+
    type Constructor_Binding_List is tagged private;
 
    function Has_Binding
@@ -45,6 +61,10 @@ package Leander.Types.Bindings is
      Post => List.Has_Binding (Name);
 
    type Type_Binding is tagged private;
+
+   function Declaration
+     (Binding : Type_Binding'Class)
+      return Leander.Source.Source_Reference;
 
    procedure Annotate_Type_Constructor
      (Binding : Type_Binding);
@@ -86,6 +106,14 @@ package Leander.Types.Bindings is
      (Binding : Type_Binding;
       Index   : Constructor_Index_Range)
       return Natural
+     with Pre => Binding.Is_Algebraic
+     and then Index <= Binding.Constructor_Count;
+
+   function Constructor_Field_Name
+     (Binding     : Type_Binding;
+      Index       : Constructor_Index_Range;
+      Field_Index : Positive)
+      return String
      with Pre => Binding.Is_Algebraic
      and then Index <= Binding.Constructor_Count;
 
@@ -148,6 +176,12 @@ package Leander.Types.Bindings is
       Con_Arity : Natural)
       return Constructor_Binding'Class;
 
+   procedure Add_Constructor
+     (List      : in out Type_Binding_List;
+      Type_Name : String;
+      Con_Name  : String;
+      Con       : in out Constructor_Binding'Class);
+
    procedure Scan_Bindings
      (List    : Type_Binding_List;
       Process : not null access
@@ -156,11 +190,22 @@ package Leander.Types.Bindings is
 
 private
 
+   package Constructor_Field_Name_Vectors is
+     new Ada.Containers.Indefinite_Vectors
+       (Positive, String);
+
+   package Constructor_Component_Vectors is
+     new Ada.Containers.Vectors
+       (Positive, Leander.Types.Trees.Tree_Type, Leander.Types.Trees."=");
+
    type Constructor_Binding is tagged
       record
-         Con_Type : Leander.Types.Trees.Tree_Type;
-         Index    : Constructor_Index_Range;
-         Arity    : Natural;
+         Con_Type   : Leander.Types.Trees.Tree_Type :=
+                        Leander.Types.Trees.Empty;
+         Index      : Constructor_Index_Range;
+         Components : Constructor_Component_Vectors.Vector;
+         Names      : Constructor_Field_Name_Vectors.Vector :=
+                        Constructor_Field_Name_Vectors.Empty_Vector;
       end record;
 
    function Constructor_Type
@@ -176,7 +221,13 @@ private
    function Constructor_Arity
      (Binding : Constructor_Binding)
       return Natural
-   is (Binding.Arity);
+   is (Binding.Components.Last_Index);
+
+   function Constructor_Field_Name
+     (Binding : Constructor_Binding;
+      Index   : Positive)
+      return String
+   is (Binding.Names.Element (Index));
 
    package Constructor_Binding_Maps is
      new Ada.Containers.Indefinite_Hashed_Maps
@@ -208,6 +259,7 @@ private
 
    type Type_Binding is tagged
       record
+         Declaration  : Leander.Source.Source_Reference;
          Algebraic    : Boolean;
          Enumeration  : Boolean;
          Primitive    : Boolean;
@@ -228,6 +280,11 @@ private
    function Is_Primitive (Binding : Type_Binding) return Boolean
    is (Binding.Primitive);
 
+   function Declaration
+     (Binding : Type_Binding'Class)
+      return Leander.Source.Source_Reference
+   is (Binding.Declaration);
+
    function Constructor_Count
      (Binding : Type_Binding)
       return Constructor_Count_Range
@@ -238,6 +295,14 @@ private
       Index   : Constructor_Index_Range)
       return String
    is (Binding.Con_Vector.Element (Index));
+
+   function Constructor_Field_Name
+     (Binding   : Type_Binding;
+      Index     : Constructor_Index_Range;
+      Field_Index : Positive)
+      return String
+   is (Binding.Con_Map.Element
+       (Binding.Con_Vector (Index)).Names (Field_Index));
 
    function Constructor_Type
      (Binding : Type_Binding;
