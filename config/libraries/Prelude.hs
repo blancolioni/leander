@@ -48,10 +48,11 @@ class  (Eq a) => Ord a  where
         -- Minimal complete definition:  
         --      (<=) or compare  
         -- Using compare can be more efficient for complex types.  
-    compare x y  = if x == y then EQ
-                   else if x <= y then LT
-                   else GT
- 
+    compare x y  
+         | x == y    =  EQ  
+         | x <= y    =  LT  
+         | otherwise =  GT  
+  
     x <= y           =  compare x y /= GT  
     x <  y           =  compare x y == LT  
     x >= y           =  compare x y /= LT  
