@@ -37,7 +37,7 @@ begin
       SK.Machine.Assembler.Push (Machine, "runIO");
       SK.Machine.Assembler.Push (Machine, SK.Initial_World);
       SK.Machine.Apply (Machine);
-      SK.Machine.Assembler.Push (Machine, "testPrint");
+      SK.Machine.Assembler.Push (Machine, "selfTest");
       SK.Machine.Apply (Machine);
       --        SK.Machine.Assembler.Push (Machine, "f");
 --        SK.Machine.Push (Machine, SK.Initial_World);

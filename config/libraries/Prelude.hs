@@ -7,6 +7,8 @@ foreign import #objGT :: Int -> Int -> Int
 foreign import #objLE :: Int -> Int -> Int
 foreign import #objLT :: Int -> Int -> Int
 
+foreign import #fail :: a
+
 infixr 9  .  
 infixr 8  ^, ^^, **
 infixl 7  *, /, `quot`, `rem`, `div`, `mod`
@@ -56,9 +58,11 @@ class  (Eq a) => Ord a  where
     x >  y           =  compare x y == GT
 	
 -- note that (min x y, max x y) = (x,y) or (y,x)  
-    max x y = if x <= y then y else x
+    max x y | x <= y = y
+            | otherwise = x
 
-    min x y = if x <= y then x else y
+    min x y | x <= y = x
+            | otherwise = y
 
 -- Enumeration and Bounded classes  
  
@@ -276,18 +280,19 @@ foldl f z (x:xs) =  foldl f (f z x) xs
 foldr f z []     =  z  
 foldr f z (x:xs) =  f x (foldr f z xs)
 
-testPrintBoolList = print "Hello, world!" >> print [True, False] >> print (True < False)
-                       >> print (1 == 2) >> print (2 == 2) >> print (1 > 2) >> print (2 > 1)
-					   
-testPrintBool = print True
-
-testPrint = testPrintBoolList
-
+tests = [("print a list of Bool", print [True,False])
+        ,("True is less than False", print (True < False))
+        ,("1 == 2", print (1 == 2))
+        ,("2 == 2", print (2 == 2))
+        ,("1 > 2", print (1 > 2))
+        ,("2 > 1", print (2 > 1))
+        ,("max False True", print (max False True))
+        ]
+        
+selfTest = do
+  putStrLn systemName
+  mapM_ (\ x -> case x of (label,test) -> putStr label >> putStr ": " >> test) tests
+  
 runIO w (IO f) = case f w of
                    (x,w') -> w'
                    
-testPutStrLn = doTestPutStrLn "Hello, world"
-
-doTestPutStrLn [] = putChar '\n'
-doTestPutStrLn (x:xs) = putChar x >> doTestPutStrLn xs
-
