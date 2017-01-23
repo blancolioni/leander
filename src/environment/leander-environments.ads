@@ -172,6 +172,12 @@ package Leander.Environments is
       Con_Type  : Leander.Types.Trees.Tree_Type;
       Con_Arity : Natural);
 
+   procedure Insert_Constructor
+     (Env       : in out Environment;
+      Type_Name : String;
+      Con_Name  : String;
+      Binding   : Leander.Types.Bindings.Constructor_Binding'Class);
+
    procedure Insert_Class_Binding
      (Env   : Environment;
       Name  : String;

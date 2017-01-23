@@ -329,6 +329,10 @@ foldl f z (x:xs) =  foldl f (f z x) xs
 foldr f z []     =  z  
 foldr f z (x:xs) =  f x (foldr f z xs)
 
+data TestRecord = Rec { boolField :: Bool, textField :: [Char] }
+
+testRecValue = Rec True "test record"
+
 tests = [("print a list of Bool", print [True,False])
         ,("True is less than False", print (True < False))
         ,("1 == 2", print (1 == 2))
@@ -338,6 +342,9 @@ tests = [("print a list of Bool", print [True,False])
         ,("max False True", print (max False True))
         ,("head [False,True]", print (head [False,True]))
         ,("tail [False,True]", print (tail [False,True]))
+        ,("test record 1", print (boolField testRecValue))
+        ,("test record 2", putStrLn (textField testRecValue))
+--        ,("toEnum [0,1]", print (True : map toEnum [0,1]))
 --        ,("alphabet", print ['A' .. 'Z'])
         ]
         

@@ -14,6 +14,19 @@ package body Leander.Types.Bindings is
         (Assertion);
    end Add_Assertion;
 
+   -------------------
+   -- Add_Component --
+   -------------------
+
+   procedure Add_Component
+     (Constructor    : in out Constructor_Binding'Class;
+      Component_Type : Leander.Types.Trees.Tree_Type)
+   is
+   begin
+      Constructor.Components.Append (Component_Type);
+      Constructor.Names.Append ("");
+   end Add_Component;
+
    ---------------------
    -- Add_Constructor --
    ---------------------
@@ -27,11 +40,18 @@ package body Leander.Types.Bindings is
       return Constructor_Binding'Class
    is
       Binding : Type_Binding renames List.Map (Type_Name);
-      Con : constant Constructor_Binding := Constructor_Binding'
+      Con : Constructor_Binding := Constructor_Binding'
         (Con_Type => Con_Type,
          Index    => Binding.Constructor_Count + 1,
-         Arity    => Con_Arity);
+         others   => <>);
+      It      : Leander.Types.Trees.Tree_Type := Con_Type;
    begin
+      for I in 1 .. Con_Arity loop
+         Con.Names.Append ("");
+         Con.Components.Append (It.Left.Right);
+         It := It.Right;
+      end loop;
+
       Binding.Con_Map.Insert (Con_Name, Con);
       Binding.Con_Vector.Append (Con_Name);
       if not Con_Type.Is_Leaf then
@@ -39,6 +59,48 @@ package body Leander.Types.Bindings is
       end if;
       return Con;
    end Add_Constructor;
+
+   ---------------------
+   -- Add_Constructor --
+   ---------------------
+
+   procedure Add_Constructor
+     (List      : in out Type_Binding_List;
+      Type_Name : String;
+      Con_Name  : String;
+      Con       : in out Constructor_Binding'Class)
+   is
+      Binding : Type_Binding renames List.Map (Type_Name);
+   begin
+      Con.Con_Type := Binding.Type_Pattern;
+      for Component of reverse Con.Components loop
+         Con.Con_Type :=
+           Leander.Types.Trees.Leaf
+             (Leander.Types.Constructor ("->"))
+               .Apply (Component).Apply (Con.Con_Type);
+      end loop;
+      Binding.Con_Map.Insert (Con_Name, Constructor_Binding (Con));
+      Binding.Con_Vector.Append (Con_Name);
+      Con.Index := Binding.Con_Vector.Last_Index;
+      if not Con.Con_Type.Is_Leaf then
+         Binding.Enumeration := False;
+      end if;
+
+   end Add_Constructor;
+
+   ---------------
+   -- Add_Field --
+   ---------------
+
+   procedure Add_Field
+     (Constructor : in out Constructor_Binding'Class;
+      Field_Name  : String;
+      Field_Type  : Leander.Types.Trees.Tree_Type)
+   is
+   begin
+      Constructor.Components.Append (Field_Type);
+      Constructor.Names.Append (Field_Name);
+   end Add_Field;
 
    -------------------------------
    -- Annotate_Type_Constructor --
