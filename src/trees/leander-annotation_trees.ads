@@ -66,7 +66,8 @@ package Leander.Annotation_Trees is
 
    procedure Set_Annotation
      (Tree       : Tree_Type;
-      Annotation : Annotation_Type);
+      Annotation : Annotation_Type)
+     with Pre => not Annotation.Is_Empty;
 
    overriding procedure Merge_Constraints
      (Left, Right : in out Tree_Type);
