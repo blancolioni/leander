@@ -13,6 +13,10 @@ foreign import #charPos :: Char -> Int
 foreign import #intFirst :: Int
 foreign import #intLast :: Int
 
+foreign import #intPlus :: Int -> Int -> Int
+foreign import #intMinus :: Int -> Int -> Int
+foreign import #intMult :: Int -> Int -> Int
+
 foreign import #fail :: a
 foreign import #undefined :: a
 foreign import #error :: [Char] -> a
@@ -135,6 +139,17 @@ showChar         =  (:)
 showString       :: [Char] -> [Char] -> [Char]
 showString       =  (++)
 
+class  Eq a => Num a  where  
+    (+), (-), (*)    :: a -> a -> a  
+    negate           :: a -> a  
+    abs, signum      :: a -> a  
+    fromInteger      :: Integer -> a  
+ 
+        -- Minimal complete definition:  
+        --      All, except negate or (-)  
+    x - y            =  x + negate y  
+    negate x         =  0 - x
+    
 instance Enum Char where
     toEnum = #charVal
     fromEnum = #charPos
@@ -164,9 +179,39 @@ instance Enum Int where
     enumFromTo x y = enumFromThenTo x (x + 1) y
     enumFromThen x y = enumFromThenTo x y maxBound
     enumFromThenTo x y z | y < x = []
-                         | z - (y - x) < y = [x]
+                         | (z - (y - x) + 1) < y = [x]
                          | otherwise = x : enumFromThenTo y (y + (y - x)) z
 
+instance Show Int where
+    show = showInt
+    
+--  showInt :: Int -> [Char]
+showInt x = case x of 0 -> "0"
+                      1 -> "1"
+                      2 -> "2"
+                      3 -> "3"
+                      4 -> "4"
+                      5 -> "5"
+                      6 -> "6"
+                      7 -> "7"
+                      8 -> "8"
+                      9 -> "9"
+                      _ -> "<too big!>"
+    
+instance Num Int where
+    (+) = #intPlus
+    (-) = #intMinus
+    (*) = #intMult
+    abs x | x < 0 = negate x
+          | otherwise = x
+    signum x = case compare x 0 of
+                 LT -> negate 1
+                 EQ -> 0
+                 GT -> 1
+    fromInteger = const 0
+    
+subtract         =  flip (-)
+    
 instance  Show Char  where  
     showsPrec p '\'' = showString "'\\''"  
     showsPrec p c    = showChar '\'' . showLitChar c . showChar '\''  
@@ -341,6 +386,9 @@ data TestRecord = Rec { boolField :: Bool, textField :: [Char] }
 
 testRecValue = Rec { boolField = True, textField = "test record" }
 
+testArithSequence = [1 .. 5]
+checkParse = True
+
 tests = [("print a list of Bool", print [True,False])
         ,("True is less than False", print (True < False))
         ,("1 == 2", print (1 == 2))
@@ -352,6 +400,10 @@ tests = [("print a list of Bool", print [True,False])
         ,("tail [False,True]", print (tail [False,True]))
         ,("test record 1", print (boolField testRecValue))
         ,("test record 2", putStrLn (textField testRecValue { textField = "updated test record" }))
+        ,("show int", print 1)
+        ,("list of int", print [1,2,3,4])
+        ,("arithmetic sequence", print testArithSequence)
+--        ,("error", print (head (tail [True])))
 --        ,("toEnum [0,1]", print (True : map toEnum [0,1]))
 --        ,("alphabet", print ['A' .. 'Z'])
         ]
