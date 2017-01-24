@@ -132,7 +132,8 @@ package Leander.Environments is
    procedure Insert_Value
      (Env   : in out Environment;
       Name  : String;
-      Value : Leander.Core.Trees.Tree_Type);
+      Value : Leander.Core.Trees.Tree_Type)
+     with Pre => not Env.Has_Local_Binding (Name);
 
    procedure Insert_Type_Variable
      (Env   : in out Environment;
