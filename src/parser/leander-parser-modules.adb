@@ -1,3 +1,5 @@
+with GCS.Errors;
+
 with Leander.Prelude;
 
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
@@ -32,7 +34,9 @@ package body Leander.Parser.Modules is
 
       Close;
 
-      Leander.Environments.Annotate (Env);
+      if not GCS.Errors.Has_Errors then
+         Leander.Environments.Annotate (Env);
+      end if;
 
       return Env;
 

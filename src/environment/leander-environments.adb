@@ -1,3 +1,5 @@
+with Leander.Errors;
+
 with Leander.Types.Kind_Inference;
 with Leander.Types.Class_Constraints.Compiler;
 with Leander.Types.Instances.Compiler;
@@ -122,8 +124,13 @@ package body Leander.Environments is
 
    begin
       Env.Local.Classes.Scan (Compile_Class'Access);
-      Env.Local.Types.Scan_Bindings (Compile_Instances'Access);
-      Env.Local.Values.Scan (Compile_Binding'Access);
+      if not Leander.Errors.Has_Errors then
+         Env.Local.Types.Scan_Bindings (Compile_Instances'Access);
+      end if;
+
+      if not Leander.Errors.Has_Errors then
+         Env.Local.Values.Scan (Compile_Binding'Access);
+      end if;
    end Compile;
 
    ------------
