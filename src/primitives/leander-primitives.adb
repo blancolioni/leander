@@ -1,5 +1,8 @@
 with Ada.Containers.Vectors;
 
+with SK.Cells;
+with SK.Functions;
+
 with Leander.Core;
 with Leander.Kinds.Trees;
 
@@ -33,6 +36,18 @@ package body Leander.Primitives is
    Tuples : Tuple_Vectors.Vector;
 
    procedure Check_Tuple (Arity : Positive);
+
+   function Object_To_String
+     (Cells   : SK.Cells.Managed_Cells;
+      Value   : SK.Object)
+      return String;
+
+   function Evaluate_Error
+     (Cells : SK.Cells.Managed_Cells;
+      Args  : SK.Array_Of_Objects)
+      return SK.Object
+   is (raise SK.Evaluation_Error with
+       Object_To_String (Cells, Args (Args'First)));
 
    ---------------
    -- Char_Type --
@@ -189,6 +204,28 @@ package body Leander.Primitives is
    begin
       return Local_Map_Type;
    end Map_Type;
+
+   ----------------------
+   -- Object_To_String --
+   ----------------------
+
+   function Object_To_String
+     (Cells   : SK.Cells.Managed_Cells;
+      Value   : SK.Object)
+      return String
+   is
+
+      function To_String (Value : SK.Object) return String
+      is (if SK.Is_Application (Value)
+          then To_String (SK.Cells.Car (Cells, Value))
+          & To_String (SK.Cells.Cdr (Cells, Value))
+          elsif SK.Is_Integer (Value)
+          then (1 => Character'Val (SK.Get_Integer (Value)))
+          else "");
+
+   begin
+      return To_String (Value);
+   end Object_To_String;
 
    -----------------
    -- Trivial_Con --
@@ -361,4 +398,7 @@ begin
        (Leander.Types.Trees.Apply
           (Leander.Types.Constructor ("->"), Type_Variable_A),
         Local_Cons);
+
+   SK.Functions.Bind_Function ("#error", 1, Evaluate_Error'Access);
+
 end Leander.Primitives;
