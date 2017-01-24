@@ -1,4 +1,5 @@
 with Ada.Strings.Fixed.Hash;
+with Ada.Text_IO;
 
 with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Containers.Vectors;
@@ -69,6 +70,15 @@ package body Leander.Core.Type_Inference is
       Bindings   : Array_Of_Annotations)
       return Leander.Types.Trees.Tree_Type;
 
+   function Show_Dereferenced_Type
+     (Annotation : Leander.Types.Trees.Tree_Type;
+      Bindings   : Array_Of_Annotations)
+      return String
+   is (if Annotation.Is_Leaf
+       then Dereference (Annotation, Bindings).Show
+       else Show_Dereferenced_Type (Annotation.Left, Bindings)
+       & " " & Show_Dereferenced_Type (Annotation.Right, Bindings));
+
    --------------
    -- Annotate --
    --------------
@@ -116,6 +126,11 @@ package body Leander.Core.Type_Inference is
                Tree.Update_Node.Original_Type := Tree.Annotation;
             end if;
          end if;
+      exception
+         when others =>
+            Leander.Logging.Log ("bind: caught exception while binding "
+                                 & Tree.Show);
+            raise;
       end Bind;
 
       -----------
@@ -128,7 +143,8 @@ package body Leander.Core.Type_Inference is
       begin
          if Log_Unification then
             Leander.Logging.Log
-              ("enter unify: " & Tree.Show_With_Annotations);
+              ("enter unify: " & Tree.Show & " :: "
+               & Show_Dereferenced_Type (Tree.Annotation, Vars));
          end if;
 
          if Tree.Is_Application then
@@ -151,9 +167,22 @@ package body Leander.Core.Type_Inference is
                                 Map_Operator.Apply
                                   (Tree.Left.Annotation)
                                   .Apply (Tree.Right.Annotation);
+                     New_A  : constant Leander.Types.Trees.Tree_Type :=
+                        Unify (Tree_A, Tree.Annotation, Vars);
                   begin
-                     Tree.Set_Annotation
-                       (Unify (Tree_A, Tree.Annotation, Vars));
+                     if New_A.Is_Empty then
+                        Leander.Errors.Error
+                          (Tree.Head.Source,
+                           "type error: cannot unify "
+                           & Show_Dereferenced_Type (Tree_A, Vars)
+                           & " with "
+                           & Show_Dereferenced_Type (Tree.Annotation, Vars));
+                        Leander.Errors.Error
+                          (Tree.Head.Source,
+                           "in expression: " & Tree.Show);
+                     else
+                        Tree.Set_Annotation (New_A);
+                     end if;
                   end;
                else
                   declare
@@ -187,7 +216,8 @@ package body Leander.Core.Type_Inference is
 
          if Log_Unification then
             Leander.Logging.Log
-              ("exit unify: " & Tree.Show_With_Annotations);
+              ("exit unify: " & Tree.Show & " :: "
+                 & Show_Dereferenced_Type (Tree.Annotation, Vars));
          end if;
 
       end Unify;
@@ -255,6 +285,12 @@ package body Leander.Core.Type_Inference is
    begin
       Unify (Tree);
       Bind (Tree);
+   exception
+      when others =>
+         Leander.Errors.Error
+           (Tree.Head.Source,
+            "error while annotating " & Tree.Show);
+         raise;
    end Annotate;
 
    ----------
@@ -300,6 +336,11 @@ package body Leander.Core.Type_Inference is
             return Left.Apply (Right);
          end;
       end if;
+   exception
+      when others =>
+         Leander.Logging.Log ("bind: caught exception while binding "
+                              & A.Show_With_Annotations);
+         raise;
    end Bind;
 
    -----------------
@@ -828,8 +869,6 @@ package body Leander.Core.Type_Inference is
       Right   : constant Leander.Types.Trees.Tree_Type :=
                   Dereference (Right_Annotation, Bindings);
    begin
---        Leander.Logging.Log
---          ("Unify: " & Left.Show & " with " & Right.Show);
       if Left.Is_Binding then
          Left.Merge_Tree_Constraints (Right);
          Bindings (Left.Binding_Index) := Right;
@@ -842,9 +881,15 @@ package body Leander.Core.Type_Inference is
          if Right.Is_Leaf and then Left = Right then
             return Left;
          else
+            Ada.Text_IO.Put_Line
+              (Ada.Text_IO.Standard_Error,
+               "cannot unify leaf " & Left.Show & " with " & Right.Show);
             return Empty;
          end if;
       elsif Right.Is_Leaf then
+         Ada.Text_IO.Put_Line
+           (Ada.Text_IO.Standard_Error,
+            "cannot unify leaf " & Right.Show & " with " & Left.Show);
          return Empty;
       else
          declare
