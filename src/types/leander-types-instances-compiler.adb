@@ -2,6 +2,8 @@ with Ada.Containers.Vectors;
 
 with SK.Machine.Assembler;
 
+with Leander.Errors;
+
 with Leander.Core.Compiler;
 with Leander.Core.Type_Inference;
 
@@ -134,6 +136,10 @@ package body Leander.Types.Instances.Compiler is
          & Instance.Type_Tree.Show);
 
       Class.Scan_Methods (Add_Method'Access);
+
+      if Leander.Errors.Has_Errors then
+         return;
+      end if;
 
       for I in 1 .. Methods.Last_Index loop
          Leander.Core.Compiler.Compile_Instance_Method
