@@ -13,14 +13,13 @@ package body Leander.Primitives is
    Local_Trivial_Type : Leander.Types.Trees.Tree_Type;
    Local_Trivial_Con  : Leander.Types.Trees.Tree_Type;
    Local_Int_Type     : Leander.Types.Trees.Tree_Type;
+   Local_Integer_Type : Leander.Types.Trees.Tree_Type;
    Local_Char_Type    : Leander.Types.Trees.Tree_Type;
    Local_List_Type    : Leander.Types.Trees.Tree_Type;
    Local_Empty_List   : Leander.Types.Trees.Tree_Type;
    Local_Cons         : Leander.Types.Trees.Tree_Type;
    Local_Map_Type     : Leander.Types.Trees.Tree_Type;
    Local_World_Type   : Leander.Types.Trees.Tree_Type;
---     Local_IO_Type      : Leander.Types.Trees.Tree_Type;
---     Local_IO_Con       : Leander.Types.Trees.Tree_Type;
 
    type Tuple_Entry_Record is
       record
@@ -90,22 +89,6 @@ package body Leander.Primitives is
                 (Leander.Types.Constructor (Name));
             Tycon.Set_Annotation (Kind);
 
---              declare
---                 It : Leander.Kinds.Trees.Tree_Type := Kind;
---              begin
---                 for I in 1 .. Arity loop
---                    Tycon :=
---                      Tycon.Apply
---                        (Leander.Types.Variable
---                           ((1 => Character'Val (96 + I)),
---                            Leander.Kinds.Trees.Leaf
---                              (Leander.Kinds.Primitive)));
---                    Tycon.Set_Annotation
---                      (It.Right);
---                    It := It.Right;
---                 end loop;
---              end;
-
             Con := Tycon;
             for I in 1 .. Arity loop
                Con :=
@@ -169,23 +152,14 @@ package body Leander.Primitives is
       return Local_Int_Type;
    end Int_Type;
 
-   ------------
-   -- IO_Con --
-   ------------
+   ------------------
+   -- Integer_Type --
+   ------------------
 
---     function IO_Con return Leander.Types.Trees.Tree_Type is
---     begin
---        return Local_IO_Con;
---     end IO_Con;
-
-   -------------
-   -- IO_Type --
-   -------------
-
---     function IO_Type return Leander.Types.Trees.Tree_Type is
---     begin
---        return Local_IO_Type;
---     end IO_Type;
+   function Integer_Type return Leander.Types.Trees.Tree_Type is
+   begin
+      return Local_Integer_Type;
+   end Integer_Type;
 
    ---------------
    -- List_Type --
@@ -322,6 +296,12 @@ begin
        (Leander.Types.Constructor
           ("Int"));
    Local_Int_Type.Set_Annotation (Type_Con_0);
+
+   Local_Integer_Type :=
+     Leander.Types.Trees.Leaf
+       (Leander.Types.Constructor
+          ("Integer"));
+   Local_Integer_Type.Set_Annotation (Type_Con_0);
 
    Local_Char_Type :=
      Leander.Types.Trees.Leaf

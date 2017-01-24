@@ -7,6 +7,7 @@ package Leander.Primitives is
 
    function Char_Type return Leander.Types.Trees.Tree_Type;
    function Int_Type return Leander.Types.Trees.Tree_Type;
+   function Integer_Type return Leander.Types.Trees.Tree_Type;
 
    function List_Type return Leander.Types.Trees.Tree_Type;
    function Empty_List return Leander.Types.Trees.Tree_Type;
