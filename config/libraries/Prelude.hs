@@ -15,6 +15,7 @@ foreign import #intLast :: Int
 
 foreign import #fail :: a
 foreign import #undefined :: a
+foreign import #error :: [Char] -> a
 
 foreign import #initWorld :: World#
 
@@ -38,6 +39,8 @@ infixr 0  $, $!, `seq`
 fix f = f (fix f)
 
 undefined = #undefined
+
+error = #error
 
 -- Standard types, classes, instances and related functions  
  
