@@ -45,6 +45,13 @@ package Leander.Environments is
       return Leander.Types.Trees.Tree_Type
      with Pre => Env.Has_Local_Signature (Name);
 
+   function Bound_Name
+     (Env : Environment;
+      Name : String)
+      return String;
+   --  return the string to which Name is bound, i.e. how we refer
+   --  to it in compiled SK code
+
    procedure Scan_Local_Bindings
      (Env     : Environment'Class;
       Process : not null access
@@ -259,6 +266,14 @@ private
       return Leander.Core.Trees.Tree_Type'Class
    is (if Env.Has_Local_Binding (Name) then Env.Local_Binding (Name)
        else Env.Global.Values.Binding (Name));
+
+   function Bound_Name
+     (Env  : Environment;
+      Name : String)
+      return String
+   is (if Env.Has_Local_Binding (Name) or else Env.Has_Local_Signature (Name)
+       then Env.Local.Values.Bound_Name (Name)
+       else Env.Global.Values.Bound_Name (Name));
 
    function Has_Constructor_Binding
      (Env  : Environment;

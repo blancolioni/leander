@@ -271,10 +271,11 @@ package body Leander.Environments is
       Foreign_Name : String;
       Signature    : Leander.Types.Trees.Tree_Type)
    is
-      pragma Unreferenced (Foreign_Name);
    begin
-      Env.Local.Values.Insert (Name, Signature);
-      Leander.Logging.Log (Name & " :: " & Signature.Show);
+      Env.Local.Values.Insert
+        (Name, Signature, Bound_Name => Foreign_Name);
+      Leander.Logging.Log
+        (Name & " :: " & Signature.Show);
    end Insert_Foreign_Import;
 
    ----------------------

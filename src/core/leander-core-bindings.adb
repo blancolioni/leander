@@ -18,15 +18,19 @@ package body Leander.Core.Bindings is
             Rec.Has_Value := True;
             Rec.Value := Binding;
             Rec.Value.Set_Annotation (Rec.Signature);
-            Rec.Bound_Name :=
-              Ada.Strings.Unbounded.To_Unbounded_String
-                (if Bound_Name = "" then Name else Bound_Name);
+            if Bound_Name /= "" then
+               Rec.Bound_Name := +Bound_Name;
+            end if;
             List.Map.Replace_Element
               (List.Map.Find (Name), Rec);
          end;
       else
          List.Map.Insert
-           (Name, (Has_Value => True, Value => Binding, others => <>));
+           (Name, (Has_Value => True,
+                   Value     => Binding,
+                   Bound_Name    =>
+                     +(if Bound_Name = "" then Name else Bound_Name),
+                   others        => <>));
       end if;
    end Insert;
 
@@ -37,7 +41,8 @@ package body Leander.Core.Bindings is
    procedure Insert
      (List          : in out Binding_List;
       Name          : String;
-      Signature     : Leander.Types.Trees.Tree_Type)
+      Signature     : Leander.Types.Trees.Tree_Type;
+      Bound_Name    : String := "")
    is
    begin
       if List.Has_Binding (Name) then
@@ -47,6 +52,9 @@ package body Leander.Core.Bindings is
             Rec.Has_Signature := True;
             Rec.Signature := Signature;
             Rec.Value.Set_Annotation (Rec.Signature);
+            if Bound_Name /= "" then
+               Rec.Bound_Name := +Bound_Name;
+            end if;
             List.Map.Replace_Element
               (List.Map.Find (Name), Rec);
          end;
@@ -54,6 +62,8 @@ package body Leander.Core.Bindings is
          List.Map.Insert
            (Name, (Has_Signature => True,
                    Signature     => Signature,
+                   Bound_Name    =>
+                     +(if Bound_Name = "" then Name else Bound_Name),
                    others        => <>));
       end if;
    end Insert;
