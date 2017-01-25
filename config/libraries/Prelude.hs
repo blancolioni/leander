@@ -186,17 +186,8 @@ instance Show Int where
     show = showInt
     
 --  showInt :: Int -> [Char]
-showInt x = case x of 0 -> "0"
-                      1 -> "1"
-                      2 -> "2"
-                      3 -> "3"
-                      4 -> "4"
-                      5 -> "5"
-                      6 -> "6"
-                      7 -> "7"
-                      8 -> "8"
-                      9 -> "9"
-                      _ -> "<too big!>"
+showInt x | x < 10 = [toEnum (x + 48)]
+          | otherwise = "<too big!>"
     
 instance Num Int where
     (+) = #intPlus
