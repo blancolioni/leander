@@ -51,7 +51,8 @@ package Leander.Core.Bindings is
    procedure Insert
      (List          : in out Binding_List;
       Name          : String;
-      Signature     : Leander.Types.Trees.Tree_Type)
+      Signature     : Leander.Types.Trees.Tree_Type;
+      Bound_Name    : String := "")
      with Pre => not List.Has_Signature (Name),
      Post => List.Has_Signature (Name);
 

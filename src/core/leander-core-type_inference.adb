@@ -769,6 +769,24 @@ package body Leander.Core.Type_Inference is
                      Var_Type := Vector.Last_Element;
                   end if;
 
+                  declare
+                     Bound_Name : constant String :=
+                                    Env.Bound_Name (Name);
+                  begin
+                     pragma Assert (Bound_Name /= "");
+
+                     if Bound_Name /= Name then
+                        Leander.Logging.Log
+                          ("bound name: " & Name & " -> " & Bound_Name);
+                        Root.Update_Node.Name :=
+                          Ada.Strings.Unbounded.To_Unbounded_String
+                            (Env.Bound_Name (Name));
+                     end if;
+                  end;
+
+                  Leander.Logging.Log
+                    ("variable: " & Name & " :: "
+                     & Leander.Types.Trees.Show_Type (Var_Type));
                   Root.Update_Node.Original_Type := Var_Type;
                   Root.Set_Annotation (Unbind (Root.Get_Node.Original_Type));
                else
