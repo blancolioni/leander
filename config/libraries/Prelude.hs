@@ -2,6 +2,7 @@ systemName = "Leander"
 
 foreign import #putchar :: Char -> World# -> World#
 foreign import #intEq :: Int -> Int -> Int
+foreign import "#intEq" #charEq :: Char -> Char -> Int
 foreign import #objGE :: Int -> Int -> Int
 foreign import #objGT :: Int -> Int -> Int
 foreign import #objLE :: Int -> Int -> Int
@@ -154,6 +155,9 @@ instance Enum Char where
     toEnum = #charVal
     fromEnum = #charPos
     
+instance Eq Char where
+   x == y = primBoolToBool (#charEq x y)
+   
 primBoolToBool 0 = False
 primBoolToBool _ = True
 			   
@@ -203,6 +207,7 @@ instance Num Int where
     
 subtract         =  flip (-)
     
+
 instance  Show Char  where  
     showsPrec p '\'' = showString "'\\''"  
     showsPrec p c    = showChar '\'' . showLitChar c . showChar '\''  
@@ -265,12 +270,6 @@ print = putStrLn . show
 
 id x = x
 
-equal x y = x == y
-
-equal4 w x y z = (w == x) && (y == z)
-
-checkEqual = equal4 1 1 2 2 
-
 const x = \ y -> x
 
 f . g = \x -> f (g x)
@@ -318,8 +317,60 @@ null             :: [a] -> Bool
 null []          =  True  
 null (_:_)       =  False
 
---  length [] = 0
---  length (_:xs) = 1 + length xs
+length [] = 0
+length (_:xs) = 1 + length xs
+
+take n = \x -> if n <= 0 then []
+               else case x of [] -> []
+                              (x:xs) -> x : take (n - 1) xs
+
+drop n = \xs -> if n <= 0 then xs
+                else case xs of [] -> []
+                                (_:ys) -> drop (n - 1) ys
+
+splitAt n xs             =  (take n xs, drop n xs)
+                                
+-- takeWhile, applied to a predicate p and a list xs, returns the longest  
+-- prefix (possibly empty) of xs of elements that satisfy p.  dropWhile p xs  
+-- returns the remaining suffix.  span p xs is equivalent to  
+-- (takeWhile p xs, dropWhile p xs), while break p uses the negation of p.  
+ 
+-- takeWhile               :: (a -> Bool) -> [a] -> [a]  
+takeWhile p []          =  []  
+takeWhile p (x:xs)  
+            | p x       =  x : takeWhile p xs  
+            | otherwise =  []
+
+--  dropWhile               :: (a -> Bool) -> [a] -> [a]  
+--  dropWhile p []          =  []  
+--  dropWhile p xs@(x:xs')  
+--              | p x       =  dropWhile p xs'  
+--              | otherwise =  xs
+            
+-- reverse xs returns the elements of xs in reverse order.  xs must be finite.  
+--  reverse          :: [a] -> [a]  
+reverse          =  foldl (flip (:)) []
+
+-- and returns the conjunction of a Boolean list.  For the result to be  
+-- True, the list must be finite; False, however, results from a False  
+-- value at a finite index of a finite or infinite list.  or is the  
+-- disjunctive dual of and.  
+--  and, or          :: [Bool] -> Bool  
+and              =  foldr (&&) True  
+or               =  foldr (||) False
+
+-- Applied to a predicate and a list, any determines if any element  
+-- of the list satisfies the predicate.  Similarly, for all.  
+--  any, all         :: (a -> Bool) -> [a] -> Bool  
+any p            =  or . map p  
+all p            =  and . map p
+
+-- elem is the list membership predicate, usually written in infix form,  
+-- e.g., x ‘elem‘ xs.  notElem is the negation.  
+--  elem, notElem    :: (Eq a) => a -> [a] -> Bool  
+elem x           =  any (== x)  
+notElem x        =  all (/= x)            
+
 
 otherwise = True
 
@@ -380,6 +431,10 @@ testRecValue = Rec { boolField = True, textField = "test record" }
 testArithSequence = [1 .. 5]
 checkParse = True
 
+isVowel = flip elem "AEIOU"
+
+filterVowels = filter (flip elem "AEIOU")
+
 tests = [("print a list of Bool", print [True,False])
         ,("True is less than False", print (True < False))
         ,("1 == 2", print (1 == 2))
@@ -397,6 +452,10 @@ tests = [("print a list of Bool", print [True,False])
 --        ,("error", print (head (tail [True])))
 --        ,("toEnum [0,1]", print (True : map toEnum [0,1]))
         ,("alphabet", print ['A' .. 'Z'])
+        ,("# letters", print (length ['A' .. 'Z']))
+        ,("take 5 [1 ..]", print (take 5 [1 ..]))
+        ,("filterVowels", print (filterVowels ['A' .. 'Z']))
+        ,("vowels", putStrLn (filter (flip elem "AEIOU") ['A' .. 'Z']))
         ]
         
 
