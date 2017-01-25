@@ -896,7 +896,16 @@ package body Leander.Parser.Declarations is
                              Value);
                      end loop;
                   end if;
-                  Env.Insert_Value (Name, Value);
+                  if Env.Has_Local_Binding (Name) then
+                     Leander.Errors.Error
+                       (Pats.First_Element.Head.Source,
+                        "redefinition of '" & Name & "'");
+                     Leander.Errors.Error
+                       (Env.Local_Binding (Name).Head.Source,
+                        "original definition of " & Name);
+                  else
+                     Env.Insert_Value (Name, Value);
+                  end if;
                end;
 
             end if;

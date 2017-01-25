@@ -405,7 +405,7 @@ tests = [("print a list of Bool", print [True,False])
         ,("arithmetic sequence", print testArithSequence)
 --        ,("error", print (head (tail [True])))
 --        ,("toEnum [0,1]", print (True : map toEnum [0,1]))
---        ,("alphabet", print ['A' .. 'Z'])
+        ,("alphabet", print ['A' .. 'Z'])
         ]
         
 
