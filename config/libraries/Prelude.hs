@@ -415,5 +415,3 @@ selfTest = do
   
 runIO w (IO f) = case f w of
                    (x,w') -> w'
-                   
-error message = #fail
