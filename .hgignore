@@ -8,3 +8,4 @@ leander-paths.ads
 build/obj/*
 src/values/*
 leander.gpr
+*.log
