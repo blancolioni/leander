@@ -2,6 +2,7 @@ with Ada.Text_IO;
 
 package body Leander.Logging is
 
+   Enabled : Boolean := False;
    File : Ada.Text_IO.File_Type;
 
    ---------
@@ -10,7 +11,9 @@ package body Leander.Logging is
 
    procedure Log (Message : String) is
    begin
-      Ada.Text_IO.Put_Line (File, Message);
+      if Enabled then
+         Ada.Text_IO.Put_Line (File, Message);
+      end if;
    end Log;
 
    -------------------
@@ -20,6 +23,7 @@ package body Leander.Logging is
    procedure Start_Logging is
    begin
       Ada.Text_IO.Create (File, Ada.Text_IO.Out_File, "leander.log");
+      Enabled := True;
    end Start_Logging;
 
    ------------------
@@ -28,6 +32,7 @@ package body Leander.Logging is
 
    procedure Stop_Logging is
    begin
+      Enabled := False;
       Ada.Text_IO.Close (File);
    end Stop_Logging;
 
