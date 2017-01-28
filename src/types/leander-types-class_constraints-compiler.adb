@@ -1,5 +1,3 @@
-with SK.Machine.Assembler;
-
 with Leander.Logging;
 
 package body Leander.Types.Class_Constraints.Compiler is
@@ -43,19 +41,19 @@ package body Leander.Types.Class_Constraints.Compiler is
          pragma Unreferenced (Signature, Default);
       begin
          Method_Index := Method_Index + 1;
-         SK.Machine.Assembler.Push (Machine, "vt");
-         SK.Machine.Assembler.Push (Machine, Method_Name (Method_Index));
-         SK.Machine.Assembler.Push (Machine, "vt");
-         SK.Machine.Apply (Machine);
+         Machine.Push ("vt");
+         Machine.Push (Method_Name (Method_Index));
+         Machine.Push ("vt");
+         Machine.Apply;
          for I in reverse 1 .. Method_Count loop
-            SK.Machine.Assembler.Lambda (Machine, Method_Name (I));
+            Machine.Lambda (Method_Name (I));
          end loop;
-         SK.Machine.Assembler.Apply (Machine);
-         SK.Machine.Assembler.Lambda (Machine, "vt");
+         Machine.Apply;
+         Machine.Lambda ("vt");
          Leander.Logging.Log
-           (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
+           (Name & " = " & Machine.Show (Machine.Top));
 
-         SK.Machine.Bind (Machine, Name);
+         Machine.Bind (Name);
       end Compile_Method;
 
       -------------------

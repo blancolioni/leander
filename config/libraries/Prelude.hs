@@ -1,22 +1,20 @@
 systemName = "Leander"
 
-foreign import #putchar :: Char -> World# -> World#
+foreign import #putChar :: Char -> World# -> World#
 foreign import #intEq :: Int -> Int -> Int
 foreign import "#intEq" #charEq :: Char -> Char -> Int
-foreign import #objGE :: Int -> Int -> Int
-foreign import #objGT :: Int -> Int -> Int
-foreign import #objLE :: Int -> Int -> Int
-foreign import #objLT :: Int -> Int -> Int
+foreign import #intGT :: Int -> Int -> Int
+foreign import #intLT :: Int -> Int -> Int
 
-foreign import #charVal :: Int -> Char
-foreign import #charPos :: Char -> Int
+foreign import "#I" #charVal :: Int -> Char
+foreign import "#I" #charPos :: Char -> Int
 
 foreign import #intFirst :: Int
 foreign import #intLast :: Int
 
-foreign import #intPlus :: Int -> Int -> Int
+foreign import #intPlus  :: Int -> Int -> Int
 foreign import #intMinus :: Int -> Int -> Int
-foreign import #intMult :: Int -> Int -> Int
+foreign import #intMult  :: Int -> Int -> Int
 
 foreign import #fail :: a
 foreign import #undefined :: a
@@ -165,10 +163,10 @@ instance Eq Int where
     x == y = primBoolToBool (#intEq x y)
 	
 instance Ord Int where
-    x < y = primBoolToBool (#objLT x y)
-    x > y = primBoolToBool (#objGT x y)
-    x <= y = primBoolToBool (#objLE x y)
-    x >= y = primBoolToBool (#objGE x y)
+    x < y = primBoolToBool (#intLT x y)
+    x > y = primBoolToBool (#intGT x y)
+    x <= y = not (primBoolToBool (#intGT x y))
+    x >= y = not (primBoolToBool (#intLT x y))
     
 instance Bounded Int where
     minBound = #intFirst
@@ -258,7 +256,7 @@ instance Monad IO where
 	
 
 putChar :: Char -> IO ()
-putChar ch = IO (\w -> (\w' -> ((),w')) (#putchar ch w))
+putChar ch = IO (\w -> (\w' -> ((),w')) (#putChar ch w))
 
 putX = putChar 'X'
 

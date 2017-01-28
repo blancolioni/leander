@@ -1,7 +1,7 @@
 with Ada.Containers.Vectors;
 
-with SK.Cells;
-with SK.Functions;
+with SK.Objects.Bindings;
+with SK.Objects.Symbols;
 
 with Leander.Core;
 with Leander.Kinds.Trees;
@@ -37,16 +37,15 @@ package body Leander.Primitives is
    procedure Check_Tuple (Arity : Positive);
 
    function Object_To_String
-     (Cells   : SK.Cells.Managed_Cells;
-      Value   : SK.Object)
+     (Store   : SK.Objects.Object_Store'Class;
+      Value   : SK.Objects.Object)
       return String;
 
    function Evaluate_Error
-     (Cells : SK.Cells.Managed_Cells;
-      Args  : SK.Array_Of_Objects)
-      return SK.Object
-   is (raise SK.Evaluation_Error with
-       Object_To_String (Cells, Args (Args'First)));
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object
+   is (raise Evaluation_Error with
+       Object_To_String (Store, Store.Argument (1)));
 
    ---------------
    -- Char_Type --
@@ -170,6 +169,18 @@ package body Leander.Primitives is
       return Local_List_Type;
    end List_Type;
 
+   procedure Load_SK_Primitives
+     (Store : in out SK.Objects.Object_Store'Class)
+   is
+      Id : constant SK.Objects.Function_Id :=
+             SK.Objects.Bindings.Add_Binding
+               (Evaluate_Error'Access, 1);
+   begin
+      Store.Define_Symbol
+        (SK.Objects.Symbols.Get_Symbol_Id ("#error"),
+         SK.Objects.To_Object (Id));
+   end Load_SK_Primitives;
+
    --------------
    -- Map_Type --
    --------------
@@ -184,17 +195,19 @@ package body Leander.Primitives is
    ----------------------
 
    function Object_To_String
-     (Cells   : SK.Cells.Managed_Cells;
-      Value   : SK.Object)
+     (Store   : SK.Objects.Object_Store'Class;
+      Value   : SK.Objects.Object)
       return String
    is
 
-      function To_String (Value : SK.Object) return String
-      is (if SK.Is_Application (Value)
-          then To_String (SK.Cells.Car (Cells, Value))
-          & To_String (SK.Cells.Cdr (Cells, Value))
-          elsif SK.Is_Integer (Value)
-          then (1 => Character'Val (SK.Get_Integer (Value)))
+      use SK.Objects;
+
+      function To_String (Value : SK.Objects.Object) return String
+      is (if Is_Application (Value)
+          then To_String (Store.Left (Value))
+          & To_String (Store.Right (Value))
+          elsif Is_Integer (Value)
+          then (1 => Character'Val (To_Integer (Value)))
           else "");
 
    begin
@@ -318,38 +331,11 @@ begin
      Leander.Types.Trees.Leaf
        (Leander.Types.Constructor ("()"));
 
---     Local_IO_Con :=
---       Leander.Types.Trees.Apply
---         (Leander.Types.Trees.Apply
---            (Leander.Types.Constructor ("->"),
---             Leander.Types.Trees.Apply
---               (Local_IO_Type, Local_World_Type)),
---          Leander.Types.Trees.Apply
---            (Local_List_Type, Type_Variable_A));
-
    Local_World_Type :=
      Leander.Types.Trees.Leaf
        (Leander.Types.Constructor
           ("World#"));
    Local_World_Type.Set_Annotation (Type_Con_0);
-
---     Local_IO_Type :=
---       Leander.Types.Trees.Leaf
---         (Leander.Types.Constructor ("IO"));
---     Local_IO_Type.First_Leaf.Set_Annotation (Type_Con_1);
---
---     Local_IO_Con :=
---       Leander.Types.Trees.Apply
---         (Leander.Types.Trees.Apply
---            (Leander.Types.Constructor ("->"),
---             Local_World_Type),
---          Leander.Types.Trees.Apply
---            (Leander.Types.Trees.Apply
---               (Leander.Types.Constructor ("->"),
---                Type_Variable_A),
---             Leander.Types.Trees.Apply
---               (Local_IO_Type,
---                Type_Variable_A)));
 
    Local_List_Type :=
      Leander.Types.Trees.Leaf
@@ -378,7 +364,5 @@ begin
        (Leander.Types.Trees.Apply
           (Leander.Types.Constructor ("->"), Type_Variable_A),
         Local_Cons);
-
-   SK.Functions.Bind_Function ("#error", 1, Evaluate_Error'Access);
 
 end Leander.Primitives;
