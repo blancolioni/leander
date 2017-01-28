@@ -1,6 +1,10 @@
+with SK.Objects;
+
 with Leander.Types.Trees;
 
 package Leander.Primitives is
+
+   Evaluation_Error : exception;
 
    function Trivial_Type return Leander.Types.Trees.Tree_Type;
    function Trivial_Con return Leander.Types.Trees.Tree_Type;
@@ -30,5 +34,8 @@ package Leander.Primitives is
 --     function IO_Type return Leander.Types.Trees.Tree_Type;
 --     function IO_Con return Leander.Types.Trees.Tree_Type;
    function World_Type return Leander.Types.Trees.Tree_Type;
+
+   procedure Load_SK_Primitives
+     (Store : in out SK.Objects.Object_Store'Class);
 
 end Leander.Primitives;
