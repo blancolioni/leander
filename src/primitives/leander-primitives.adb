@@ -6,6 +6,8 @@ with SK.Objects.Symbols;
 with Leander.Core;
 with Leander.Kinds.Trees;
 
+with Leander.Primitives.Large_Integers;
+
 with Leander.Logging;
 
 package body Leander.Primitives is
@@ -46,6 +48,10 @@ package body Leander.Primitives is
       return SK.Objects.Object
    is (raise Evaluation_Error with
        Object_To_String (Store, Store.Argument (1)));
+
+   function Evaluate_Int_From_Integer
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object;
 
    ---------------
    -- Char_Type --
@@ -142,6 +148,29 @@ package body Leander.Primitives is
       return Local_Empty_List;
    end Empty_List;
 
+   -------------------------------
+   -- Evaluate_Int_From_Integer --
+   -------------------------------
+
+   function Evaluate_Int_From_Integer
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object
+   is
+      pragma Assert (SK.Objects.Is_External_Object (Store.Argument (1)));
+      Ext_Obj : constant access SK.Objects.External_Object_Interface'Class :=
+                  Store.Get_External_Object (Store.Argument (1));
+      pragma Assert (Ext_Obj.all in Large_Integers.Large_Integer_Object'Class);
+      Large_Int : constant access Large_Integers.Large_Integer_Object'Class :=
+                    Large_Integers.Large_Integer_Object'Class
+                      (Ext_Obj.all)'Access;
+   begin
+      if not Large_Int.In_Integer_Range then
+         raise Constraint_Error with "out of range for Int: "
+           & Large_Int.Print (Store);
+      end if;
+      return SK.Objects.To_Object (Large_Int.To_Integer);
+   end Evaluate_Int_From_Integer;
+
    --------------
    -- Int_Type --
    --------------
@@ -169,16 +198,34 @@ package body Leander.Primitives is
       return Local_List_Type;
    end List_Type;
 
+   ------------------------
+   -- Load_SK_Primitives --
+   ------------------------
+
    procedure Load_SK_Primitives
      (Store : in out SK.Objects.Object_Store'Class)
    is
-      Id : constant SK.Objects.Function_Id :=
-             SK.Objects.Bindings.Add_Binding
-               (Evaluate_Error'Access, 1);
+      procedure Bind
+        (Name      : String;
+         Arg_Count : Natural;
+         Eval      : SK.Objects.Bindings.General_Function_Handler);
+
+      procedure Bind
+        (Name      : String;
+         Arg_Count : Natural;
+         Eval      : SK.Objects.Bindings.General_Function_Handler)
+      is
+         Id : constant SK.Objects.Function_Id :=
+                SK.Objects.Bindings.Add_Binding (Eval, Arg_Count);
+      begin
+         Store.Define_Symbol
+           (SK.Objects.Symbols.Get_Symbol_Id (Name),
+            SK.Objects.To_Object (Id));
+      end Bind;
+
    begin
-      Store.Define_Symbol
-        (SK.Objects.Symbols.Get_Symbol_Id ("#error"),
-         SK.Objects.To_Object (Id));
+      Bind ("#error", 1, Evaluate_Error'Access);
+      Bind ("#intFromInteger", 1, Evaluate_Int_From_Integer'Access);
    end Load_SK_Primitives;
 
    --------------
