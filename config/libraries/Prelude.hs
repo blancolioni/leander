@@ -16,6 +16,8 @@ foreign import #intPlus  :: Int -> Int -> Int
 foreign import #intMinus :: Int -> Int -> Int
 foreign import #intMult  :: Int -> Int -> Int
 
+foreign import #intFromInteger :: Integer -> Int
+
 foreign import #fail :: a
 foreign import #undefined :: a
 foreign import #error :: [Char] -> a
@@ -222,8 +224,8 @@ instance Num Int where
                  LT -> negate 1
                  EQ -> 0
                  GT -> 1
-    fromInteger = const 0
-    
+    fromInteger = #intFromInteger
+
 subtract         =  flip (-)
     
 
