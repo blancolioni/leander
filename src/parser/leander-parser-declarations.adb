@@ -76,75 +76,38 @@ package body Leander.Parser.Declarations is
       Class    : Leander.Types.Class_Constraints.Class_Constraint;
       Var_Name : Unbounded_String;
       Indent   : constant Positive := Tok_Indent + 1;
+
+      procedure Add_Constraint
+        (Constraint_Name : String;
+         Variable_Name   : String);
+
+      procedure Add_Constraint
+        (Constraint_Name : String;
+         Variable_Name   : String)
+      is
+      begin
+         if Env.Has_Class_Binding (Constraint_Name) then
+            Class.Add_Context (Env.Class_Binding (Constraint_Name));
+         else
+            Error ("no such class: " & Constraint_Name);
+         end if;
+         if Var_Name /= Null_Unbounded_String then
+            if Var_Name /= Variable_Name then
+               Error ("type variable name does not match '"
+                      & To_String (Var_Name) & "'");
+            end if;
+         else
+            Var_Name := To_Unbounded_String (Variable_Name);
+         end if;
+      end Add_Constraint;
+
    begin
       pragma Assert (Tok = Tok_Class);
       Scan;
 
       Class.Create;
 
-      if At_Constructor_Name
-        and then Next_Tok = Tok_Identifier
-        and then Next_Tok (2) = Tok_Double_Right_Arrow
-      then
-         if Env.Has_Class_Binding (Tok_Text) then
-            Class.Add_Context (Env.Class_Binding (Tok_Text));
-         else
-            Error ("no such class: " & Tok_Text);
-         end if;
-
-         Scan;
-         if At_Variable_Name then
-            Var_Name := To_Unbounded_String (Tok_Text);
-         else
-            Error ("expected a type variable");
-         end if;
-         Scan;
-         Scan;
-      elsif Tok = Tok_Left_Paren then
-         Scan;
-         while At_Constructor_Name loop
-            if Env.Has_Class_Binding (Tok_Text) then
-               Class.Add_Context (Env.Class_Binding (Tok_Text));
-            else
-               Error ("no such class: " & Tok_Text);
-            end if;
-            Scan;
-            if At_Variable_Name then
-               if Var_Name /= Null_Unbounded_String then
-                  if Var_Name /= Tok_Text then
-                     Error ("type variable name does not match '"
-                            & To_String (Var_Name) & "'");
-                  end if;
-                  Scan;
-               else
-                  Var_Name := To_Unbounded_String (Tok_Text);
-               end if;
-               Scan;
-            else
-               Error ("expected a type variable");
-            end if;
-            if Tok = Tok_Comma then
-               Scan;
-               if not At_Constructor_Name then
-                  Error ("missing class context");
-               end if;
-            elsif At_Constructor_Name then
-               Error ("missing ','");
-            end if;
-         end loop;
-
-         if Tok = Tok_Right_Paren then
-            Scan;
-         else
-            Error ("missing ')'");
-         end if;
-
-         if Tok = Tok_Double_Right_Arrow then
-            Scan;
-         else
-            Error ("missing '=>'");
-         end if;
-      end if;
+      Parse_Constraints (Env, Add_Constraint'Access);
 
       if not At_Constructor_Name then
          Error ("missing class constructor");
@@ -283,7 +246,7 @@ package body Leander.Parser.Declarations is
          if Tok = Tok_Right_Paren then
             Scan;
          else
-            Error ("missing ')'");
+            Error ("missing ')' at " & Tok_Text);
          end if;
 
          if Tok = Tok_Double_Right_Arrow then
