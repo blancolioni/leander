@@ -45,6 +45,8 @@ undefined = #undefined
 
 error = #error
 
+data Rational = Rat n d
+
 -- Standard types, classes, instances and related functions  
  
 -- Equality and Ordered classes  
@@ -74,7 +76,7 @@ class  (Eq a) => Ord a  where
     x <  y           =  compare x y == LT  
     x >= y           =  compare x y /= LT  
     x >  y           =  compare x y == GT
-	
+    
 -- note that (min x y, max x y) = (x,y) or (y,x)  
     max x y | x <= y = y
             | otherwise = x
@@ -148,7 +150,26 @@ class  Eq a => Num a  where
         --      All, except negate or (-)  
     x - y            =  x + negate y  
     negate x         =  0 - x
+
+class  (Num a, Ord a) => Real a  where  
+    toRational       ::  a -> Rational
     
+class  (Real a, Enum a) => Integral a  where  
+    quot, rem        :: a -> a -> a  
+    div, mod         :: a -> a -> a  
+    quotRem, divMod  :: a -> a -> (a,a)  
+    toInteger        :: a -> Integer  
+ 
+        -- Minimal complete definition:  
+        --      quotRem, toInteger  
+    n `quot` d       =  q  where (q,r) = quotRem n d  
+    n `rem` d        =  r  where (q,r) = quotRem n d  
+    n `div` d        =  q  where (q,r) = divMod n d  
+    n `mod` d        =  r  where (q,r) = divMod n d  
+    divMod n d       =  case quotRem n d of
+                          qr -> case qr of
+                                   (q,r) -> if signum r == - signum d then (q-1, r+d) else qr  
+
 instance Enum Char where
     toEnum = #charVal
     fromEnum = #charPos
@@ -158,10 +179,10 @@ instance Eq Char where
    
 primBoolToBool 0 = False
 primBoolToBool _ = True
-			   
+               
 instance Eq Int where
     x == y = primBoolToBool (#intEq x y)
-	
+    
 instance Ord Int where
     x < y = primBoolToBool (#intLT x y)
     x > y = primBoolToBool (#intGT x y)
