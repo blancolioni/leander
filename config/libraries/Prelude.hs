@@ -15,8 +15,11 @@ foreign import #intLast :: Int
 foreign import #intPlus  :: Int -> Int -> Int
 foreign import #intMinus :: Int -> Int -> Int
 foreign import #intMult  :: Int -> Int -> Int
+foreign import #intDiv  :: Int -> Int -> Int
+foreign import #intMod  :: Int -> Int -> Int
 
 foreign import #intFromInteger :: Integer -> Int
+foreign import #intToInteger :: Integer -> Int
 
 foreign import #fail :: a
 foreign import #undefined :: a
@@ -164,10 +167,10 @@ class  (Real a, Enum a) => Integral a  where
 
         -- Minimal complete definition:
         --      quotRem, toInteger
-    n `quot` d       =  q  where (q,r) = quotRem n d
-    n `rem` d        =  r  where (q,r) = quotRem n d
-    n `div` d        =  q  where (q,r) = divMod n d
-    n `mod` d        =  r  where (q,r) = divMod n d
+    n `quot` d       =  case quotRem n d of (q,r) -> q
+    n `rem` d        =  case quotRem n d of (q,r) -> r
+    n `div` d        =  case divMod n d of (q,r) -> q
+    n `mod` d        =  case divMod n d of (q,r) -> r
     divMod n d       =  case quotRem n d of
                           qr -> case qr of
                                    (q,r) -> if signum r == - signum d then (q-1, r+d) else qr
@@ -211,8 +214,9 @@ instance Show Int where
     show = showInt
 
 --  showInt :: Int -> [Char]
-showInt x | x < 10 = [toEnum (x + 48)]
-          | otherwise = "<too big!>"
+showInt x | x < 0 = '-' : showInt (abs x)
+          | x < 10 = [toEnum (x + 48)]
+          | otherwise = showInt (x `div` 10) ++ showInt (x `mod` 10)
 
 instance Num Int where
     (+) = #intPlus
@@ -228,7 +232,13 @@ instance Num Int where
 
 subtract         =  flip (-)
 
-
+instance Real Int where
+    toRational x = Rat x 1
+    
+instance Integral Int where
+    quotRem x y = (#intDiv x y, #intMod x y)
+    toInteger = #intToInteger
+    
 instance  Show Char  where
     showsPrec p '\'' = showString "'\\''"
     showsPrec p c    = showChar '\'' . showLitChar c . showChar '\''

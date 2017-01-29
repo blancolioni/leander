@@ -53,6 +53,10 @@ package body Leander.Primitives is
      (Store : in out SK.Objects.Object_Store'Class)
       return SK.Objects.Object;
 
+   function Evaluate_Int_To_Integer
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object;
+
    ---------------
    -- Char_Type --
    ---------------
@@ -171,6 +175,20 @@ package body Leander.Primitives is
       return SK.Objects.To_Object (Large_Int.To_Integer);
    end Evaluate_Int_From_Integer;
 
+   -----------------------------
+   -- Evaluate_Int_To_Integer --
+   -----------------------------
+
+   function Evaluate_Int_To_Integer
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object
+   is
+   begin
+      return Store.Create_External_Reference
+        (Leander.Primitives.Large_Integers.To_Large_Integer
+           (SK.Objects.To_Integer (Store.Argument (1))));
+   end Evaluate_Int_To_Integer;
+
    --------------
    -- Int_Type --
    --------------
@@ -226,6 +244,7 @@ package body Leander.Primitives is
    begin
       Bind ("#error", 1, Evaluate_Error'Access);
       Bind ("#intFromInteger", 1, Evaluate_Int_From_Integer'Access);
+      Bind ("#intToInteger", 1, Evaluate_Int_To_Integer'Access);
    end Load_SK_Primitives;
 
    --------------
