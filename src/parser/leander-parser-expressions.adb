@@ -86,6 +86,7 @@ package body Leander.Parser.Expressions is
       use Leander.Parser.Lexical.Set_Of_Tokens;
    begin
       return At_Atomic_Expression
+        or else (At_Operator and then Tok_Text = "-")
         or else Tok <= +Tok_Lambda;
    end At_Expression;
 
@@ -672,6 +673,7 @@ package body Leander.Parser.Expressions is
       end loop;
 
       return Value_Stack.First_Element;
+
    end Parse_Expression;
 
    ------------------------------
@@ -743,7 +745,18 @@ package body Leander.Parser.Expressions is
    function Parse_Left_Expression return Leander.Core.Trees.Tree_Type is
       Current : constant Leander.Source.Source_Reference :=
                   Current_Source_Reference;
+      Negate  : Leander.Core.Trees.Tree_Type := Leander.Core.Trees.Empty;
    begin
+      if At_Operator
+        and then Tok_Text = "-"
+      then
+         Negate :=
+           Leander.Core.Trees.Leaf
+             (Leander.Core.Variable (Current_Source_Reference, "negate"));
+         Scan;
+         return Negate.Apply (Parse_Left_Expression);
+      end if;
+
       if At_Atomic_Expression then
          declare
             Indent  : constant Positive := Tok_Indent;
