@@ -2,11 +2,12 @@ with GCS.Errors;
 
 with SK.Debug;
 with SK.Machine;
-with SK.Machine.Assembler;
+with SK.Objects;
 
 with Leander.Errors;
 
 with Leander.Environments;
+with Leander.Primitives;
 
 with Leander.Kinds.Trees;
 
@@ -23,11 +24,6 @@ begin
 
    Leander.Logging.Start_Logging;
 
-   if False then
-      SK.Debug.Enable (SK.Debug.Compiler);
-      SK.Debug.Enable (SK.Debug.Optimisation);
-   end if;
-
    declare
       Env : Leander.Environments.Environment :=
               Leander.Parser.Modules.Load_Module
@@ -35,8 +31,10 @@ begin
                  Leander.Paths.Config_File
                    ("libraries/Prelude.hs"));
       Machine : constant SK.Machine.SK_Machine :=
-                  SK.Machine.Create_Machine (1024 * 1024);
+                  SK.Machine.Create (1024 * 1024);
    begin
+
+      Leander.Primitives.Load_SK_Primitives (Machine.all);
 
       if not GCS.Errors.Has_Errors
         and then not Leander.Errors.Has_Errors
@@ -47,20 +45,22 @@ begin
       if not GCS.Errors.Has_Errors
         and then not Leander.Errors.Has_Errors
       then
-         SK.Machine.Assembler.Push (Machine, "runIO");
-         SK.Machine.Assembler.Push (Machine, SK.Initial_World);
-         SK.Machine.Apply (Machine);
-         SK.Machine.Assembler.Push (Machine, "selfTest");
-         SK.Machine.Apply (Machine);
+         Machine.Push ("runIO");
+         Machine.Push (SK.Objects.Initial_World);
+         Machine.Apply;
+         Machine.Push ("selfTest");
+         Machine.Apply;
 
          if False then
             SK.Debug.Enable (SK.Debug.Eval);
-            SK.Debug.Enable (SK.Debug.Compiler);
-            SK.Debug.Enable (SK.Debug.Optimisation);
-            SK.Debug.Enable (SK.Debug.Linker);
          end if;
-         SK.Machine.Evaluate (Machine);
+
+         Machine.Compile;
+         Machine.Link;
+         Machine.Evaluate;
       end if;
+
+      Machine.Report_State;
 
       if not GCS.Errors.Has_Errors
         and then not Leander.Errors.Has_Errors

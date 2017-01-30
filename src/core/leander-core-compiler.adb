@@ -1,4 +1,4 @@
-with SK.Machine.Assembler;
+with SK.Objects;
 
 with Leander.Types.Bindings;
 with Leander.Types.Trees;
@@ -62,8 +62,9 @@ package body Leander.Core.Compiler is
          Compile_Constraint_Abstractions (Tree, Machine);
 
          Leander.Logging.Log
-           (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
-         SK.Machine.Bind (Machine, Name);
+           (Name & " = " & Machine.Show (Machine.Top));
+         Machine.Compile;
+         Machine.Define_Symbol (Name);
       end if;
    end Compile;
 
@@ -91,8 +92,7 @@ package body Leander.Core.Compiler is
          Name : constant String :=
                   Constraint.Show & "-" & Variable & "-vt";
       begin
-         SK.Machine.Assembler.Lambda
-           (Machine, Name);
+         Machine.Lambda (Name);
       end Add_Constraint_Abstraction;
 
    begin
@@ -116,13 +116,14 @@ package body Leander.Core.Compiler is
    begin
       Compile_Tree (Env, Tree, Machine, True);
 
-      SK.Machine.Assembler.Lambda (Machine, Instance_Name);
+      Machine.Lambda (Instance_Name);
 
       Compile_Constraint_Abstractions (Tree, Machine);
 
       Leander.Logging.Log
-        (Name & " = " & SK.Machine.Show_Stack_Top (Machine));
-      SK.Machine.Bind (Machine, Name);
+        (Name & " = " & Machine.Show (Machine.Top));
+
+      Machine.Bind (Name);
    end Compile_Instance_Method;
 
    ------------------
@@ -178,7 +179,7 @@ package body Leander.Core.Compiler is
                         -T.Left.Get_Node.Name;
                begin
                   Compile (T.Right);
-                  SK.Machine.Assembler.Lambda (Machine, X);
+                  Machine.Lambda (X);
                end;
             elsif Is_Algebraic_Case (T) then
                Compile_Algebraic_Case (T.Right);
@@ -189,7 +190,7 @@ package body Leander.Core.Compiler is
             else
                Compile (T.Left);
                Compile (T.Right);
-               SK.Machine.Apply (Machine);
+               Machine.Apply;
             end if;
          else
             declare
@@ -200,13 +201,9 @@ package body Leander.Core.Compiler is
                      Compile_Constructor_Expression
                        (Env.Constructor_Binding (-Node.Name));
                   when Literal =>
-                     SK.Machine.Assembler.Push
-                       (Machine,
-                        Natural'Value
-                          (-Node.Name));
+                     Machine.Push (Natural'Value (-Node.Name));
                   when Variable =>
-                     SK.Machine.Assembler.Push
-                       (Machine, -Node.Name);
+                     Machine.Push (-Node.Name);
 
                      declare
                         procedure Add_Constraint_Argument
@@ -259,18 +256,17 @@ package body Leander.Core.Compiler is
                               end if;
 
                               if not Instance or else It.Is_Leaf then
-                                 SK.Machine.Assembler.Push
-                                   (Machine, Name (T));
+                                 Machine.Push (Name (T));
                               end if;
 
                               if not It.Is_Leaf and then not Instance then
-                                 SK.Machine.Assembler.Apply (Machine);
+                                 Machine.Apply;
                               end if;
                            end Constrain;
 
                         begin
                            Constrain (Target);
-                           SK.Machine.Assembler.Apply (Machine);
+                           Machine.Apply;
                         end Add_Constraint_Argument;
 
                         ------------------------
@@ -403,23 +399,18 @@ package body Leander.Core.Compiler is
                             Con.Constructor_Type.Arity;
                begin
                   Compile (Default_Expr);
-                  SK.Machine.Assembler.Lambda
-                    (Machine, Pats (I).Variable_Name);
-                  SK.Machine.Assembler.Push
-                    (Machine, X_Con (Con.Constructor_Index));
+                  Machine.Lambda (Pats (I).Variable_Name);
+                  Machine.Push (X_Con (Con.Constructor_Index));
                   for I in 1 .. Arity loop
-                     SK.Machine.Assembler.Push
-                       (Machine, Arg_Name (I));
-                     SK.Machine.Assembler.Apply (Machine);
+                     Machine.Push (Arg_Name (I));
+                     Machine.Apply;
                   end loop;
                   for I in reverse 1 .. Expr_Tycon.Constructor_Count loop
-                     SK.Machine.Assembler.Lambda
-                       (Machine, X_Con (I));
+                     Machine.Lambda (X_Con (I));
                   end loop;
-                  SK.Machine.Assembler.Apply (Machine);
+                  Machine.Apply;
                   for I in reverse 1 .. Arity loop
-                     SK.Machine.Assembler.Lambda
-                       (Machine, Arg_Name (I));
+                     Machine.Lambda (Arg_Name (I));
                   end loop;
 
                end;
@@ -458,8 +449,7 @@ package body Leander.Core.Compiler is
                   Compile (E);
 
                   for I in First_Arg .. Pat_Args'Last loop
-                     SK.Machine.Assembler.Lambda
-                       (Machine, Pat_Args (I).Variable_Name);
+                     Machine.Lambda (Pat_Args (I).Variable_Name);
                   end loop;
 
                end;
@@ -467,7 +457,7 @@ package body Leander.Core.Compiler is
 --                   ("final expression: "
 --                    & SK.Machine.Show_Stack_Top (Machine));
             end if;
-            SK.Machine.Assembler.Apply (Machine);
+            Machine.Apply;
          end loop;
       end Compile_Algebraic_Case;
 
@@ -491,24 +481,20 @@ package body Leander.Core.Compiler is
                             (Type_Head.Constructor_Name);
       begin
          if Type_Binding.Is_Primitive then
-            SK.Machine.Assembler.Push
-              (Machine, Positive (Con_Index) - 1);
+            Machine.Push (Positive (Con_Index) - 1);
          else
-            SK.Machine.Assembler.Push
-              (Machine, X_Con (Con_Index));
+            Machine.Push (X_Con (Con_Index));
             for I in 1 .. Con_Arity loop
-               SK.Machine.Assembler.Push
-                 (Machine, "c" & Integer'Image (-I));
-               SK.Machine.Assembler.Apply (Machine);
+               Machine.Push ("c" & Integer'Image (-I));
+               Machine.Apply;
             end loop;
 
             for I in reverse 1 .. Type_Binding.Constructor_Count loop
-               SK.Machine.Assembler.Lambda (Machine, X_Con (I));
+               Machine.Lambda (X_Con (I));
             end loop;
 
             for I in 1 .. Con_Arity loop
-               SK.Machine.Assembler.Lambda
-                 (Machine, "c" & Integer'Image (-I));
+               Machine.Lambda ("c" & Integer'Image (-I));
             end loop;
          end if;
       end Compile_Constructor_Expression;
@@ -531,7 +517,7 @@ package body Leander.Core.Compiler is
          procedure Compile_Alts (Alt_It : Leander.Core.Trees.Tree_Type) is
          begin
             if Alt_It.Is_Empty then
-               SK.Machine.Assembler.Push (Machine, SK.Fail_Object);
+               Machine.Push (SK.Objects.Fail);
             else
                declare
                   Alt : constant Trees.Tree_Type := Alt_It.Left;
@@ -541,22 +527,21 @@ package body Leander.Core.Compiler is
                   pragma Assert (Pat.Is_Leaf);
                   if Pat.Is_Variable then
                      Compile (Exp);
-                     SK.Machine.Assembler.Lambda (Machine, Pat.Show);
-                     SK.Machine.Assembler.Push (Machine, X);
-                     SK.Machine.Apply (Machine);
+                     Machine.Lambda (Pat.Show);
+                     Machine.Push (X);
+                     Machine.Apply;
                   else
-                     SK.Machine.Assembler.Push (Machine, SK.Select_Object (2));
-                     SK.Machine.Assembler.Push (Machine, "neq?");
-                     SK.Machine.Assembler.Push (Machine, X);
-                     SK.Machine.Assembler.Apply (Machine);
-                     SK.Machine.Assembler.Push
-                       (Machine, Natural'Value (Pat.Show));
-                     SK.Machine.Assembler.Apply (Machine);
-                     SK.Machine.Assembler.Apply (Machine);
+                     Machine.Push (SK.Objects.To_Selection_Object (2));
+                     Machine.Push ("#intNeq");
+                     Machine.Push (X);
+                     Machine.Apply;
+                     Machine.Push (Natural'Value (Pat.Show));
+                     Machine.Apply;
+                     Machine.Apply;
                      Compile (Exp);
-                     SK.Machine.Assembler.Apply (Machine);
+                     Machine.Apply;
                      Compile_Alts (Alt_It.Right);
-                     SK.Machine.Assembler.Apply (Machine);
+                     Machine.Apply;
                   end if;
                end;
             end if;
@@ -564,9 +549,9 @@ package body Leander.Core.Compiler is
 
       begin
          Compile_Alts (Top.Right);
-         SK.Machine.Assembler.Lambda (Machine, X);
+         Machine.Lambda (X);
          Compile (Top.Left);
-         SK.Machine.Apply (Machine);
+         Machine.Apply;
       end Compile_Primitive_Case;
 
    begin

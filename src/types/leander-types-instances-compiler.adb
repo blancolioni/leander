@@ -1,7 +1,5 @@
 with Ada.Containers.Vectors;
 
-with SK.Machine.Assembler;
-
 with Leander.Errors;
 
 with Leander.Core.Compiler;
@@ -63,7 +61,7 @@ package body Leander.Types.Instances.Compiler is
                Name : constant String :=
                         Constraint.Show & "-" & T.Head.Show & "-vt";
             begin
-               SK.Machine.Assembler.Lambda (Machine, Name);
+               Machine.Lambda (Name);
             end;
          end loop;
       end Abstract_Type_Constraints;
@@ -101,8 +99,8 @@ package body Leander.Types.Instances.Compiler is
                Name : constant String :=
                         Constraint.Show & "-" & T.Head.Show & "-vt";
             begin
-               SK.Machine.Assembler.Push (Machine, Name);
-               SK.Machine.Apply (Machine);
+               Machine.Push (Name);
+               Machine.Apply;
             end;
          end loop;
       end Apply_Type_Constraints;
@@ -150,14 +148,14 @@ package body Leander.Types.Instances.Compiler is
             Machine       => Machine);
       end loop;
 
-      SK.Machine.Assembler.Push
-        (Machine, "-op-");
+      Machine.Push ("-op-");
+
       for I in 1 .. Methods.Last_Index loop
-         SK.Machine.Assembler.Push (Machine, Method_Name (I));
+         Machine.Push (Method_Name (I));
          Instance.Scan_Constraints (Apply_Type_Constraints'Access);
-         SK.Machine.Assembler.Apply (Machine);
+         Machine.Apply;
       end loop;
-      SK.Machine.Assembler.Lambda (Machine, "-op-");
+      Machine.Lambda ("-op-");
 
       declare
       begin
@@ -165,9 +163,9 @@ package body Leander.Types.Instances.Compiler is
       end;
 
       Leander.Logging.Log
-        (Method_Name (0) & " = " & SK.Machine.Show_Stack_Top (Machine));
+        (Method_Name (0) & " = " & Machine.Show (Machine.Top));
 
-      SK.Machine.Bind (Machine, Method_Name (0));
+      Machine.Bind (Method_Name (0));
 
    end Compile;
 

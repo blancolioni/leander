@@ -1,10 +1,12 @@
 with Ada.Containers.Vectors;
 
-with SK.Cells;
-with SK.Functions;
+with SK.Objects.Bindings;
+with SK.Objects.Symbols;
 
 with Leander.Core;
 with Leander.Kinds.Trees;
+
+with Leander.Primitives.Large_Integers;
 
 with Leander.Logging;
 
@@ -37,16 +39,23 @@ package body Leander.Primitives is
    procedure Check_Tuple (Arity : Positive);
 
    function Object_To_String
-     (Cells   : SK.Cells.Managed_Cells;
-      Value   : SK.Object)
+     (Store   : SK.Objects.Object_Store'Class;
+      Value   : SK.Objects.Object)
       return String;
 
    function Evaluate_Error
-     (Cells : SK.Cells.Managed_Cells;
-      Args  : SK.Array_Of_Objects)
-      return SK.Object
-   is (raise SK.Evaluation_Error with
-       Object_To_String (Cells, Args (Args'First)));
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object
+   is (raise Evaluation_Error with
+       Object_To_String (Store, Store.Argument (1)));
+
+   function Evaluate_Int_From_Integer
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object;
+
+   function Evaluate_Int_To_Integer
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object;
 
    ---------------
    -- Char_Type --
@@ -143,6 +152,43 @@ package body Leander.Primitives is
       return Local_Empty_List;
    end Empty_List;
 
+   -------------------------------
+   -- Evaluate_Int_From_Integer --
+   -------------------------------
+
+   function Evaluate_Int_From_Integer
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object
+   is
+      pragma Assert (SK.Objects.Is_External_Object (Store.Argument (1)));
+      Ext_Obj : constant access SK.Objects.External_Object_Interface'Class :=
+                  Store.Get_External_Object (Store.Argument (1));
+      pragma Assert (Ext_Obj.all in Large_Integers.Large_Integer_Object'Class);
+      Large_Int : constant access Large_Integers.Large_Integer_Object'Class :=
+                    Large_Integers.Large_Integer_Object'Class
+                      (Ext_Obj.all)'Access;
+   begin
+      if not Large_Int.In_Integer_Range then
+         raise Constraint_Error with "out of range for Int: "
+           & Large_Int.Print (Store);
+      end if;
+      return SK.Objects.To_Object (Large_Int.To_Integer);
+   end Evaluate_Int_From_Integer;
+
+   -----------------------------
+   -- Evaluate_Int_To_Integer --
+   -----------------------------
+
+   function Evaluate_Int_To_Integer
+     (Store : in out SK.Objects.Object_Store'Class)
+      return SK.Objects.Object
+   is
+   begin
+      return Store.Create_External_Reference
+        (Leander.Primitives.Large_Integers.To_Large_Integer
+           (SK.Objects.To_Integer (Store.Argument (1))));
+   end Evaluate_Int_To_Integer;
+
    --------------
    -- Int_Type --
    --------------
@@ -170,6 +216,37 @@ package body Leander.Primitives is
       return Local_List_Type;
    end List_Type;
 
+   ------------------------
+   -- Load_SK_Primitives --
+   ------------------------
+
+   procedure Load_SK_Primitives
+     (Store : in out SK.Objects.Object_Store'Class)
+   is
+      procedure Bind
+        (Name      : String;
+         Arg_Count : Natural;
+         Eval      : SK.Objects.Bindings.General_Function_Handler);
+
+      procedure Bind
+        (Name      : String;
+         Arg_Count : Natural;
+         Eval      : SK.Objects.Bindings.General_Function_Handler)
+      is
+         Id : constant SK.Objects.Function_Id :=
+                SK.Objects.Bindings.Add_Binding (Eval, Arg_Count);
+      begin
+         Store.Define_Symbol
+           (SK.Objects.Symbols.Get_Symbol_Id (Name),
+            SK.Objects.To_Object (Id));
+      end Bind;
+
+   begin
+      Bind ("#error", 1, Evaluate_Error'Access);
+      Bind ("#intFromInteger", 1, Evaluate_Int_From_Integer'Access);
+      Bind ("#intToInteger", 1, Evaluate_Int_To_Integer'Access);
+   end Load_SK_Primitives;
+
    --------------
    -- Map_Type --
    --------------
@@ -184,17 +261,19 @@ package body Leander.Primitives is
    ----------------------
 
    function Object_To_String
-     (Cells   : SK.Cells.Managed_Cells;
-      Value   : SK.Object)
+     (Store   : SK.Objects.Object_Store'Class;
+      Value   : SK.Objects.Object)
       return String
    is
 
-      function To_String (Value : SK.Object) return String
-      is (if SK.Is_Application (Value)
-          then To_String (SK.Cells.Car (Cells, Value))
-          & To_String (SK.Cells.Cdr (Cells, Value))
-          elsif SK.Is_Integer (Value)
-          then (1 => Character'Val (SK.Get_Integer (Value)))
+      use SK.Objects;
+
+      function To_String (Value : SK.Objects.Object) return String
+      is (if Is_Application (Value)
+          then To_String (Store.Left (Value))
+          & To_String (Store.Right (Value))
+          elsif Is_Integer (Value)
+          then (1 => Character'Val (To_Integer (Value)))
           else "");
 
    begin
@@ -318,38 +397,11 @@ begin
      Leander.Types.Trees.Leaf
        (Leander.Types.Constructor ("()"));
 
---     Local_IO_Con :=
---       Leander.Types.Trees.Apply
---         (Leander.Types.Trees.Apply
---            (Leander.Types.Constructor ("->"),
---             Leander.Types.Trees.Apply
---               (Local_IO_Type, Local_World_Type)),
---          Leander.Types.Trees.Apply
---            (Local_List_Type, Type_Variable_A));
-
    Local_World_Type :=
      Leander.Types.Trees.Leaf
        (Leander.Types.Constructor
           ("World#"));
    Local_World_Type.Set_Annotation (Type_Con_0);
-
---     Local_IO_Type :=
---       Leander.Types.Trees.Leaf
---         (Leander.Types.Constructor ("IO"));
---     Local_IO_Type.First_Leaf.Set_Annotation (Type_Con_1);
---
---     Local_IO_Con :=
---       Leander.Types.Trees.Apply
---         (Leander.Types.Trees.Apply
---            (Leander.Types.Constructor ("->"),
---             Local_World_Type),
---          Leander.Types.Trees.Apply
---            (Leander.Types.Trees.Apply
---               (Leander.Types.Constructor ("->"),
---                Type_Variable_A),
---             Leander.Types.Trees.Apply
---               (Local_IO_Type,
---                Type_Variable_A)));
 
    Local_List_Type :=
      Leander.Types.Trees.Leaf
@@ -378,7 +430,5 @@ begin
        (Leander.Types.Trees.Apply
           (Leander.Types.Constructor ("->"), Type_Variable_A),
         Local_Cons);
-
-   SK.Functions.Bind_Function ("#error", 1, Evaluate_Error'Access);
 
 end Leander.Primitives;
