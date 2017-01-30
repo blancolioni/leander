@@ -9,7 +9,6 @@ source_dir = src/primitives
 source_dir = src/trees
 source_dir = src/types
 source_dir = src/unifier
-source_dir = src/values
 depend = { project = SK version = any }
 depend = { project = GCS version = any }
 main_unit = leander-driver
