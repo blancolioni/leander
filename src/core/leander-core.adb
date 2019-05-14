@@ -2,6 +2,20 @@ package body Leander.Core is
 
    Next_New_Variable : Positive := 1;
 
+   ----------------------------------
+   -- Create_Variable_From_Binding --
+   ----------------------------------
+
+   overriding function Create_Variable_From_Binding
+     (Node  : Core_Node;
+      Index : Positive)
+      return Core_Node
+   is
+      pragma Unreferenced (Index);
+   begin
+      return Node;
+   end Create_Variable_From_Binding;
+
    ------------------
    -- New_Variable --
    ------------------

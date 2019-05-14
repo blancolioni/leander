@@ -83,8 +83,7 @@ private
    overriding function Create_Variable_From_Binding
      (Node  : Kind_Annotation;
       Index : Positive)
-      return Kind_Annotation
-   is (Node);
+      return Kind_Annotation;
 
    overriding function Variable_Name
      (Annotation : Kind_Annotation)

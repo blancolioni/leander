@@ -4,6 +4,9 @@ with SK.Debug;
 with SK.Machine;
 with SK.Objects;
 
+--  with SK.Machine;
+--  with SK.Machine.Export;
+
 with Leander.Errors;
 
 with Leander.Environments;
@@ -41,6 +44,17 @@ begin
       then
          Env.Compile (Machine);
       end if;
+
+--        if False then
+--           SK.Machine.Export.Export
+--             (Machine    => Machine,
+--              Format     => SK.Machine.Export.Binary,
+--              Top_Symbol => "selfTest",
+--              Path       => "selfTest.sk");
+--
+--           SK.Machine.Export.Import_Binary
+--             (Machine, "selfTest.sk");
+--        end if;
 
       if not GCS.Errors.Has_Errors
         and then not Leander.Errors.Has_Errors

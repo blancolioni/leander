@@ -1,5 +1,19 @@
 package body Leander.Kinds is
 
+   ----------------------------------
+   -- Create_Variable_From_Binding --
+   ----------------------------------
+
+   overriding function Create_Variable_From_Binding
+     (Node  : Kind_Annotation;
+      Index : Positive)
+      return Kind_Annotation
+   is
+      pragma Unreferenced (Index);
+   begin
+      return Node;
+   end Create_Variable_From_Binding;
+
    ----------------------------
    -- Set_Anonymous_Variable --
    ----------------------------

@@ -132,8 +132,7 @@ private
    overriding function Create_Variable_From_Binding
      (Node  : Core_Node;
       Index : Positive)
-      return Core_Node
-   is (Node);
+      return Core_Node;
 
    overriding procedure Set_Binding_Index
      (Node  : in out Core_Node;
