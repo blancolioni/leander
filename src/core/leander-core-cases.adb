@@ -340,7 +340,7 @@ package body Leander.Core.Cases is
      (Alts : List_Of_Con_Alts.List)
       return Leander.Core.Trees.Tree_Type
    is
-      use Leander.Core, Leander.Core.Trees;
+      use Leander.Core.Trees;
       First_Pat  : constant Tree_Type :=
                      Alts.First_Element.Pat;
       Source     : constant Leander.Source.Source_Reference :=
