@@ -71,9 +71,11 @@ private
 
    type Class_Record;
 
+   type Class_Access is access Class_Record;
+
    type Class_Constraint is new Type_Constraint with
       record
-         Class_Body : access Class_Record;
+         Class_Body : Class_Access;
       end record;
 
    overriding function Show

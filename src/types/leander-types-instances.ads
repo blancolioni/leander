@@ -52,9 +52,11 @@ private
 
    type Instance_Body_Record;
 
+   type Instance_Body_Access is access Instance_Body_Record;
+
    type Type_Instance is new Type_Assertion with
       record
-         Instance_Body : access Instance_Body_Record;
+         Instance_Body : Instance_Body_Access;
       end record;
 
 end Leander.Types.Instances;

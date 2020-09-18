@@ -1,0 +1,3 @@
+build/*
+src/leander-paths.ads
+leander.gpr
