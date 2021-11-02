@@ -1,6 +1,4 @@
-with Leander.Core.Bindings;
 with Leander.Core.Trees;
-with Leander.Types.Bindings;
 with Leander.Environments;
 
 package Leander.Core.Type_Inference is

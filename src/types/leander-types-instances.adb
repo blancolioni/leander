@@ -1,5 +1,7 @@
 with Ada.Strings.Unbounded;
 
+with Leander.Core.Bindings;
+
 package body Leander.Types.Instances is
 
    type Instance_Body_Record is

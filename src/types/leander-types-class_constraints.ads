@@ -1,7 +1,6 @@
 private with Ada.Containers.Indefinite_Hashed_Maps;
 private with Ada.Strings.Fixed.Hash;
 
-with Leander.Core.Bindings;
 with Leander.Types.Trees;
 with Leander.Core.Trees;
 

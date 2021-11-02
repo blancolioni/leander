@@ -12,9 +12,6 @@ with Leander.Errors;
 with Leander.Environments;
 with Leander.Primitives;
 
-with Leander.Kinds.Trees;
-
-with Leander.Core.Trees;
 with Leander.Parser.Modules;
 
 with Leander.Repl;

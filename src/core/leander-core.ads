@@ -1,8 +1,5 @@
 private with Ada.Strings.Unbounded;
 
---  private with Leander.Kinds.Primitives;
-private with Leander.Kinds.Trees;
-
 with Leander.Source;
 
 with Leander.Types.Trees;

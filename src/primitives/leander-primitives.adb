@@ -73,7 +73,7 @@ package body Leander.Primitives is
    procedure Check_Tuple (Arity : Positive) is
    begin
       while Tuples.Last_Index < Arity loop
-         Tuples.Append ((others => <>));
+         Tuples.Append (Tuple_Entry_Record'(others => <>));
       end loop;
       if Tuples.Element (Arity).Type_Con.Is_Empty then
          declare

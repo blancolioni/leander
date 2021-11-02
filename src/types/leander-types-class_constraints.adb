@@ -1,3 +1,4 @@
+with Leander.Core.Bindings;
 with Leander.Logging;
 
 package body Leander.Types.Class_Constraints is

@@ -5,6 +5,8 @@ with Leander.Errors;
 with Leander.Core.Compiler;
 with Leander.Core.Type_Inference;
 
+with Leander.Types.Class_Constraints;
+
 with Leander.Logging;
 
 package body Leander.Types.Instances.Compiler is

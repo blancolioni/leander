@@ -1,8 +1,6 @@
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
-with Leander.Kinds.Trees;
-
 with Leander.Core;
 
 with Leander.Primitives;
