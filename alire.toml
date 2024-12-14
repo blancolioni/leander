@@ -1,0 +1,31 @@
+name = "leander"
+description = "Haskell implementation"
+version = "0.1.0-dev"
+
+authors = ["Fraser Wilson"]
+maintainers = ["Fraser Wilson <fraser@thewhitelion.eu>"]
+maintainers-logins = ["blancolioni"]
+licenses = "GPL-3.0-or-later"
+website = ""
+tags = ["haskell", "compiler"]
+
+executables = ["leander-driver"]
+
+[[depends-on]]
+sk_machine="*"
+gcs="*"
+
+[[pins]]
+sk_machine = { path = "../sk_machine" }
+gcs = { path = "../gcs" }
+
+[build-profiles]
+"*" = "development"
+
+[build-switches]
+"*".ada_version = "ada2022"
+Development.Runtime_Checks = "Everything"
+"*".Style_Checks = "yes"
+development.contracts = "yes"
+"*".compile_checks = "errors"
+
