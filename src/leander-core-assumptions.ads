@@ -2,10 +2,13 @@ with Leander.Core.Schemes;
 with Leander.Core.Substitutions;
 with Leander.Core.Tyvars;
 with Leander.Maybes;
+with Leander.Showable;
 
 package Leander.Core.Assumptions is
 
-   type Abstraction is interface and Tyvars.Container_Abstraction;
+   type Abstraction is interface
+     and Tyvars.Container_Abstraction
+     and Showable.Abstraction;
    type Reference is not null access constant Abstraction'Class;
 
    package Maybe_Schemes is
@@ -47,6 +50,12 @@ package Leander.Core.Assumptions is
    function Prepend
      (This    : Abstraction;
       That    : not null access constant Abstraction'Class)
+      return Reference
+      is abstract;
+
+   function Join
+     (Left    : not null access constant Abstraction;
+      Right   : not null access constant Abstraction'Class)
       return Reference
       is abstract;
 

@@ -3,6 +3,7 @@ with Ada.Text_IO;
 
 with Leander.Core.Assumptions;
 with Leander.Core.Bindings;
+with Leander.Core.Binding_Groups;
 with Leander.Core.Expressions;
 with Leander.Core.Kinds;
 with Leander.Core.Literals;
@@ -14,11 +15,17 @@ with Leander.Core.Tyvars;
 with Leander.Inference;
 with Leander.Logging;
 
+with Leander.Parser;
+
 package body Leander.Tests.Inference is
 
    procedure Test
      (Expression : Leander.Core.Expressions.Reference;
       Expected   : String);
+
+   procedure Test
+     (Expression    : String;
+      Expected_Type : String);
 
    ---------
    -- Run --
@@ -28,7 +35,7 @@ package body Leander.Tests.Inference is
       use Leander.Core, Leander.Core.Expressions;
    begin
       Leander.Logging.Start_Logging;
-      Test (Literal (Core.Literals.Integer_Literal ("1")), "Int");
+      Test ("1", "Int");
       Test
         (Constructor
            (Id ("Nothing"),
@@ -49,14 +56,15 @@ package body Leander.Tests.Inference is
          "a->Int");
       Test
         (Let
-           (Bindings.Bind
-                (Id ("x"),
-                 Literal (Literals.Integer_Literal ("123"))),
+           (Binding_Groups.Binding_Group
+                ([Bindings.Container
+                 ([Bindings.Bind
+                    (Id ("x"),
+                       Literal (Literals.Integer_Literal ("123")))])]),
             Variable (Id ("x"))),
          "Int");
 
-      Test
-        (Variable (Id ("+")), "Int->Int->Int");
+      Test ("+", "Int->Int->Int");
       Test
         (Lambda
            (Core.Id ("x"),
@@ -69,17 +77,79 @@ package body Leander.Tests.Inference is
 
       Test
         (Let
-           (Bindings.Bind
-                (Id ("id"),
-                 Lambda
-                   (Core.Id ("x"),
-                    Variable (Core.Id ("x")))),
+           (Binding_Groups.Binding_Group
+                ([Bindings.Container
+                 ([Bindings.Bind
+                    (Id ("id"),
+                       Lambda
+                         (Core.Id ("x"),
+                          Variable (Core.Id ("x"))))])]),
             Apply
               (Variable (Id ("id")),
                Variable (Id ("id")))),
          "a->a");
+
+      Test
+        (Let
+           (Binding_Groups.Binding_Group
+                ([Bindings.Container
+                 ([Bindings.Bind
+                    (Id ("f"),
+                       Lambda
+                         (Core.Id ("x"),
+                          Apply
+                            (Apply
+                                 (Variable (Core.Id ("+")),
+                                  Variable (Core.Id ("x"))),
+                             Apply
+                               (Variable (Core.Id ("f")),
+                                Apply
+                                  (Apply
+                                       (Variable (Core.Id ("+")),
+                                        Variable (Core.Id ("x"))),
+                                   Literal
+                                     (Core.Literals.Integer_Literal ("1"))
+                                  )
+                               )
+                            )
+                         )
+                      )
+                   ])
+                ]),
+            Apply
+              (Variable (Id ("f")),
+               Literal (Core.Literals.Integer_Literal ("1")))),
+         "Int");
+
+      declare
+         Expr : constant String :=
+                  "let f x = 2 * g x" & Character'Val (10)
+                & "    g y = f (y + 1)" & Character'Val (10)
+                & "in g 2";
+      begin
+         Test (Expr, "Int");
+      end;
+
       Leander.Logging.Stop_Logging;
    end Run;
+
+   ----------
+   -- Test --
+   ----------
+
+   procedure Test
+     (Expression    : String;
+      Expected_Type : String)
+   is
+   begin
+      Test (Leander.Parser.Parse_Expression (Expression),
+            Expected_Type);
+   exception
+      when Leander.Parser.Parse_Error =>
+         Ada.Text_IO.Put (Expression & " :: " & Expected_Type);
+         Ada.Text_IO.Set_Col (60);
+         Ada.Text_IO.Put_Line ("FAIL: parse error");
+   end Test;
 
    ----------
    -- Test --
@@ -99,7 +169,7 @@ package body Leander.Tests.Inference is
    begin
       Ada.Text_IO.Put (Expression.Show & " :: " & Expected);
       Leander.Logging.Log ("TEST", Expression.Show & " :: " & Expected);
-      Ada.Text_IO.Set_Col (40);
+      Ada.Text_IO.Set_Col (60);
       declare
          T : constant Core.Types.Reference :=
                Leander.Inference.Infer_Expression_Type

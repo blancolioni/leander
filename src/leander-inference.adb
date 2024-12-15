@@ -1,3 +1,4 @@
+with Leander.Core.Binding_Groups;
 with Leander.Core.Bindings;
 with Leander.Core.Literals;
 with Leander.Core.Schemes;
@@ -46,7 +47,7 @@ package body Leander.Inference is
 
    overriding procedure Let
      (This       : in out Inference_Visitor;
-      Binding    : Core.Bindings.Reference;
+      Bindings   : Core.Binding_Groups.Reference;
       Expression : Core.Expressions.Reference);
 
    function Infer_Type
@@ -63,7 +64,25 @@ package body Leander.Inference is
      (Binding     : Core.Bindings.Reference;
       Assumptions : Core.Assumptions.Reference;
       Subst       : Type_Subst.Reference)
+      return Core.Assumptions.Reference
+     with Unreferenced;
+
+   function Infer_Binding_Group_Type
+     (This          : in out Inference_Visitor'Class;
+      Binding_Group : Core.Binding_Groups.Reference;
+      Assumptions   : Core.Assumptions.Reference)
       return Core.Assumptions.Reference;
+
+   function Infer_Binding_Array
+     (This          : in out Inference_Visitor'Class;
+      Binding_Array : Core.Bindings.Container_Reference;
+      Assumptions   : Core.Assumptions.Reference)
+      return Core.Assumptions.Reference;
+
+   function New_Tyvars (Count : Natural) return Core.Types.Reference_Array
+   is (if Count = 0 then []
+       else Core.Types."&"
+         (Core.Types.New_TVar, New_Tyvars (Count - 1)));
 
    -----------------
    -- Application --
@@ -96,6 +115,108 @@ package body Leander.Inference is
    begin
       This.Result := C_Type;
    end Constructor;
+
+   -------------------------
+   -- Infer_Binding_Array --
+   -------------------------
+
+   function Infer_Binding_Array
+     (This          : in out Inference_Visitor'Class;
+      Binding_Array : Core.Bindings.Container_Reference;
+      Assumptions   : Core.Assumptions.Reference)
+      return Core.Assumptions.Reference
+   is
+      use Leander.Core;
+      Bs : constant Core.Bindings.Reference_Array :=
+             Binding_Array.To_Array;
+      Ts : constant Core.Types.Reference_Array :=
+             New_Tyvars (Bs'Length);
+      Scs : constant Core.Schemes.Reference_Array :=
+              [for T of Ts => Core.Schemes.To_Scheme (T)];
+      Ids : constant array (1 .. Bs'Length) of Core.Name_Id :=
+              [for B of Bs => B.Id];
+      Exprs : constant array (1 .. Bs'Length) of Core.Expressions.Reference :=
+              [for B of Bs => B.Binding];
+
+      function Zip_Ids_Scs
+        (Index : Positive)
+         return Core.Assumptions.Reference
+      is (if Index > Ids'Last
+          then Core.Assumptions.Empty
+          else Core.Assumptions.Assumption (Ids (Index), Scs (Index))
+            .Append (Zip_Ids_Scs (Index + 1)));
+
+      As_1 : constant Core.Assumptions.Reference :=
+               Zip_Ids_Scs (1).Append (Assumptions);
+
+   begin
+      Leander.Logging.Log ("IBA:ASSUMPS", Assumptions.Show);
+      for I in Exprs'Range loop
+         declare
+            T : constant Core.Types.Reference :=
+                  This.Infer_Type (As_1, Exprs (I));
+         begin
+            This.Unify (Ts (I), T);
+         end;
+      end loop;
+
+      declare
+         use type Tyvars.Tyvar_Array;
+         Subst : constant Core.Substitutions.Reference :=
+                   This.Substitutions;
+         Ts_1 : constant Core.Types.Reference_Array :=
+                   Core.Types.Apply (Ts, Subst);
+         Fs   : constant Core.Tyvars.Tyvar_Array :=
+                   Assumptions.Apply (Subst).Get_Tyvars;
+
+         function Union_All
+           (Index : Positive)
+            return Core.Tyvars.Tyvar_Array
+         is (if Index > Ts_1'Last
+             then []
+             else Tyvars.Union
+               (Ts_1 (Index).Get_Tyvars,
+                Union_All (Index + 1)));
+
+         Gs    : constant Core.Tyvars.Tyvar_Array :=
+                   Union_All (1) / Fs;
+         Scs1  : constant Schemes.Reference_Array :=
+                   [for T of Ts_1 => Schemes.Quantify (Gs, T)];
+         Result : Core.Assumptions.Reference := Core.Assumptions.Empty;
+      begin
+         for I in Ids'Range loop
+            Result := Result.Append (Ids (I), Scs1 (I));
+         end loop;
+         return Result;
+      end;
+   end Infer_Binding_Array;
+
+   ------------------------------
+   -- Infer_Binding_Group_Type --
+   ------------------------------
+
+   function Infer_Binding_Group_Type
+     (This          : in out Inference_Visitor'Class;
+      Binding_Group : Core.Binding_Groups.Reference;
+      Assumptions   : Core.Assumptions.Reference)
+      return Core.Assumptions.Reference
+   is
+      Implicit_Bindings : constant Core.Bindings.Container_Array :=
+                            Binding_Group.Implicit_Bindings;
+      Result            : Core.Assumptions.Reference :=
+                            Core.Assumptions.Empty;
+   begin
+      Leander.Logging.Log ("BG:ASSUMPS", Assumptions.Show);
+      for Container of Implicit_Bindings loop
+         declare
+            Assumps : constant Core.Assumptions.Reference :=
+                        This.Infer_Binding_Array (Container, Assumptions);
+         begin
+            Result := Result.Append (Assumps);
+         end;
+      end loop;
+      return Result;
+   end Infer_Binding_Group_Type;
 
    ------------------------
    -- Infer_Binding_Type --
@@ -134,6 +255,10 @@ package body Leander.Inference is
                (Assumptions => Assumptions,
                 others      => <>);
    begin
+      Leander.Logging.Log
+        ("EXPR", Expression.Show);
+      Leander.Logging.Log
+        ("ASSUMPTIONS", Assumptions.Show);
       This.Assumptions := Assumptions;
       Expression.Visit (This);
       Leander.Logging.Log
@@ -192,13 +317,15 @@ package body Leander.Inference is
 
    overriding procedure Let
      (This       : in out Inference_Visitor;
-      Binding    : Core.Bindings.Reference;
+      Bindings   : Core.Binding_Groups.Reference;
       Expression : Core.Expressions.Reference)
    is
       Assumptions : constant Core.Assumptions.Reference :=
-                      Infer_Binding_Type
-                        (Binding, This.Assumptions, This.Substitutions);
+                      This.Infer_Binding_Group_Type
+                        (Bindings, This.Assumptions);
    begin
+      Leander.Logging.Log
+        ("LET", Assumptions.Show);
       This.Result :=
         This.Infer_Type
           (This.Assumptions.Prepend (Assumptions),
@@ -249,6 +376,11 @@ package body Leander.Inference is
             This.Assumptions.Find (Id);
    begin
       if Scheme.Is_Nothing then
+         Leander.Logging.Log
+           ("ERROR",
+            Leander.Core.Show (Id)
+            & " not found in "
+            & This.Assumptions.Show);
          raise Constraint_Error with
            "undefined: " & Leander.Core.Show (Id);
       else

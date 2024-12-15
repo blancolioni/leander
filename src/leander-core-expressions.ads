@@ -1,5 +1,5 @@
 with Leander.Allocation;
-with Leander.Core.Bindings;
+with Leander.Core.Binding_Groups;
 with Leander.Core.Literals;
 with Leander.Core.Types;
 with Leander.Showable;
@@ -10,7 +10,7 @@ package Leander.Core.Expressions is
      and Leander.Showable.Abstraction
      and Leander.Allocation.Abstraction;
 
-   type Reference is access constant Abstraction'Class;
+   type Reference is not null access constant Abstraction'Class;
 
    function Variable (Id : Name_Id) return Reference;
    function Constructor
@@ -23,7 +23,7 @@ package Leander.Core.Expressions is
                     Expression : Reference)
                     return Reference;
 
-   function Let (Binding     : Bindings.Reference;
+   function Let (Bindings    : Core.Binding_Groups.Reference;
                  Expression  : Reference)
                  return Reference;
 
@@ -63,7 +63,7 @@ package Leander.Core.Expressions is
 
    procedure Let
      (This       : in out Expression_Visitor;
-      Binding    : Bindings.Reference;
+      Bindings   : Core.Binding_Groups.Reference;
       Expression : Reference)
    is null;
 

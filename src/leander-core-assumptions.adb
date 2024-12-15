@@ -16,6 +16,10 @@ package body Leander.Core.Assumptions is
          List : List_Of_Entries.List;
       end record;
 
+   overriding function Show
+     (This  : Instance)
+      return String;
+
    overriding function Apply
      (This  : Instance;
       Subst : Substitutions.Reference)
@@ -55,6 +59,11 @@ package body Leander.Core.Assumptions is
    overriding function Prepend
      (This    : Instance;
       That    : not null access constant Abstraction'Class)
+      return Reference;
+
+   overriding function Join
+     (Left    : not null access constant Instance;
+      Right   : not null access constant Abstraction'Class)
       return Reference;
 
    Local_Empty_Assumptions : aliased constant Instance :=
@@ -105,15 +114,15 @@ package body Leander.Core.Assumptions is
       Subst : Substitutions.Reference)
       return Reference
    is
-      List : List_Of_Entries.List;
+      App : Instance;
    begin
       for Element of This.List loop
-         List.Append
+         App.List.Append
            (Entry_Record'
               (Id => Element.Id,
                Binding => Element.Binding.Apply (Subst)));
       end loop;
-      return new Instance'(List => List);
+      return new Instance'(App);
    end Apply;
 
    ----------------
@@ -205,6 +214,23 @@ package body Leander.Core.Assumptions is
       return Tyvars.Nub (Find_Tyvars (This.List.First));
    end Get_Tyvars;
 
+   ----------
+   -- Join --
+   ----------
+
+   overriding function Join
+     (Left    : not null access constant Instance;
+      Right   : not null access constant Abstraction'Class)
+      return Reference
+   is
+      Result : Reference := Reference (Right);
+   begin
+      for Item of reverse Left.List loop
+         Result := Result.Prepend (Item.Id, Item.Binding);
+      end loop;
+      return Result;
+   end Join;
+
    -------------
    -- Prepend --
    -------------
@@ -237,4 +263,46 @@ package body Leander.Core.Assumptions is
       end loop;
       return new Instance'(Result);
    end Prepend;
+
+   overriding function Show
+     (This  : Instance)
+      return String
+   is
+      function Show_List
+        (Position : List_Of_Entries.Cursor)
+         return String;
+
+      ---------------
+      -- Show_List --
+      ---------------
+
+      function Show_List
+        (Position : List_Of_Entries.Cursor)
+         return String
+      is
+      begin
+         if not List_Of_Entries.Has_Element (Position) then
+            return "";
+         else
+            declare
+               Item : constant Entry_Record :=
+                        List_Of_Entries.Element (Position);
+               Sep  : constant String :=
+                        (if List_Of_Entries."=" (Position, This.List.First)
+                         then ""
+                         else ";");
+            begin
+               return Sep
+                 & Core.Show (Item.Id)
+                 & "="
+                 & Item.Binding.Show
+                 & Show_List (List_Of_Entries.Next (Position));
+            end;
+         end if;
+      end Show_List;
+
+   begin
+      return "[" & Show_List (This.List.First) & "]";
+   end Show;
+
 end Leander.Core.Assumptions;

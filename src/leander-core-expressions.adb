@@ -21,7 +21,7 @@ package body Leander.Core.Expressions is
                Lambda_Var  : Name_Id;
                Lambda_Body : Reference;
             when Let =>
-               Let_Binding : Bindings.Reference;
+               Let_Binding : Binding_Groups.Reference;
                Let_Expr    : Reference;
          end case;
       end record;
@@ -88,12 +88,12 @@ package body Leander.Core.Expressions is
    -- Let --
    ---------
 
-   function Let (Binding     : Bindings.Reference;
+   function Let (Bindings    : Core.Binding_Groups.Reference;
                  Expression  : Reference)
                  return Reference
    is
    begin
-      return Allocate (Instance'(Let, Binding, Expression));
+      return Allocate (Instance'(Let, Bindings, Expression));
    end Let;
 
    -------------
