@@ -121,10 +121,11 @@ package body Leander.Parser.Expressions is
       ------------------
 
       procedure Pop_Operator is
-         Operator : constant Reference := Pop_Value;
+         Operator : constant Reference := Operator_Stack.Last_Element;
          Right    : constant Reference := Pop_Value;
          Left     : constant Reference := Pop_Value;
       begin
+         Operator_Stack.Delete_Last;
          Push_Value (Apply (Apply (Operator, Left), Right));
       end Pop_Operator;
 
@@ -134,6 +135,10 @@ package body Leander.Parser.Expressions is
 
       function Pop_Value return Core.Expressions.Reference is
       begin
+         if Value_Stack.Is_Empty then
+            raise Parse_Error;
+         end if;
+
          return V : constant Reference := Value_Stack.Last_Element do
             Value_Stack.Delete_Last;
          end return;
@@ -199,11 +204,11 @@ package body Leander.Parser.Expressions is
             Name     : constant String := Scan_Identifier;
             Operator : constant Reference :=
                          (if Is_Con
-                          then Constructor (Core.Id (Name), Core.Types.T_Int)
+                          then Constructor (Core.Id (Name), Core.Types.T_Error)
                           else Variable (Core.Id (Name)));
          begin
             Push_Operator (Operator);
-            Value_Stack.Append (Parse_Left_Expression);
+            Push_Value (Parse_Left_Expression);
          end;
       end loop;
 
@@ -222,7 +227,51 @@ package body Leander.Parser.Expressions is
      return Leander.Core.Expressions.Reference
    is
    begin
-      return Parse_Atomic_Expression;
+      if At_Atomic_Expression then
+         declare
+            Indent  : constant Positive := Tok_Indent;
+            Expr    : Leander.Core.Expressions.Reference :=
+                        Parse_Atomic_Expression;
+         begin
+            while At_Atomic_Expression
+              and then Tok_Indent > Indent
+            loop
+               Expr := Core.Expressions.Apply
+                 (Expr, Parse_Atomic_Expression);
+            end loop;
+            return Expr;
+         end;
+      elsif Tok = Tok_Lambda then
+         Scan;
+         declare
+            Name : constant String :=
+                     (if At_Variable then Tok_Text else "_");
+         begin
+            if not At_Variable then
+               Error ("missing lambda variable");
+            else
+               Scan;
+            end if;
+
+            if Tok = Tok_Right_Arrow then
+               Scan;
+            else
+               Error ("missing ->");
+            end if;
+
+            declare
+               Expr : constant Leander.Core.Expressions.Reference :=
+                        Parse_Expression;
+            begin
+               return Leander.Core.Expressions.Lambda
+                 (Leander.Core.Id (Name),
+                  Expr);
+            end;
+         end;
+      else
+         Error ("expected to be at an expression");
+         raise Parse_Error;
+      end if;
    end Parse_Left_Expression;
 
 end Leander.Parser.Expressions;

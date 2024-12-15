@@ -6,6 +6,10 @@ package body Leander.Core.Schemes is
          T     : Types.Reference;
       end record;
 
+   overriding function Show
+     (This  : Instance)
+      return String;
+
    overriding function Apply
      (This  : Instance;
       Subst : Substitutions.Reference)
@@ -33,8 +37,9 @@ package body Leander.Core.Schemes is
       Subst : Substitutions.Reference)
       return Reference
    is
+      App : constant Instance := (This.Count, This.T.Apply (Subst));
    begin
-      return new Instance'(This.Count, This.T.Apply (Subst));
+      return new Instance'(App);
    end Apply;
 
    --------------
@@ -109,9 +114,23 @@ package body Leander.Core.Schemes is
       Subst : constant Substitutions.Reference :=
                 Substitutions.Substitute
                   (New_Vs, New_TGens (New_Vs'Length));
+      Q : constant Instance := (New_Vs'Length, T.Apply (Subst));
    begin
-      return new Instance'(New_Vs'Length, T.Apply (Subst));
+      return new Instance'(Q);
    end Quantify;
+
+   ----------
+   -- Show --
+   ----------
+
+   overriding function Show
+     (This  : Instance)
+      return String
+   is
+      Img : constant String := This.Count'Image;
+   begin
+      return "<" & Img (2 .. Img'Last) & ">" & This.T.Show;
+   end Show;
 
    ---------------
    -- To_Scheme --
@@ -121,8 +140,9 @@ package body Leander.Core.Schemes is
      (T     : Types.Reference)
       return Reference
    is
+      Sc : constant Instance := (0, T);
    begin
-      return new Instance'(0, T);
+      return new Instance'(Sc);
    end To_Scheme;
 
 end Leander.Core.Schemes;

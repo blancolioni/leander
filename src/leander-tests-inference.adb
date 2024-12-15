@@ -64,16 +64,8 @@ package body Leander.Tests.Inference is
             Variable (Id ("x"))),
          "Int");
 
-      Test ("+", "Int->Int->Int");
-      Test
-        (Lambda
-           (Core.Id ("x"),
-            Apply
-              (Apply
-                   (Variable (Id ("+")),
-                    Variable (Id ("x"))),
-               Variable (Id ("x")))),
-         "Int->Int");
+      Test (Variable (Id ("+")), "Int->Int->Int");
+      Test ("\x -> x + x", "Int->Int");
 
       Test
         (Let
