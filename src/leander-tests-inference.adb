@@ -115,9 +115,8 @@ package body Leander.Tests.Inference is
 
       declare
          Expr : constant String :=
-                  "let f x = 2 * g x" & Character'Val (10)
-                & "    g y = f (y + 1)" & Character'Val (10)
-                & "in g 2";
+                  "let {f = \x -> 2 * g x; g = \y -> f (y + 1)}"
+                  & "in g 2";
       begin
          Test (Expr, "Int");
       end;
@@ -134,7 +133,7 @@ package body Leander.Tests.Inference is
       Expected_Type : String)
    is
    begin
-      Test (Leander.Parser.Parse_Expression (Expression),
+      Test (Leander.Parser.Parse_Expression (Expression).To_Core,
             Expected_Type);
    exception
       when Leander.Parser.Parse_Error =>
@@ -157,7 +156,12 @@ package body Leander.Tests.Inference is
                          Core.Schemes.To_Scheme
                            (Core.Types.T_Int.Fn
                               (Core.Types.T_Int.Fn
-                                 (Core.Types.T_Int))));
+                                 (Core.Types.T_Int))))
+        .Append (Core.Id ("*"),
+                 Core.Schemes.To_Scheme
+                   (Core.Types.T_Int.Fn
+                      (Core.Types.T_Int.Fn
+                         (Core.Types.T_Int))));
    begin
       Ada.Text_IO.Put (Expression.Show & " :: " & Expected);
       Leander.Logging.Log ("TEST", Expression.Show & " :: " & Expected);

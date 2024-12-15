@@ -14,6 +14,10 @@ package body Leander.Parser is
    function Is_Symbolic_Identifier (Name : String) return Boolean
    is (not Is_Alphanumeric_Identifier (Name));
 
+   function Is_Constructor (Name : String) return Boolean
+   is (Name (Name'First) in 'A' .. 'Z'
+       or else Name (Name'First) = ':');
+
    --------------------
    -- At_Constructor --
    --------------------
@@ -106,11 +110,11 @@ package body Leander.Parser is
 
    function Parse_Expression
      (Expr : String)
-      return Leander.Core.Expressions.Reference
+      return Leander.Syntax.Expressions.Reference
    is
    begin
       Open_String (Expr);
-      return Result : constant Leander.Core.Expressions.Reference :=
+      return Result : constant Leander.Syntax.Expressions.Reference :=
         Leander.Parser.Expressions.Parse_Expression
       do
          Close;

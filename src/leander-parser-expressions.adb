@@ -1,11 +1,14 @@
 with Ada.Containers.Doubly_Linked_Lists;
+with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Strings.Fixed.Hash;
-with Leander.Core.Literals;
-with Leander.Core.Types;
 
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
+
+with Leander.Parser.Bindings;
+with Leander.Syntax.Bindings;
+with Leander.Syntax.Patterns;
 
 package body Leander.Parser.Expressions is
 
@@ -26,9 +29,9 @@ package body Leander.Parser.Expressions is
 
    function At_Atomic_Expression return Boolean;
    function Parse_Atomic_Expression
-     return Leander.Core.Expressions.Reference;
+     return Leander.Syntax.Expressions.Reference;
    function Parse_Left_Expression
-     return Leander.Core.Expressions.Reference;
+     return Leander.Syntax.Expressions.Reference;
 
    ----------------
    -- Add_Fixity --
@@ -64,23 +67,27 @@ package body Leander.Parser.Expressions is
    begin
       return At_Atomic_Expression
         or else (At_Operator and then Tok_Text = "-")
-        or else Tok <= +Tok_Lambda;
+        or else Tok <= [Tok_Lambda, Tok_Let];
    end At_Expression;
 
+   -----------------------------
+   -- Parse_Atomic_Expression --
+   -----------------------------
+
    function Parse_Atomic_Expression
-     return Leander.Core.Expressions.Reference
+     return Leander.Syntax.Expressions.Reference
    is
-      use Leander.Core.Expressions;
+      use Leander.Syntax.Expressions;
    begin
       if At_Variable then
          return Var : constant Reference :=
-           Variable (Leander.Core.Id (Tok_Text))
+           Variable (Current_Source_Location, Tok_Text)
          do
             Scan;
          end return;
       elsif Tok = Tok_Integer_Literal then
          return Lit : constant Reference :=
-           Literal (Leander.Core.Literals.Integer_Literal (Tok_Text))
+           Integer_Literal (Current_Source_Location, Tok_Text)
          do
             Scan;
          end return;
@@ -99,41 +106,51 @@ package body Leander.Parser.Expressions is
    -- Parse_Expression --
    ----------------------
 
-   function Parse_Expression return Leander.Core.Expressions.Reference is
-      use Leander.Core.Expressions;
+   function Parse_Expression return Leander.Syntax.Expressions.Reference is
+      use Leander.Syntax.Expressions;
 
-      package Tree_Stacks is
-        new Ada.Containers.Doubly_Linked_Lists (Core.Expressions.Reference);
+      package Expression_Stacks is
+        new Ada.Containers.Doubly_Linked_Lists (Syntax.Expressions.Reference);
 
-      Operator_Stack : Tree_Stacks.List;
-      Value_Stack    : Tree_Stacks.List;
+      package Operator_Stacks is
+        new Ada.Containers.Indefinite_Doubly_Linked_Lists (String);
+
+      Operator_Stack : Operator_Stacks.List;
+      Value_Stack    : Expression_Stacks.List;
 
       procedure Pop_Operator;
 
       procedure Push_Operator
-        (Operator : Core.Expressions.Reference);
+        (Op_Name : String);
 
-      procedure Push_Value (Value : Core.Expressions.Reference);
-      function Pop_Value return Core.Expressions.Reference;
+      procedure Push_Value (Value : Syntax.Expressions.Reference);
+      function Pop_Value return Syntax.Expressions.Reference;
 
       ------------------
       -- Pop_Operator --
       ------------------
 
       procedure Pop_Operator is
-         Operator : constant Reference := Operator_Stack.Last_Element;
+         Op_Name  : constant String := Operator_Stack.Last_Element;
          Right    : constant Reference := Pop_Value;
          Left     : constant Reference := Pop_Value;
+         Operator : constant Reference :=
+                      (if Is_Constructor (Op_Name)
+                       then Constructor (Left.Location, Op_Name)
+                       else Variable (Left.Location, Op_Name));
       begin
          Operator_Stack.Delete_Last;
-         Push_Value (Apply (Apply (Operator, Left), Right));
+         Push_Value (Application
+                     (Left.Location,
+                        Application
+                          (Left.Location, Operator, Left), Right));
       end Pop_Operator;
 
       ---------------
       -- Pop_Value --
       ---------------
 
-      function Pop_Value return Core.Expressions.Reference is
+      function Pop_Value return Syntax.Expressions.Reference is
       begin
          if Value_Stack.Is_Empty then
             raise Parse_Error;
@@ -149,10 +166,9 @@ package body Leander.Parser.Expressions is
       -------------------
 
       procedure Push_Operator
-        (Operator : Core.Expressions.Reference)
+        (Op_Name : String)
       is
          Op_Fixity : Fixity_Record;
-         Op_Name   : constant String := Operator.Show;
       begin
          if Fixities.Contains (Op_Name) then
             Op_Fixity := Fixities.Element (Op_Name);
@@ -162,10 +178,10 @@ package body Leander.Parser.Expressions is
 
          while not Operator_Stack.Is_Empty loop
             declare
-               Top        : constant Reference :=
+               Top        : constant String :=
                               Operator_Stack.Last_Element;
                Top_Fixity : constant Fixity_Record :=
-                              Fixities.Element (Top.Show);
+                              Fixities.Element (Top);
                Pop        : Boolean;
             begin
                Pop :=
@@ -182,14 +198,14 @@ package body Leander.Parser.Expressions is
             end;
          end loop;
 
-         Operator_Stack.Append (Operator);
+         Operator_Stack.Append (Op_Name);
       end Push_Operator;
 
       ----------------
       -- Push_Value --
       ----------------
 
-      procedure Push_Value (Value : Core.Expressions.Reference) is
+      procedure Push_Value (Value : Syntax.Expressions.Reference) is
       begin
          Value_Stack.Append (Value);
       end Push_Value;
@@ -200,14 +216,9 @@ package body Leander.Parser.Expressions is
 
       while At_Operator loop
          declare
-            Is_Con   : constant Boolean := At_Constructor_Op;
             Name     : constant String := Scan_Identifier;
-            Operator : constant Reference :=
-                         (if Is_Con
-                          then Constructor (Core.Id (Name), Core.Types.T_Error)
-                          else Variable (Core.Id (Name)));
          begin
-            Push_Operator (Operator);
+            Push_Operator (Name);
             Push_Value (Parse_Left_Expression);
          end;
       end loop;
@@ -224,26 +235,36 @@ package body Leander.Parser.Expressions is
    ---------------------------
 
    function Parse_Left_Expression
-     return Leander.Core.Expressions.Reference
+     return Leander.Syntax.Expressions.Reference
    is
    begin
       if At_Atomic_Expression then
          declare
             Indent  : constant Positive := Tok_Indent;
-            Expr    : Leander.Core.Expressions.Reference :=
+            Expr    : Leander.Syntax.Expressions.Reference :=
                         Parse_Atomic_Expression;
          begin
             while At_Atomic_Expression
               and then Tok_Indent > Indent
             loop
-               Expr := Core.Expressions.Apply
-                 (Expr, Parse_Atomic_Expression);
+               declare
+                  Loc : constant Source.Source_Location :=
+                          Current_Source_Location;
+               begin
+                  Expr :=
+                    Syntax.Expressions.Application
+                      (Loc,
+                       Expr,
+                       Parse_Atomic_Expression);
+               end;
             end loop;
             return Expr;
          end;
       elsif Tok = Tok_Lambda then
          Scan;
          declare
+            Loc  : constant Source.Source_Location :=
+                     Current_Source_Location;
             Name : constant String :=
                      (if At_Variable then Tok_Text else "_");
          begin
@@ -260,12 +281,53 @@ package body Leander.Parser.Expressions is
             end if;
 
             declare
-               Expr : constant Leander.Core.Expressions.Reference :=
+               Expr : constant Leander.Syntax.Expressions.Reference :=
                         Parse_Expression;
             begin
-               return Leander.Core.Expressions.Lambda
-                 (Leander.Core.Id (Name),
-                  Expr);
+               return Leander.Syntax.Expressions.Lambda
+                 (Loc,
+                  Syntax.Patterns.Variable (Loc, Name), Expr);
+            end;
+         end;
+      elsif Tok = Tok_Let then
+         declare
+            Loc : constant Source.Source_Location := Current_Source_Location;
+            Bs  : constant Leander.Syntax.Bindings.Reference :=
+                    Leander.Syntax.Bindings.Empty;
+         begin
+            Scan;
+            if Tok = Tok_Left_Brace then
+               Scan;
+               loop
+                  Bindings.Parse_Binding (Bs);
+                  if Tok = Tok_Semi then
+                     Scan;
+                  else
+                     exit;
+                  end if;
+               end loop;
+               if Tok = Tok_Right_Brace then
+                  Scan;
+               else
+                  Error ("missing '}'");
+               end if;
+            else
+               while Bindings.At_Binding loop
+                  Bindings.Parse_Binding (Bs);
+               end loop;
+            end if;
+            if Tok /= Tok_In then
+               Error ("expected 'in' or binding at " & Tok'Image);
+            else
+               Scan;
+            end if;
+
+            declare
+               Expr : constant Syntax.Expressions.Reference :=
+                        Parse_Expression;
+            begin
+               return Syntax.Expressions.Let
+                 (Loc, Bs, Expr);
             end;
          end;
       else

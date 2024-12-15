@@ -30,7 +30,7 @@ package body Leander.Source is
 
    function Create_Location
      (File_Name : String;
-      Line      : Positive;
+      Line      : Natural;
       Column    : Positive)
       return Source_Location
    is
@@ -55,7 +55,7 @@ package body Leander.Source is
    -- Line_Number --
    -----------------
 
-   function Line_Number (Location : Source_Location) return Positive is
+   function Line_Number (Location : Source_Location) return Natural is
    begin
       return Location.Line;
    end Line_Number;

@@ -1,4 +1,4 @@
-with Leander.Core.Expressions;
+with Leander.Syntax.Expressions;
 
 with Leander.Source;
 
@@ -8,11 +8,13 @@ package Leander.Parser is
 
    function Parse_Expression
      (Expr : String)
-      return Leander.Core.Expressions.Reference;
+      return Leander.Syntax.Expressions.Reference;
 
    function Current_Source_Location return Leander.Source.Source_Location;
 
 private
+
+   function Is_Constructor (Name : String) return Boolean;
 
    function At_Constructor return Boolean;
    function At_Variable return Boolean;
