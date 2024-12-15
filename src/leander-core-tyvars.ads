@@ -28,4 +28,27 @@ package Leander.Core.Tyvars is
       return Boolean
       is abstract;
 
+   function Get_Tyvars
+     (This  : Container_Abstraction)
+      return Tyvar_Array
+      is abstract;
+
+   function "/"
+     (Container : Tyvar_Array;
+      Tvs       : Tyvar_Array)
+      return Tyvar_Array;
+
+   function Intersection
+     (X, Y : Tyvar_Array)
+      return Tyvar_Array;
+
+   function Union
+     (X, Y : Tyvar_Array)
+      return Tyvar_Array;
+
+   function Nub
+     (Tvs : Tyvar_Array)
+      return Tyvar_Array;
+   --  remove duplicates from tvs
+
 end Leander.Core.Tyvars;

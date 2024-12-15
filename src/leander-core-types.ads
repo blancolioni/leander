@@ -1,4 +1,5 @@
 with Leander.Core.Kinds;
+with Leander.Core.Substitutions;
 with Leander.Core.Tycons;
 with Leander.Core.Tyvars;
 with Leander.Showable;
@@ -11,6 +12,7 @@ package Leander.Core.Types is
      and Tyvars.Container_Abstraction;
 
    type Reference is not null access constant Abstraction'Class;
+   type Reference_Array is array (Positive range <>) of Reference;
 
    function Is_Variable
      (This : Abstraction)
@@ -51,14 +53,34 @@ package Leander.Core.Types is
       is abstract
      with Pre'Class => This.Is_Application;
 
+   function Instantiate
+     (This : not null access constant Abstraction;
+      Refs : Reference_Array)
+      return Reference
+      is abstract;
+
+   function Apply
+     (This : not null access constant Abstraction;
+      Subst : not null access constant Substitutions.Abstraction'Class)
+      return Reference
+      is abstract;
+
+   function Apply
+     (Refs  : Reference_Array;
+      Subst : not null access constant Substitutions.Abstraction'Class)
+      return Reference_Array;
+
    function TVar (T : Tyvars.Reference) return Reference;
    function New_TVar return Reference;
 
    function TCon (T : Tycons.Reference) return Reference;
-   function Apply (Left  : not null access constant Abstraction;
-                   Right : not null access constant Abstraction'Class)
-                   return Reference
-                   is abstract;
+   function Application
+     (Left  : not null access constant Abstraction;
+      Right : not null access constant Abstraction'Class)
+      return Reference
+      is abstract;
+
+   function TGen (Index : Positive) return Reference;
 
    function T_Error   return Reference;
    function T_Unit    return Reference;

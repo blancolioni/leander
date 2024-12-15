@@ -1,19 +1,23 @@
 with Leander.Core.Bindings;
 with Leander.Core.Literals;
+with Leander.Core.Schemes;
+with Leander.Core.Substitutions;
+with Leander.Core.Tyvars;
 
-with Leander.Inference.Substitutions;
 with Leander.Inference.Unification;
 
 with Leander.Logging;
 
 package body Leander.Inference is
 
+   package Type_Subst renames Leander.Core.Substitutions;
+
    type Inference_Visitor is
      new Leander.Core.Expressions.Expression_Visitor with
       record
          Assumptions   : Leander.Core.Assumptions.Reference;
-         Substitutions : Inference.Substitutions.Reference :=
-                           Inference.Substitutions.Empty;
+         Substitutions : Type_Subst.Reference :=
+                           Type_Subst.Empty;
          Result        : Leander.Core.Types.Reference :=
                            Leander.Core.Types.T_Error;
       end record;
@@ -57,7 +61,8 @@ package body Leander.Inference is
 
    function Infer_Binding_Type
      (Binding     : Core.Bindings.Reference;
-      Assumptions : Core.Assumptions.Reference)
+      Assumptions : Core.Assumptions.Reference;
+      Subst       : Type_Subst.Reference)
       return Core.Assumptions.Reference;
 
    -----------------
@@ -98,14 +103,22 @@ package body Leander.Inference is
 
    function Infer_Binding_Type
      (Binding     : Core.Bindings.Reference;
-      Assumptions : Core.Assumptions.Reference)
+      Assumptions : Core.Assumptions.Reference;
+      Subst       : Type_Subst.Reference)
       return Core.Assumptions.Reference
    is
-      T : constant Core.Types.Reference :=
-            Infer_Expression_Type
-              (Assumptions, Binding.Binding);
+      use type Core.Tyvars.Tyvar_Array;
+      T1 : constant Core.Types.Reference :=
+             Infer_Expression_Type
+               (Assumptions, Binding.Binding);
+      T2 : constant Core.Types.Reference :=
+             T1.Apply (Subst);
+      Tvs : constant Core.Tyvars.Tyvar_Array :=
+              T2.Get_Tyvars / Assumptions.Apply (Subst).Get_Tyvars;
+      Sc  : constant Core.Schemes.Reference :=
+              Core.Schemes.Quantify (Tvs, T2);
    begin
-      return Core.Assumptions.Assumption (Binding.Id, T);
+      return Core.Assumptions.Assumption (Binding.Id, Sc);
    end Infer_Binding_Type;
 
    ---------------------------
@@ -129,7 +142,7 @@ package body Leander.Inference is
       Leander.Logging.Log
         ("INFERENCE",
          This.Result.Show);
-      return This.Substitutions.Apply (This.Result);
+      return This.Result.Apply (This.Substitutions);
    end Infer_Expression_Type;
 
    ----------------
@@ -165,8 +178,10 @@ package body Leander.Inference is
       E       : Core.Expressions.Reference)
    is
       T : constant Core.Types.Reference := Core.Types.New_TVar;
+      Scheme : constant Core.Schemes.Reference :=
+                 Core.Schemes.To_Scheme (T);
       TE : constant Core.Types.Reference :=
-             This.Infer_Type (This.Assumptions.Prepend (X, T), E);
+             This.Infer_Type (This.Assumptions.Prepend (X, Scheme), E);
    begin
       This.Result := T.Fn (TE);
    end Lambda;
@@ -181,7 +196,8 @@ package body Leander.Inference is
       Expression : Core.Expressions.Reference)
    is
       Assumptions : constant Core.Assumptions.Reference :=
-                      Infer_Binding_Type (Binding, This.Assumptions);
+                      Infer_Binding_Type
+                        (Binding, This.Assumptions, This.Substitutions);
    begin
       This.Result :=
         This.Infer_Type
@@ -229,14 +245,14 @@ package body Leander.Inference is
      (This : in out Inference_Visitor;
       Id   : Core.Name_Id)
    is
-      V : constant Core.Assumptions.Maybe_Types.Maybe :=
+      Scheme : constant Core.Assumptions.Maybe_Schemes.Maybe :=
             This.Assumptions.Find (Id);
    begin
-      if V.Is_Nothing then
+      if Scheme.Is_Nothing then
          raise Constraint_Error with
            "undefined: " & Leander.Core.Show (Id);
       else
-         This.Result := V.From_Just;
+         This.Result := Scheme.From_Just.Fresh_Instance;
       end if;
    end Variable;
 

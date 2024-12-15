@@ -1,31 +1,33 @@
-with Leander.Core.Types;
+with Leander.Core.Schemes;
+with Leander.Core.Substitutions;
+with Leander.Core.Tyvars;
 with Leander.Maybes;
 
 package Leander.Core.Assumptions is
 
-   type Abstraction is interface;
+   type Abstraction is interface and Tyvars.Container_Abstraction;
    type Reference is not null access constant Abstraction'Class;
 
-   package Maybe_Types is
-     new Leander.Maybes (Leander.Core.Types.Reference);
+   package Maybe_Schemes is
+     new Leander.Maybes (Leander.Core.Schemes.Reference);
 
    function Find
      (This : Abstraction;
       Id   : Name_Id)
-      return Maybe_Types.Maybe
+      return Maybe_Schemes.Maybe
       is abstract;
 
    function Empty return Reference;
 
    function Assumption
-     (Id : Name_Id;
-      T  : Types.Reference)
+     (Id     : Name_Id;
+      Scheme : Schemes.Reference)
       return Reference;
 
    function Append
      (This    : Abstraction;
       Id      : Name_Id;
-      Binding : Types.Reference)
+      Scheme  : Schemes.Reference)
       return Reference
       is abstract;
 
@@ -38,13 +40,19 @@ package Leander.Core.Assumptions is
    function Prepend
      (This    : Abstraction;
       Id      : Name_Id;
-      Binding : Types.Reference)
+      Scheme  : Schemes.Reference)
       return Reference
       is abstract;
 
    function Prepend
      (This    : Abstraction;
       That    : not null access constant Abstraction'Class)
+      return Reference
+      is abstract;
+
+   function Apply
+     (This  : Abstraction;
+      Subst : Substitutions.Reference)
       return Reference
       is abstract;
 

@@ -5,7 +5,7 @@ package body Leander.Core.Assumptions is
    type Entry_Record is
       record
          Id      : Name_Id;
-         Binding : Leander.Core.Types.Reference;
+         Binding : Leander.Core.Schemes.Reference;
       end record;
 
    package List_Of_Entries is
@@ -16,15 +16,29 @@ package body Leander.Core.Assumptions is
          List : List_Of_Entries.List;
       end record;
 
+   overriding function Apply
+     (This  : Instance;
+      Subst : Substitutions.Reference)
+      return Reference;
+
+   overriding function Contains
+     (This  : Instance;
+      Tyvar : Tyvars.Reference)
+      return Boolean;
+
+   overriding function Get_Tyvars
+     (This  : Instance)
+      return Tyvars.Tyvar_Array;
+
    overriding function Find
      (This : Instance;
       Id   : Name_Id)
-      return Maybe_Types.Maybe;
+      return Maybe_Schemes.Maybe;
 
    overriding function Append
      (This    : Instance;
       Id      : Name_Id;
-      Binding : Types.Reference)
+      Binding : Schemes.Reference)
       return Reference;
 
    overriding function Append
@@ -35,7 +49,7 @@ package body Leander.Core.Assumptions is
    overriding function Prepend
      (This    : Instance;
       Id      : Name_Id;
-      Binding : Types.Reference)
+      Binding : Schemes.Reference)
       return Reference;
 
    overriding function Prepend
@@ -56,7 +70,7 @@ package body Leander.Core.Assumptions is
    overriding function Append
      (This    : Instance;
       Id      : Name_Id;
-      Binding : Types.Reference)
+      Binding : Schemes.Reference)
       return Reference
    is
       Result : Instance := This;
@@ -82,18 +96,56 @@ package body Leander.Core.Assumptions is
       return new Instance'(Result);
    end Append;
 
+   -----------
+   -- Apply --
+   -----------
+
+   overriding function Apply
+     (This  : Instance;
+      Subst : Substitutions.Reference)
+      return Reference
+   is
+      List : List_Of_Entries.List;
+   begin
+      for Element of This.List loop
+         List.Append
+           (Entry_Record'
+              (Id => Element.Id,
+               Binding => Element.Binding.Apply (Subst)));
+      end loop;
+      return new Instance'(List => List);
+   end Apply;
+
    ----------------
    -- Assumption --
    ----------------
 
    function Assumption
-     (Id : Name_Id;
-      T  : Types.Reference)
+     (Id     : Name_Id;
+      Scheme : Schemes.Reference)
       return Reference
    is
    begin
-      return Empty.Append (Id, T);
+      return Empty.Append (Id, Scheme);
    end Assumption;
+
+   --------------
+   -- Contains --
+   --------------
+
+   overriding function Contains
+     (This  : Instance;
+      Tyvar : Tyvars.Reference)
+      return Boolean
+   is
+   begin
+      for Tv of Instance'Class (This).Get_Tyvars loop
+         if Tv.Name = Tyvar.Name then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Contains;
 
    ----------
    -- Find --
@@ -102,16 +154,56 @@ package body Leander.Core.Assumptions is
    overriding function Find
      (This : Instance;
       Id   : Name_Id)
-      return Maybe_Types.Maybe
+      return Maybe_Schemes.Maybe
    is
    begin
       for Element of This.List loop
          if Element.Id = Id then
-            return Maybe_Types.Just (Element.Binding);
+            return Maybe_Schemes.Just (Element.Binding);
          end if;
       end loop;
-      return Maybe_Types.Nothing;
+      return Maybe_Schemes.Nothing;
    end Find;
+
+   ----------------
+   -- Get_Tyvars --
+   ----------------
+
+   overriding function Get_Tyvars
+     (This  : Instance)
+      return Tyvars.Tyvar_Array
+   is
+      function Find_Tyvars
+        (Position : List_Of_Entries.Cursor)
+         return Tyvars.Tyvar_Array;
+
+      -----------------
+      -- Find_Tyvars --
+      -----------------
+
+      function Find_Tyvars
+        (Position : List_Of_Entries.Cursor)
+         return Tyvars.Tyvar_Array
+      is
+      begin
+         if not List_Of_Entries.Has_Element (Position) then
+            return [];
+         else
+            declare
+               use type Tyvars.Tyvar_Array;
+               Rest : constant Tyvars.Tyvar_Array :=
+                        Find_Tyvars (List_Of_Entries.Next (Position));
+               Tvs  : constant Tyvars.Tyvar_Array :=
+                        List_Of_Entries.Element (Position).Binding.Get_Tyvars;
+            begin
+               return Tvs & Rest;
+            end;
+         end if;
+      end Find_Tyvars;
+
+   begin
+      return Tyvars.Nub (Find_Tyvars (This.List.First));
+   end Get_Tyvars;
 
    -------------
    -- Prepend --
@@ -120,7 +212,7 @@ package body Leander.Core.Assumptions is
    overriding function Prepend
      (This    : Instance;
       Id      : Name_Id;
-      Binding : Types.Reference)
+      Binding : Schemes.Reference)
       return Reference
    is
       Result : Instance := This;

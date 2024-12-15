@@ -3,7 +3,7 @@ package body Leander.Core.Types is
    Next_TVar : Positive := 1;
 
    type Instance_Class is
-     (TVar, TCon, TAp);
+     (TVar, TCon, TAp, TGen);
 
    subtype Parent is Abstraction;
 
@@ -16,6 +16,8 @@ package body Leander.Core.Types is
                Con         : Tycons.Reference;
             when TAp =>
                Left, Right : Reference;
+            when TGen =>
+               Index       : Positive;
          end case;
       end record;
 
@@ -27,9 +29,14 @@ package body Leander.Core.Types is
      (This : Instance)
       return String;
 
-   overriding function Apply
+   overriding function Application
      (Left  : not null access constant Instance;
       Right : not null access constant Abstraction'Class)
+      return Reference;
+
+   overriding function Apply
+     (This  : not null access constant Instance;
+      Subst : not null access constant Substitutions.Abstraction'Class)
       return Reference;
 
    overriding procedure Visit
@@ -43,8 +50,18 @@ package body Leander.Core.Types is
    is (case This.Class is
           when TVar => This.Var.Name = Tyvar.Name,
           when TCon => False,
+          when TGen => False,
           when TAp  => This.Left.Contains (Tyvar)
        or else This.Right.Contains (Tyvar));
+
+   overriding function Get_Tyvars
+     (This  : Instance)
+      return Tyvars.Tyvar_Array;
+
+   overriding function Instantiate
+     (This : not null access constant Instance;
+      Refs : Reference_Array)
+      return Reference;
 
    overriding function Is_Variable
      (This : Instance)
@@ -175,10 +192,10 @@ package body Leander.Core.Types is
    function Fn (From : not null access constant Abstraction'Class;
                 To   : not null access constant Abstraction'Class)
                 return Reference
-   is (T_Arrow.Apply (From).Apply (To));
+   is (T_Arrow.Application (From).Application (To));
 
    function Pair (A, B : Reference) return Reference
-   is (T_Tuple_2.Apply (A).Apply (B));
+   is (T_Tuple_2.Application (A).Application (B));
 
    --------------
    -- Allocate --
@@ -192,18 +209,113 @@ package body Leander.Core.Types is
       return new Instance'Class'(This);
    end Allocate;
 
-   -----------
-   -- Apply --
-   -----------
+   -----------------
+   -- Application --
+   -----------------
 
-   overriding function Apply
+   overriding function Application
      (Left  : not null access constant Instance;
       Right : not null access constant Abstraction'Class)
       return Reference
    is
    begin
       return Allocate (Instance'(TAp, Reference (Left), Reference (Right)));
+   end Application;
+
+   -----------
+   -- Apply --
+   -----------
+
+   overriding function Apply
+     (This  : not null access constant Instance;
+      Subst : not null access constant Substitutions.Abstraction'Class)
+      return Reference
+   is
+   begin
+      case This.Class is
+         when TVar =>
+            declare
+               T : constant Substitutions.Maybe_Result.Maybe :=
+                     Subst.Lookup (This.Var);
+            begin
+               if T.Is_Nothing then
+                  return Reference (This);
+               else
+                  return Reference (T.From_Just);
+               end if;
+            end;
+         when TCon =>
+            return Reference (This);
+         when TAp =>
+               return This.Left.Apply (Subst).Application
+                 (This.Right.Apply (Subst));
+         when TGen =>
+            return Reference (This);
+      end case;
    end Apply;
+
+   -----------
+   -- Apply --
+   -----------
+
+   function Apply
+     (Refs  : Reference_Array;
+      Subst : not null access constant Substitutions.Abstraction'Class)
+      return Reference_Array
+   is
+      Result : Reference_Array := Refs;
+   begin
+      for T of Result loop
+         T := T.Apply (Subst);
+      end loop;
+      return Result;
+   end Apply;
+
+   ----------------
+   -- Get_Tyvars --
+   ----------------
+
+   overriding function Get_Tyvars
+     (This  : Instance)
+      return Tyvars.Tyvar_Array
+   is
+   begin
+      case This.Class is
+         when TVar =>
+            return [This.Var];
+         when TCon =>
+            return [];
+         when TAp =>
+            return Tyvars.Union
+              (This.Left.Get_Tyvars,
+               This.Right.Get_Tyvars);
+         when TGen =>
+            return [];
+      end case;
+   end Get_Tyvars;
+
+   -----------------
+   -- Instantiate --
+   -----------------
+
+   overriding function Instantiate
+     (This : not null access constant Instance;
+      Refs : Reference_Array)
+      return Reference
+   is
+   begin
+      case This.Class is
+         when TVar =>
+            return Reference (This);
+         when TCon =>
+            return Reference (This);
+         when TAp =>
+            return This.Left.Instantiate (Refs)
+              .Application (This.Right.Instantiate (Refs));
+         when TGen =>
+            return Refs (This.Index);
+      end case;
+   end Instantiate;
 
    ----------
    -- Kind --
@@ -221,6 +333,8 @@ package body Leander.Core.Types is
             return This.Con.Kind;
          when TAp =>
             return This.Left.Kind.KAp;
+         when TGen =>
+            return Kinds.Star;
       end case;
    end Kind;
 
@@ -233,7 +347,7 @@ package body Leander.Core.Types is
       return Reference
    is
    begin
-      return T_List.Apply (This);
+      return T_List.Application (This);
    end List;
 
    --------------
@@ -246,7 +360,7 @@ package body Leander.Core.Types is
       Next_TVar := Next_TVar + 1;
       Name (Name'First) := '_';
       return TVar
-        (Tyvars.Tyvar (Id ("t" & Name), Kinds.Star));
+        (Tyvars.Tyvar (Id ("$t" & Name), Kinds.Star));
    end New_TVar;
 
    ----------
@@ -263,6 +377,13 @@ package body Leander.Core.Types is
             return This.Var.Show;
          when TCon =>
             return This.Con.Show;
+         when TGen =>
+            declare
+               Img : String := This.Index'Image;
+            begin
+               Img (Img'First) := '_';
+               return Img;
+            end;
          when TAp =>
             if This.Left = T_List then
                return "[" & This.Right.Show & "]";
@@ -302,6 +423,15 @@ package body Leander.Core.Types is
    end TCon;
 
    ----------
+   -- TGen --
+   ----------
+
+   function TGen (Index : Positive) return Reference is
+   begin
+      return Allocate (Instance'(TGen, Index));
+   end TGen;
+
+   ----------
    -- TVar --
    ----------
 
@@ -324,6 +454,8 @@ package body Leander.Core.Types is
             Visitor.Variable (This.Var);
          when TCon =>
             Visitor.Constructor (This.Con);
+         when TGen =>
+            null;
          when TAp =>
             Visitor.Application (This.Left, This.Right);
       end case;

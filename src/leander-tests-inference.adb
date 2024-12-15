@@ -6,6 +6,7 @@ with Leander.Core.Bindings;
 with Leander.Core.Expressions;
 with Leander.Core.Kinds;
 with Leander.Core.Literals;
+with Leander.Core.Schemes;
 with Leander.Core.Tycons;
 with Leander.Core.Types;
 with Leander.Core.Tyvars;
@@ -35,7 +36,7 @@ package body Leander.Tests.Inference is
               (Core.Tycons.Tycon
                    (Id ("Maybe"),
                     Core.Kinds.KFun (Core.Kinds.Star, Core.Kinds.Star)))
-            .Apply
+            .Application
               (Core.Types.TVar
                    (Core.Tyvars.Tyvar
                         (Id ("a"),
@@ -66,6 +67,17 @@ package body Leander.Tests.Inference is
                Variable (Id ("x")))),
          "Int->Int");
 
+      Test
+        (Let
+           (Bindings.Bind
+                (Id ("id"),
+                 Lambda
+                   (Core.Id ("x"),
+                    Variable (Core.Id ("x")))),
+            Apply
+              (Variable (Id ("id")),
+               Variable (Id ("id")))),
+         "a->a");
       Leander.Logging.Stop_Logging;
    end Run;
 
@@ -80,9 +92,10 @@ package body Leander.Tests.Inference is
       Assumptions : constant Core.Assumptions.Reference :=
                       Core.Assumptions.Assumption
                         (Core.Id ("+"),
-                         Core.Types.T_Int.Fn
+                         Core.Schemes.To_Scheme
                            (Core.Types.T_Int.Fn
-                              (Core.Types.T_Int)));
+                              (Core.Types.T_Int.Fn
+                                 (Core.Types.T_Int))));
    begin
       Ada.Text_IO.Put (Expression.Show & " :: " & Expected);
       Leander.Logging.Log ("TEST", Expression.Show & " :: " & Expected);

@@ -8,3 +8,6 @@
 /alire/
 /obj/
 /bin/
+
+# Generated
+/log/
