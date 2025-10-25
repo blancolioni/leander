@@ -1,3 +1,4 @@
+with Leander.Environment;
 with Leander.Syntax.Expressions;
 
 with Leander.Source;
@@ -9,6 +10,10 @@ package Leander.Parser is
    function Parse_Expression
      (Expr : String)
       return Leander.Syntax.Expressions.Reference;
+
+   function Load_Module
+     (Path : String)
+      return Leander.Environment.Reference;
 
    function Current_Source_Location return Leander.Source.Source_Location;
 

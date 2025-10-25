@@ -22,7 +22,7 @@ private
    overriding function To_Core
      (This : Instance)
       return Leander.Core.Expressions.Reference
-   is (Leander.Core.Expressions.Apply
+   is (Leander.Core.Expressions.Application
          (This.Left.To_Core, This.Right.To_Core));
 
    function Application

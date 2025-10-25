@@ -1,12 +1,13 @@
+with Leander.Names;
+
 package Leander.Core is
 
-   type Name_Id is private;
+   type Conid is new Leander.Names.Leander_Name;
+   function To_Conid (S : String) return Conid;
 
-   function Id (S : String) return Name_Id;
-   function Show (Id : Name_Id) return String;
+   type Varid is new Leander.Names.Leander_Name;
+   function To_Varid (S : String) return Varid;
 
-private
-
-   type Name_Id is new Positive;
+   procedure Prune;
 
 end Leander.Core;

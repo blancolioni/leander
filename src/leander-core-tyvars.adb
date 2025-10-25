@@ -1,27 +1,10 @@
 package body Leander.Core.Tyvars is
 
-   type Instance is new Abstraction with
-      record
-         Id    : Name_Id;
-         Kind  : Kinds.Reference;
-      end record;
+   Next_Tyvar : Positive := 1;
 
-   overriding function Kind (This : Instance) return Kinds.Reference
-   is (This.Kind);
-
-   overriding function Show
-     (This : Instance)
-      return String
-   is (Show (This.Id));
-
-   overriding function Name (This : Instance) return Name_Id
-   is (This.Id);
-
-   function Contains
-     (Tvs : Tyvar_Array;
-      Tv  : Reference)
-      return Boolean
-   is (for some T of Tvs => T.Name = Tv.Name);
+   function Contains (Tvs : Tyvar_Array;
+                      Tv  : Instance'Class)
+                      return Boolean;
 
    ---------
    -- "/" --
@@ -43,6 +26,49 @@ package body Leander.Core.Tyvars is
       return Get (Container'First);
    end "/";
 
+   --------------
+   -- Contains --
+   --------------
+
+   function Contains (Tvs : Tyvar_Array;
+                      Tv  : Instance'Class)
+                      return Boolean
+   is
+   begin
+      for Item of Tvs loop
+         if Item.Name = Tv.Name then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Contains;
+
+   -------------
+   -- Include --
+   -------------
+
+   procedure Include (This : in out Tyvar_Array_Builder;
+                      Tvs  : Tyvar_Array)
+   is
+   begin
+      for Tv of Tvs loop
+         This.Include (Tv);
+      end loop;
+   end Include;
+
+   -------------
+   -- Include --
+   -------------
+
+   procedure Include (This : in out Tyvar_Array_Builder;
+                      Tv   : Instance'Class)
+   is
+   begin
+      if not This.Vector.Contains (Instance (Tv)) then
+         This.Vector.Append (Instance (Tv));
+      end if;
+   end Include;
+
    ------------------
    -- Intersection --
    ------------------
@@ -61,6 +87,18 @@ package body Leander.Core.Tyvars is
    begin
       return Get (X'First);
    end Intersection;
+
+   ---------------
+   -- New_Tyvar --
+   ---------------
+
+   function New_Tyvar return Instance is
+      Name : String := Next_Tyvar'Image;
+   begin
+      Next_Tyvar := Next_Tyvar + 1;
+      Name (Name'First) := '_';
+      return Tyvar (To_Varid ("$t" & Name), Kinds.Star);
+   end New_Tyvar;
 
    ---------
    -- Nub --
@@ -82,18 +120,29 @@ package body Leander.Core.Tyvars is
       return Get ([], Tvs'First);
    end Nub;
 
+   --------------------
+   -- To_Tyvar_Array --
+   --------------------
+
+   function To_Tyvar_Array
+     (This : Tyvar_Array_Builder)
+      return Tyvar_Array
+   is
+   begin
+      return [for Tv of This.Vector => Tv];
+   end To_Tyvar_Array;
+
    -----------
    -- Tyvar --
    -----------
 
    function Tyvar
-     (Id   : Name_Id;
-      Kind : Kinds.Reference)
-      return Reference
+     (Id   : Varid;
+      Kind : Leander.Core.Kinds.Kind)
+      return Instance
    is
-      This : constant Instance := Instance'(Id, Kind);
    begin
-      return new Instance'(This);
+      return Instance'(Id, Kind);
    end Tyvar;
 
    -----------

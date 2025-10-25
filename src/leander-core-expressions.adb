@@ -1,109 +1,132 @@
+with Leander.Allocator;
+with Leander.Core.Binding_Groups;
+
 package body Leander.Core.Expressions is
 
-   type Instance_Class is
-     (Variable, Constructor, Literal, Application, Lambda, Let);
+   type Variable_Reference is access all Instance;
 
-   subtype Parent is Abstraction;
-
-   type Instance (Class : Instance_Class) is new Parent with
-      record
-         case Class is
-            when Variable =>
-               Var_Id      : Name_Id;
-            when Constructor =>
-               Con_Id      : Name_Id;
-               Con_Type    : Types.Reference;
-            when Literal =>
-               Literal     : Literals.Reference;
-            when Application =>
-               Left, Right : Reference;
-            when Lambda =>
-               Lambda_Var  : Name_Id;
-               Lambda_Body : Reference;
-            when Let =>
-               Let_Binding : Binding_Groups.Reference;
-               Let_Expr    : Reference;
-         end case;
-      end record;
-
-   overriding function Show
-     (This : Instance)
-      return String;
-
-   overriding procedure Visit
-     (This    : not null access constant Instance;
-      Visitor : in out Expression_Visitor'class);
-
-   function Allocate
-     (This : Instance'Class)
-      return Reference;
+   package Allocator is
+     new Leander.Allocator ("expressions", Instance, Variable_Reference);
 
    --------------
    -- Allocate --
    --------------
 
    function Allocate
-     (This : Instance'Class)
+     (This : Instance)
       return Reference
    is
    begin
-      return new Instance'Class'(This);
+      return Reference (Allocator.Allocate (This));
    end Allocate;
 
-   -----------
-   -- Apply --
-   -----------
+   -----------------
+   -- Application --
+   -----------------
 
-   function Apply (Left, Right : Reference) return Reference is
+   function Application
+     (Left  : Reference;
+      Right : Reference)
+      return Reference
+   is
    begin
-      return Allocate (Instance'(Application, Left, Right));
-   end Apply;
+      return Allocate
+        (Instance'(EApp, Core.Typeable.New_Id, Left, Right));
+   end Application;
 
    -----------------
    -- Constructor --
    -----------------
 
    function Constructor
-     (Id    : Name_Id;
-      CType : Types.Reference)
+     (Id      : Conid)
       return Reference
    is
    begin
-      return Allocate (Instance'(Constructor, Id, CType));
+      return Allocate ((ECon, Core.Typeable.New_Id, Id));
    end Constructor;
+
+   -------------
+   -- Dispose --
+   -------------
+
+   overriding procedure Dispose (This : in out Instance) is
+   begin
+      null;
+   end Dispose;
+
+   -------------------
+   -- Has_Reference --
+   -------------------
+
+   function Has_Reference
+     (This : Instance'Class;
+      To   : Varid)
+      return Boolean
+   is
+   begin
+      case This.Tag is
+         when EVar =>
+            return This.Var_Id = To;
+         when ECon =>
+            return False;
+         when ELit =>
+            return False;
+         when EApp =>
+            return This.Left.Has_Reference (To)
+              or else This.Right.Has_Reference (To);
+         when ELam =>
+            return This.LVar /= To
+              and then This.LBody.Has_Reference (To);
+         when ELet =>
+            return False;
+      end case;
+   end Has_Reference;
 
    ------------
    -- Lambda --
    ------------
 
-   function Lambda (Id         : Name_Id;
+   function Lambda (Id : Varid;
                     Expression : Reference)
                     return Reference
    is
    begin
-      return Allocate (Instance'(Lambda, Id, Expression));
+      return Allocate ((ELam, Core.Typeable.New_Id, Id, Expression));
    end Lambda;
 
    ---------
    -- Let --
    ---------
 
-   function Let (Bindings    : Core.Binding_Groups.Reference;
-                 Expression  : Reference)
-                 return Reference
+   function Let
+     (Bindings : Leander.Core.Binding_Groups.Reference;
+      Expr     : Reference)
+      return Reference
    is
+      Ref : constant Binding_Group_Reference :=
+              Binding_Group_Reference (Bindings);
    begin
-      return Allocate (Instance'(Let, Bindings, Expression));
+      return Allocate ((ELet, Core.Typeable.New_Id, Ref, Expr));
    end Let;
 
    -------------
    -- Literal --
    -------------
 
-   function Literal (Lit : Literals.Reference) return Reference is
+   function Literal (Lit : Literals.Instance) return Reference is
    begin
-      return Allocate (Instance'(Literal, Lit));
+      return Allocate ((ELit, Core.Typeable.New_Id, Lit));
    end Literal;
+
+   -----------
+   -- Prune --
+   -----------
+
+   procedure Prune is
+   begin
+      Allocator.Prune;
+   end Prune;
 
    ----------
    -- Show --
@@ -114,63 +137,72 @@ package body Leander.Core.Expressions is
       return String
    is
    begin
-      case This.Class is
-         when Variable =>
-            return Show (This.Var_Id);
-         when Constructor =>
-            return Show (This.Con_Id);
-         when Literal =>
+      case This.Tag is
+         when EVar =>
+            return To_String (This.Var_Id);
+         when ECon =>
+            return To_String (This.Con_Id);
+         when ELit =>
             return This.Literal.Show;
-         when Application =>
-            if Instance (This.Right.all).Class in
-              Application | Lambda | Let
-            then
-               return This.Left.Show & " ("
-                 & This.Right.Show & ")";
-            else
-               return This.Left.Show & " " & This.Right.Show;
-            end if;
-         when Lambda =>
-            return "\" & Show (This.Lambda_Var) & " -> "
-              & This.Lambda_Body.Show;
-         when Let =>
-            return "let " & This.Let_Binding.Show
-              & " in " & This.Let_Expr.Show;
+         when EApp =>
+            declare
+               function Paren (Img : String; P : Boolean) return String
+               is (if P then "(" & Img & ")" else Img);
+
+               Left_Image : constant String :=
+                              Paren (This.Left.Show,
+                                     This.Left.Tag in ELam | ELet);
+
+               Right_Image : constant String :=
+                               Paren (This.Right.Show,
+                                      This.Right.Tag in EApp | ELam | ELet);
+            begin
+               return Left_Image & " " & Right_Image;
+            end;
+         when ELam =>
+            return "\" & To_String (This.LVar) & " -> "
+              & This.LBody.Show;
+         when ELet =>
+            return "let {" & This.Let_Bindings.Show
+              & "} in " & This.Let_Body.Show;
       end case;
    end Show;
+
+   --------------
+   -- Traverse --
+   --------------
+
+   overriding procedure Traverse
+     (This : not null access constant Instance;
+      Process : not null access
+        procedure (This : not null access constant
+                     Traverseable.Abstraction'Class))
+   is
+   begin
+      Process (This);
+      case This.Tag is
+         when EVar =>
+            null;
+         when ECon =>
+            null;
+         when ELit =>
+            null;
+         when EApp =>
+            This.Left.Traverse (Process);
+            This.Right.Traverse (Process);
+         when ELam =>
+            This.LBody.Traverse (Process);
+         when ELet =>
+            null;      end case;
+   end Traverse;
 
    --------------
    -- Variable --
    --------------
 
-   function Variable (Id : Name_Id) return Reference is
+   function Variable (Id : Varid) return Reference is
    begin
-      return Allocate (Instance'(Variable, Id));
+      return Allocate (Instance'(EVar, Core.Typeable.New_Id, Id));
    end Variable;
-
-   -----------
-   -- Visit --
-   -----------
-
-   overriding procedure Visit
-     (This    : not null access constant Instance;
-      Visitor : in out Expression_Visitor'class)
-   is
-   begin
-      case This.Class is
-         when Variable =>
-            Visitor.Variable (This.Var_Id);
-         when Constructor =>
-            Visitor.Constructor (This.Con_Id, This.Con_Type);
-         when Literal =>
-            Visitor.Literal (This.Literal);
-         when Application =>
-            Visitor.Application (This.Left, This.Right);
-         when Lambda =>
-            Visitor.Lambda (This.Lambda_Var, This.Lambda_Body);
-         when Let =>
-            Visitor.Let (This.Let_Binding, This.Let_Expr);
-      end case;
-   end Visit;
 
 end Leander.Core.Expressions;

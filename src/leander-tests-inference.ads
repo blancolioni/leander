@@ -1,5 +1,5 @@
 package Leander.Tests.Inference is
 
-   procedure Run;
+   procedure Run_Tests;
 
 end Leander.Tests.Inference;

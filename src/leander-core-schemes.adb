@@ -1,45 +1,30 @@
+with Leander.Allocator;
+
 package body Leander.Core.Schemes is
 
-   type Instance is new Abstraction with
-      record
-         Count : Natural;
-         T     : Types.Reference;
-      end record;
+   type Variable_Reference is access all Instance;
 
-   overriding function Show
-     (This  : Instance)
-      return String;
+   package Allocator is
+     new Leander.Allocator ("schemes", Instance, Variable_Reference);
 
-   overriding function Apply
-     (This  : Instance;
-      Subst : Substitutions.Reference)
-      return Reference;
-
-   overriding function Contains
-     (This  : Instance;
-      Tyvar : Tyvars.Reference)
-      return Boolean;
-
-   overriding function Fresh_Instance
-     (This : Instance)
-      return Types.Reference;
-
-   overriding function Get_Tyvars
-     (This  : Instance)
-      return Tyvars.Tyvar_Array;
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Allocator.Allocate (Instance (This))));
 
    -----------
    -- Apply --
    -----------
 
    overriding function Apply
-     (This  : Instance;
-      Subst : Substitutions.Reference)
-      return Reference
+     (This  : not null access constant Instance;
+      Subst : Leander.Core.Substitutions.Instance'Class)
+      return access constant Instance
    is
-      App : constant Instance := (This.Count, This.T.Apply (Subst));
+      W : constant Leander.Names.Name_Array :=
+            [for Tv of This.Tyvars => Leander.Names.Leander_Name (Tv.Name)];
    begin
-      return new Instance'(App);
+      return Quantify (This.Tyvars, This.Ty.Apply (Subst.Without (W)));
    end Apply;
 
    --------------
@@ -48,34 +33,52 @@ package body Leander.Core.Schemes is
 
    overriding function Contains
      (This  : Instance;
-      Tyvar : Tyvars.Reference)
+      Tyvar : Leander.Core.Tyvars.Instance'Class)
       return Boolean
    is
+      use type Leander.Core.Tyvars.Instance;
    begin
-      return This.T.Contains (Tyvar);
+      for Tv of This.Get_Tyvars loop
+         if Leander.Core.Tyvars.Instance (Tyvar) = Tv then
+            return True;
+         end if;
+      end loop;
+      return False;
    end Contains;
 
    --------------------
    -- Fresh_Instance --
    --------------------
 
-   overriding function Fresh_Instance
+   function Fresh_Instance
      (This : Instance)
       return Types.Reference
    is
-      use type Types.Reference_Array;
+      function Create_Subst
+        (Index : Positive)
+         return Leander.Core.Substitutions.Instance;
 
-      function New_Tyvars (Count : Natural) return Types.Reference_Array
-      is (if Count = 0
-          then []
-          else Types.New_TVar & New_Tyvars (Count - 1));
+      ------------------
+      -- Create_Subst --
+      ------------------
 
-      Ts : Types.Reference_Array := New_Tyvars (This.Count);
+      function Create_Subst
+        (Index : Positive)
+         return Leander.Core.Substitutions.Instance
+      is
+      begin
+         if Index <= This.Count then
+            return Leander.Core.Substitutions.Compose
+              (Leander.Names.Leander_Name (This.Tyvars (Index).Name),
+               Leander.Core.Types.New_TVar,
+               Create_Subst (Index + 1));
+         else
+            return Leander.Core.Substitutions.Empty;
+         end if;
+      end Create_Subst;
+
    begin
-      for T of Ts loop
-         T := Types.New_TVar;
-      end loop;
-      return This.T.Instantiate (Ts);
+      return This.Ty.Apply (Create_Subst (1));
    end Fresh_Instance;
 
    ----------------
@@ -84,52 +87,43 @@ package body Leander.Core.Schemes is
 
    overriding function Get_Tyvars
      (This  : Instance)
-      return Tyvars.Tyvar_Array
+      return Leander.Core.Tyvars.Tyvar_Array
    is
+      use type Leander.Core.Tyvars.Tyvar_Array;
    begin
-      return This.T.Get_Tyvars;
+      return This.Ty.Get_Tyvars / This.Tyvars;
    end Get_Tyvars;
+
+
+   -----------
+   -- Prune --
+   -----------
+
+   procedure Prune is
+   begin
+      Allocator.Prune;
+   end Prune;
 
    --------------
    -- Quantify --
    --------------
 
    function Quantify
-     (Vs    : Tyvars.Tyvar_Array;
-      T     : Types.Reference)
+     (Vs    : Leander.Core.Tyvars.Tyvar_Array;
+      T     : Leander.Core.Types.Reference)
       return Reference
    is
-      use type Substitutions.Type_Reference_Array;
-
-      T_Vs : constant Tyvars.Tyvar_Array := T.Get_Tyvars;
-      New_Vs : constant Tyvars.Tyvar_Array :=
-                 Tyvars.Intersection (T_Vs, Vs);
-
-      function New_TGens (Count : Natural)
-                          return Substitutions.Type_Reference_Array
-      is (if Count = 0 then []
-          else New_TGens (Count - 1)
-          & Substitutions.Type_Reference (Types.TGen (Count)));
-
-      Subst : constant Substitutions.Reference :=
-                Substitutions.Substitute
-                  (New_Vs, New_TGens (New_Vs'Length));
-      Q : constant Instance := (New_Vs'Length, T.Apply (Subst));
    begin
-      return new Instance'(Q);
+      return Allocate (Instance'(Vs'Length, Vs, T));
    end Quantify;
 
    ----------
    -- Show --
    ----------
 
-   overriding function Show
-     (This  : Instance)
-      return String
-   is
-      Img : constant String := This.Count'Image;
+   overriding function Show (This : Instance) return String is
    begin
-      return "<" & Img (2 .. Img'Last) & ">" & This.T.Show;
+      return This.Ty.Show;
    end Show;
 
    ---------------
@@ -137,12 +131,11 @@ package body Leander.Core.Schemes is
    ---------------
 
    function To_Scheme
-     (T     : Types.Reference)
+     (T     : Leander.Core.Types.Reference)
       return Reference
    is
-      Sc : constant Instance := (0, T);
    begin
-      return new Instance'(Sc);
+      return Quantify ([], T);
    end To_Scheme;
 
 end Leander.Core.Schemes;

@@ -1,201 +1,90 @@
+with Leander.Allocator;
+with Leander.Names;
+
 package body Leander.Core.Types is
 
-   Next_TVar : Positive := 1;
+   type Variable_Reference is access all Instance;
 
-   type Instance_Class is
-     (TVar, TCon, TAp, TGen);
-
-   subtype Parent is Abstraction;
-
-   type Instance (Class : Instance_Class) is new Parent with
-      record
-         case Class is
-            when TVar =>
-               Var         : Tyvars.Reference;
-            when TCon =>
-               Con         : Tycons.Reference;
-            when TAp =>
-               Left, Right : Reference;
-            when TGen =>
-               Index       : Positive;
-         end case;
-      end record;
-
-   overriding function Kind
-     (This : Instance)
-      return Kinds.Reference;
-
-   overriding function Show
-     (This : Instance)
-      return String;
-
-   overriding function Application
-     (Left  : not null access constant Instance;
-      Right : not null access constant Abstraction'Class)
-      return Reference;
-
-   overriding function Apply
-     (This  : not null access constant Instance;
-      Subst : not null access constant Substitutions.Abstraction'Class)
-      return Reference;
-
-   overriding procedure Visit
-     (This    : not null access constant Instance;
-      Visitor : in out Type_Visitor'class);
+   package Allocator is
+     new Leander.Allocator ("types", Instance, Variable_Reference);
 
    overriding function Contains
      (This  : Instance;
-      Tyvar : Tyvars.Reference)
+      Tyvar : Leander.Core.Tyvars.Instance'Class)
       return Boolean
-   is (case This.Class is
-          when TVar => This.Var.Name = Tyvar.Name,
+   is (case This.Tag is
+          when TVar => This.Tyvar.Name = Tyvar.Name,
           when TCon => False,
           when TGen => False,
-          when TAp  => This.Left.Contains (Tyvar)
+          when TApp => This.Left.Contains (Tyvar)
        or else This.Right.Contains (Tyvar));
-
-   overriding function Get_Tyvars
-     (This  : Instance)
-      return Tyvars.Tyvar_Array;
-
-   overriding function Instantiate
-     (This : not null access constant Instance;
-      Refs : Reference_Array)
-      return Reference;
-
-   overriding function Is_Variable
-     (This : Instance)
-      return Boolean
-   is (This.Class = TVar);
-
-   overriding function Variable
-     (This : Instance)
-      return Tyvars.Reference
-   is (This.Var);
-
-   overriding function Is_Constructor
-     (This : Instance)
-      return Boolean
-   is (This.Class = TCon);
-
-   overriding function Constructor
-     (This : Instance)
-      return Tycons.Reference
-   is (This.Con);
-
-   overriding function Is_Application
-     (This : Instance)
-      return Boolean
-   is (This.Class = TAp);
-
-   overriding function Left
-     (This : Instance)
-      return Reference
-   is (This.Left);
-
-   overriding function Right
-     (This : Instance)
-      return Reference
-   is (This.Right);
 
    function Allocate
      (This : Instance'Class)
       return Reference;
 
-   package Static_Values is
-      Local_Kind_Star_Star : constant Kinds.Reference :=
-                               Kinds.KFun (Kinds.Star, Kinds.Star);
+   function Con (Name : String;
+                 Kind : Kinds.Kind := Kinds.Star)
+                 return Instance
+   is (TCon, Tycons.Tycon (To_Conid (Name), Kind));
 
-      Local_Kind_Star_Star_Star : constant Kinds.Reference :=
-                                    Kinds.KFun (Kinds.Star,
-                                                Local_Kind_Star_Star);
+   Kind_SS    : constant Kinds.Kind :=
+                  Kinds.Kind_Function (Kinds.Star, Kinds.Star);
+   Kind_SSS   : constant Kinds.Kind :=
+                  Kinds.Kind_Function (Kinds.Star, Kind_SS);
 
-      Local_Unit_Con : constant Tycons.Reference :=
-                         Tycons.Tycon (Id ("()"), Kinds.Star);
+   Local_TUnit    : aliased constant Instance := Con ("()");
+   Local_TError   : aliased constant Instance := Con ("#error");
+   Local_TChar    : aliased constant Instance := Con ("Char");
+   Local_TInt     : aliased constant Instance := Con ("Int");
+   Local_TInteger : aliased constant Instance := Con ("Integer");
+   Local_TFloat   : aliased constant Instance := Con ("Float");
+   Local_TDouble  : aliased constant Instance := Con ("Double");
+   Local_TList    : aliased constant Instance := Con ("[]", Kind_SS);
+   Local_TArrow   : aliased constant Instance := Con ("(->)", Kind_SSS);
+   Local_TPair    : aliased constant Instance := Con ("(,)", Kind_SSS);
 
-      Local_Error_Con : constant Tycons.Reference :=
-                          Tycons.Tycon (Id ("#error"), Kinds.Star);
+   Local_TString  : aliased constant Instance :=
+                      (TApp, Local_TList'Access, Local_TChar'Access);
 
-      Local_Char_Con : constant Tycons.Reference :=
-                         Tycons.Tycon (Id ("Char"), Kinds.Star);
-
-      Local_Int_Con : constant Tycons.Reference :=
-                        Tycons.Tycon (Id ("Int"), Kinds.Star);
-
-      Local_Integer_Con : constant Tycons.Reference :=
-                            Tycons.Tycon (Id ("Integer"), Kinds.Star);
-
-      Local_Float_Con : constant Tycons.Reference :=
-                          Tycons.Tycon (Id ("Float"), Kinds.Star);
-
-      Local_Double_Con : constant Tycons.Reference :=
-                           Tycons.Tycon (Id ("Double"), Kinds.Star);
-
-      Local_List_Con : constant Tycons.Reference :=
-                         Tycons.Tycon (Id ("[]"), Local_Kind_Star_Star);
-
-      Local_Arrow_Con : constant Tycons.Reference :=
-                          Tycons.Tycon (Id ("(->)"),
-                                        Local_Kind_Star_Star_Star);
-
-      Local_Tuple2_Con : constant Tycons.Reference :=
-                           Tycons.Tycon (Id ("(,)"),
-                                         Local_Kind_Star_Star_Star);
-
-      Local_TUnit    : aliased constant Instance := (TCon, Local_Unit_Con);
-      Local_TError   : aliased constant Instance := (TCon, Local_Error_Con);
-      Local_TChar    : aliased constant Instance := (TCon, Local_Char_Con);
-      Local_TInt     : aliased constant Instance := (TCon, Local_Int_Con);
-      Local_TInteger : aliased constant Instance := (TCon, Local_Integer_Con);
-      Local_TFloat   : aliased constant Instance := (TCon, Local_Float_Con);
-      Local_TDouble  : aliased constant Instance := (TCon, Local_Double_Con);
-      Local_TList    : aliased constant Instance := (TCon, Local_List_Con);
-      Local_TArrow   : aliased constant Instance := (TCon, Local_Arrow_Con);
-      Local_TTuple2  : aliased constant Instance := (TCon, Local_Tuple2_Con);
-
-      Local_TString  : aliased constant Instance :=
-                         (TAp, Local_TList'Access, Local_TChar'Access);
-   end Static_Values;
-
-   function T_Arrow   return Reference
-   is (Static_Values.Local_TArrow'Access);
+   function T_Arrow   return Reference is (Local_TArrow'Access);
 
    function T_Char   return Reference
-   is (Static_Values.Local_TChar'Access);
+   is (Local_TChar'Access);
 
    function T_Error   return Reference
-   is (Static_Values.Local_TError'Access);
+   is (Local_TError'Access);
 
    function T_Int     return Reference
-   is (Static_Values.Local_TInt'Access);
+   is (Local_TInt'Access);
 
    function T_Integer return Reference
-   is (Static_Values.Local_TInteger'Access);
+   is (Local_TInteger'Access);
 
    function T_Float   return Reference
-   is (Static_Values.Local_TFloat'Access);
+   is (Local_TFloat'Access);
 
    function T_Double  return Reference
-   is (Static_Values.Local_TDouble'Access);
+   is (Local_TDouble'Access);
 
    function T_List    return Reference
-   is (Static_Values.Local_TList'Access);
+   is (Local_TList'Access);
 
-   function T_Tuple_2 return Reference
-   is (Static_Values.Local_TTuple2'Access);
+   function T_Pair return Reference
+   is (Local_TPair'Access);
 
    function T_Unit    return Reference
-   is (Static_Values.Local_TUnit'Access);
+   is (Local_TUnit'Access);
 
-   function T_String  return Reference is (Static_Values.Local_TString'Access);
+   function T_String  return Reference is (Local_TString'Access);
 
-   function Fn (From : not null access constant Abstraction'Class;
-                To   : not null access constant Abstraction'Class)
+   function Fn (From : Reference;
+                To   : Reference)
                 return Reference
-   is (T_Arrow.Application (From).Application (To));
+   is (Application (Application (T_Arrow, From), To));
 
    function Pair (A, B : Reference) return Reference
-   is (T_Tuple_2.Application (A).Application (B));
+   is (Application (Application (T_Pair, A), B));
 
    --------------
    -- Allocate --
@@ -206,20 +95,20 @@ package body Leander.Core.Types is
       return Reference
    is
    begin
-      return new Instance'Class'(This);
+      return Reference (Allocator.Allocate (Instance (This)));
    end Allocate;
 
    -----------------
    -- Application --
    -----------------
 
-   overriding function Application
-     (Left  : not null access constant Instance;
-      Right : not null access constant Abstraction'Class)
+   function Application
+     (Left, Right  : not null access constant Instance'Class)
       return Reference
    is
    begin
-      return Allocate (Instance'(TAp, Reference (Left), Reference (Right)));
+      return Allocate
+        (Instance'(TApp, Reference (Left), Reference (Right)));
    end Application;
 
    -----------
@@ -228,48 +117,104 @@ package body Leander.Core.Types is
 
    overriding function Apply
      (This  : not null access constant Instance;
-      Subst : not null access constant Substitutions.Abstraction'Class)
-      return Reference
+      Subst : Leander.Core.Substitutions.Instance'Class)
+      return access constant Instance
    is
    begin
-      case This.Class is
+      case This.Tag is
          when TVar =>
             declare
-               T : constant Substitutions.Maybe_Result.Maybe :=
-                     Subst.Lookup (This.Var);
+               use Leander.Core.Substitutions;
+               T : constant Nullable_Type_Reference :=
+                     Subst.Lookup
+                       (Leander.Names.Leander_Name
+                          (This.Tyvar.Name));
             begin
-               if T.Is_Nothing then
-                  return Reference (This);
+               if T = null then
+                  return This;
                else
-                  return Reference (T.From_Just);
+                  return T;
                end if;
             end;
          when TCon =>
-            return Reference (This);
-         when TAp =>
-               return This.Left.Apply (Subst).Application
-                 (This.Right.Apply (Subst));
+            return This;
+         when TApp =>
+            return Application
+              (Reference (This.Left.Apply (Subst)),
+               Reference (This.Right.Apply (Subst)));
          when TGen =>
-            return Reference (This);
+            return This;
       end case;
    end Apply;
 
-   -----------
-   -- Apply --
-   -----------
+   -------------
+   -- Dispose --
+   -------------
 
-   function Apply
-     (Refs  : Reference_Array;
-      Subst : not null access constant Substitutions.Abstraction'Class)
-      return Reference_Array
-   is
-      Result : Reference_Array := Refs;
+   overriding procedure Dispose (This : in out Instance) is
    begin
-      for T of Result loop
-         T := T.Apply (Subst);
-      end loop;
-      return Result;
-   end Apply;
+      null;
+   end Dispose;
+
+   --------------
+   -- Generate --
+   --------------
+
+   function Generate
+     (This : not null access constant Instance'Class)
+      return Reference
+   is
+      Tvs : constant Core.Tyvars.Tyvar_Array := This.Get_Tyvars;
+      Gens : constant Type_Array :=
+               [for I in Tvs'Range => Core.Types.TGen (I)];
+
+      function Create_Subst
+        (Index : Positive)
+         return Leander.Core.Substitutions.Instance;
+
+      ------------------
+      -- Create_Subst --
+      ------------------
+
+      function Create_Subst
+        (Index : Positive)
+         return Leander.Core.Substitutions.Instance
+      is
+      begin
+         if Index <= Tvs'Length then
+            return Leander.Core.Substitutions.Compose
+              (Leander.Names.Leander_Name (Tvs (Index).Name),
+               Gens (Index),
+               Create_Subst (Index + 1));
+         else
+            return Leander.Core.Substitutions.Empty;
+         end if;
+      end Create_Subst;
+
+   begin
+      return This.Apply (Create_Subst (1));
+   end Generate;
+
+   --------------
+   -- Get_Kind --
+   --------------
+
+   overriding function Get_Kind
+     (This : Instance)
+      return Kinds.Kind
+   is
+   begin
+      case This.Tag is
+         when TVar =>
+            return This.Tyvar.Get_Kind;
+         when TCon =>
+            return This.Tycon.Get_Kind;
+         when TApp =>
+            return Kinds.Right_Kind (This.Left.Get_Kind);
+         when TGen =>
+            return Kinds.Star;
+      end case;
+   end Get_Kind;
 
    ----------------
    -- Get_Tyvars --
@@ -277,15 +222,15 @@ package body Leander.Core.Types is
 
    overriding function Get_Tyvars
      (This  : Instance)
-      return Tyvars.Tyvar_Array
+      return Leander.Core.Tyvars.Tyvar_Array
    is
    begin
-      case This.Class is
+      case This.Tag is
          when TVar =>
-            return [This.Var];
+            return [This.Tyvar];
          when TCon =>
             return [];
-         when TAp =>
+         when TApp =>
             return Tyvars.Union
               (This.Left.Get_Tyvars,
                This.Right.Get_Tyvars);
@@ -298,70 +243,55 @@ package body Leander.Core.Types is
    -- Instantiate --
    -----------------
 
-   overriding function Instantiate
-     (This : not null access constant Instance;
-      Refs : Reference_Array)
+   function Instantiate
+     (This : not null access constant Instance'Class;
+      Refs : Type_Array)
       return Reference
    is
    begin
-      case This.Class is
+      case This.Tag is
          when TVar =>
             return Reference (This);
          when TCon =>
             return Reference (This);
-         when TAp =>
-            return This.Left.Instantiate (Refs)
-              .Application (This.Right.Instantiate (Refs));
+         when TApp =>
+            return Application
+              (This.Left.Instantiate (Refs),
+               This.Right.Instantiate (Refs));
          when TGen =>
             return Refs (This.Index);
       end case;
    end Instantiate;
 
-   ----------
-   -- Kind --
-   ----------
+   -------------
+   -- List_Of --
+   -------------
 
-   overriding function Kind
-     (This : Instance)
-      return Kinds.Reference
-   is
-   begin
-      case This.Class is
-         when TVar =>
-            return This.Var.Kind;
-         when TCon =>
-            return This.Con.Kind;
-         when TAp =>
-            return This.Left.Kind.KAp;
-         when TGen =>
-            return Kinds.Star;
-      end case;
-   end Kind;
-
-   ----------
-   -- List --
-   ----------
-
-   function List
-     (This : not null access constant Abstraction'Class)
+   function List_Of
+     (This : not null access constant Instance'Class)
       return Reference
    is
    begin
-      return T_List.Application (This);
-   end List;
+      return Application (T_List, Reference (This));
+   end List_Of;
 
    --------------
    -- New_TVar --
    --------------
 
    function New_TVar return Reference is
-      Name : String := Next_TVar'Image;
    begin
-      Next_TVar := Next_TVar + 1;
-      Name (Name'First) := '_';
-      return TVar
-        (Tyvars.Tyvar (Id ("$t" & Name), Kinds.Star));
+      return TVar (Tyvars.New_Tyvar);
    end New_TVar;
+
+   -----------
+   -- Prune --
+   -----------
+
+   procedure Prune is
+   begin
+      Allocator.Prune;
+   end Prune;
 
    ----------
    -- Show --
@@ -372,31 +302,35 @@ package body Leander.Core.Types is
       return String
    is
    begin
-      case This.Class is
+      case This.Tag is
          when TVar =>
-            return This.Var.Show;
+            return This.Tyvar.Show;
          when TCon =>
-            return This.Con.Show;
+            return This.Tycon.Show;
          when TGen =>
-            declare
-               Img : String := This.Index'Image;
-            begin
-               Img (Img'First) := '_';
-               return Img;
-            end;
-         when TAp =>
+            return [Character'Val (Character'Pos ('a') + This.Index - 1)];
+         when TApp =>
             if This.Left = T_List then
                return "[" & This.Right.Show & "]";
             else
                declare
                   Left : Instance renames Instance (This.Left.all);
                begin
-                  if Left.Class = TAp then
+                  if Left.Tag = TApp then
                      if Left.Left = T_Arrow then
-                        return Left.Right.Show
-                          & "->"
-                          & This.Right.Show;
-                     elsif Left.Left = T_Tuple_2 then
+                        if Left.Right.Tag = TApp
+                          and then Left.Right.Left.Tag = TApp
+                          and then Left.Right.Left.Left = T_Arrow
+                        then
+                           return "(" & Left.Right.Show & ")"
+                             & "->"
+                             & This.Right.Show;
+                        else
+                           return Left.Right.Show
+                             & "->"
+                             & This.Right.Show;
+                        end if;
+                     elsif Left.Left = T_Pair then
                         return "("
                           & Left.Right.Show
                           & ","
@@ -417,7 +351,7 @@ package body Leander.Core.Types is
    -- TCon --
    ----------
 
-   function TCon (T : Tycons.Reference) return Reference is
+   function TCon (T : Tycons.Instance) return Reference is
    begin
       return Allocate (Instance'(TCon, T));
    end TCon;
@@ -431,34 +365,38 @@ package body Leander.Core.Types is
       return Allocate (Instance'(TGen, Index));
    end TGen;
 
+   --------------
+   -- Traverse --
+   --------------
+
+   overriding procedure Traverse
+     (This : not null access constant Instance;
+      Process : not null access
+        procedure (This : not null access constant
+                     Traverseable.Abstraction'Class))
+   is
+   begin
+      Process (This);
+      case This.Tag is
+         when TVar =>
+            null;
+         when TCon =>
+            null;
+         when TGen =>
+            null;
+         when TApp =>
+            This.Left.Traverse (Process);
+            This.Right.Traverse (Process);
+      end case;
+   end Traverse;
+
    ----------
    -- TVar --
    ----------
 
-   function TVar (T : Tyvars.Reference) return Reference is
+   function TVar (T : Tyvars.Instance) return Reference is
    begin
       return Allocate (Instance'(TVar, T));
    end TVar;
-
-   -----------
-   -- Visit --
-   -----------
-
-   overriding procedure Visit
-     (This    : not null access constant Instance;
-      Visitor : in out Type_Visitor'class)
-   is
-   begin
-      case This.Class is
-         when TVar =>
-            Visitor.Variable (This.Var);
-         when TCon =>
-            Visitor.Constructor (This.Con);
-         when TGen =>
-            null;
-         when TAp =>
-            Visitor.Application (This.Left, This.Right);
-      end case;
-   end Visit;
 
 end Leander.Core.Types;

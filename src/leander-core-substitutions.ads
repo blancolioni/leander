@@ -1,41 +1,55 @@
+private with Ada.Containers.Doubly_Linked_Lists;
+
 limited with Leander.Core.Types;
-with Leander.Core.Tyvars;
-with Leander.Maybes;
+with Leander.Names;
 with Leander.Showable;
 
 package Leander.Core.Substitutions is
 
-   type Abstraction is interface and Leander.Showable.Abstraction;
-   type Reference is not null access constant Abstraction'Class;
+   type Instance is new Leander.Showable.Abstraction with private;
 
-   type Type_Reference is access constant Types.Abstraction'Class;
-   type Type_Reference_Array is array (Positive range <>) of Type_Reference;
+   function Empty return Instance;
 
-   package Maybe_Result is
-     new Leander.Maybes (Type_Reference);
+   function Compose
+     (Left  : Instance;
+      Right : Instance)
+      return Instance;
+
+   function Compose
+     (Name  : Leander.Names.Leander_Name;
+      Ty    : not null access constant Leander.Core.Types.Instance'Class;
+      Right : Instance)
+      return Instance;
+
+   function Without
+     (This : Instance;
+      Tvs  : Leander.Names.Name_Array)
+      return Instance;
+
+   type Nullable_Type_Reference is
+     access constant Leander.Core.Types.Instance'Class;
 
    function Lookup
-     (This  : Abstraction;
-      Tyvar : Core.Tyvars.Reference)
-      return Maybe_Result.Maybe
-      is abstract;
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Nullable_Type_Reference;
 
-   function Merge
-     (This  : not null access constant Abstraction;
-      Other : not null access constant Abstraction'Class)
-      return Reference
-      is abstract;
+private
 
-   function Empty return Reference;
-   function Substitute
-     (Tyvar   : Leander.Core.Tyvars.Reference;
-      Element : not null access constant Types.Abstraction'Class)
-      return Reference;
+   type Subst_Record is
+      record
+         Name : Leander.Names.Leander_Name;
+         Ref  : Nullable_Type_Reference;
+      end record;
 
-   function Substitute
-     (Tyvars   : Leander.Core.Tyvars.Tyvar_Array;
-      Elements : Type_Reference_Array)
-      return Reference
-     with Pre => Tyvars'Length = Elements'Length;
+   package Subst_Lists is
+     new Ada.Containers.Doubly_Linked_Lists (Subst_Record);
+
+   type Instance is new Leander.Showable.Abstraction with
+      record
+         List : Subst_Lists.List;
+      end record;
+
+   overriding function Show (This : Instance) return String;
 
 end Leander.Core.Substitutions;

@@ -2,83 +2,73 @@ with Leander.Core.Kinds;
 with Leander.Core.Substitutions;
 with Leander.Core.Tycons;
 with Leander.Core.Tyvars;
+with Leander.Disposable;
 with Leander.Showable;
+with Leander.Traverseable;
 
 package Leander.Core.Types is
 
-   type Abstraction is interface
-     and Leander.Showable.Abstraction
+   type Instance (<>) is
+     new Leander.Showable.Abstraction
      and Kinds.Has_Kind
-     and Tyvars.Container_Abstraction;
+     and Tyvars.Container_Abstraction
+     and Leander.Disposable.Abstraction
+     and Leander.Traverseable.Abstraction
+   with private;
 
-   type Reference is not null access constant Abstraction'Class;
-   type Reference_Array is array (Positive range <>) of Reference;
+   type Reference is not null access constant Instance'Class;
+
+   type Type_Array is array (Positive range <>) of Reference;
 
    function Is_Variable
-     (This : Abstraction)
-      return Boolean
-      is abstract;
+     (This : Instance)
+      return Boolean;
 
    function Variable
-     (This : Abstraction)
-      return Tyvars.Reference
-      is abstract
+     (This : Instance)
+      return Tyvars.Instance
      with Pre'Class => This.Is_Variable;
 
    function Is_Constructor
-     (This : Abstraction)
-      return Boolean
-      is abstract;
+     (This : Instance)
+      return Boolean;
 
    function Constructor
-     (This : Abstraction)
-      return Tycons.Reference
-      is abstract
+     (This : Instance)
+      return Tycons.Instance
      with Pre'Class => This.Is_Constructor;
 
    function Is_Application
-     (This : Abstraction)
-      return Boolean
-      is abstract;
+     (This : Instance)
+      return Boolean;
 
    function Left
-     (This : Abstraction)
+     (This : Instance)
       return Reference
-      is abstract
      with Pre'Class => This.Is_Application;
 
    function Right
-     (This : Abstraction)
+     (This : Instance)
       return Reference
-      is abstract
      with Pre'Class => This.Is_Application;
 
    function Instantiate
-     (This : not null access constant Abstraction;
-      Refs : Reference_Array)
-      return Reference
-      is abstract;
+     (This : not null access constant Instance'Class;
+      Refs : Type_Array)
+      return Reference;
 
-   function Apply
-     (This : not null access constant Abstraction;
-      Subst : not null access constant Substitutions.Abstraction'Class)
-      return Reference
-      is abstract;
+   function Generate
+     (This : not null access constant Instance'Class)
+      return Reference;
 
-   function Apply
-     (Refs  : Reference_Array;
-      Subst : not null access constant Substitutions.Abstraction'Class)
-      return Reference_Array;
+   function TVar (T : Tyvars.Instance) return Reference;
 
-   function TVar (T : Tyvars.Reference) return Reference;
    function New_TVar return Reference;
 
-   function TCon (T : Tycons.Reference) return Reference;
+   function TCon (T : Tycons.Instance) return Reference;
    function Application
-     (Left  : not null access constant Abstraction;
-      Right : not null access constant Abstraction'Class)
-      return Reference
-      is abstract;
+     (Left, Right  : not null access constant Instance'Class)
+      return Reference;
 
    function TGen (Index : Positive) return Reference;
 
@@ -92,39 +82,105 @@ package Leander.Core.Types is
 
    function T_List    return Reference;
    function T_Arrow   return Reference;
-   function T_Tuple_2 return Reference;
+   function T_Pair    return Reference;
    function T_String  return Reference;
 
-   function Fn (From : not null access constant Abstraction'Class;
-                To   : not null access constant Abstraction'Class)
+   function Fn (From : Reference;
+                To   : Reference)
                 return Reference;
 
-   function List
-     (This : not null access constant Abstraction'Class)
+   function List_Of
+     (This : not null access constant Instance'Class)
       return Reference;
 
    function Pair (A, B : Reference) return Reference;
 
-   type Type_Visitor is interface;
+   procedure Prune;
 
-   procedure Visit
-     (This    : not null access constant Abstraction;
-      Visitor : in out Type_Visitor'class)
-   is abstract;
+private
 
-   procedure Variable
-     (This  : in out Type_Visitor;
-      Tyvar : Tyvars.Reference)
-   is null;
+   type Instance_Tag is (TVar, TCon, TGen, TApp);
 
-   procedure Constructor
-     (This  : in out Type_Visitor;
-      Tycon : Tycons.Reference)
-   is null;
+   type Instance (Tag : Instance_Tag) is
+     new Leander.Showable.Abstraction
+     and Kinds.Has_Kind
+     and Tyvars.Container_Abstraction
+     and Leander.Disposable.Abstraction
+     and Leander.Traverseable.Abstraction with
+      record
+         case Tag is
+            when TVar =>
+               Tyvar : Leander.Core.Tyvars.Instance;
+            when TCon =>
+               Tycon : Leander.Core.Tycons.Instance;
+            when TGen =>
+               Index : Positive;
+            when TApp =>
+               Left, Right : Reference;
+         end case;
+      end record;
 
-   procedure Application
-     (This        : in out Type_Visitor;
-      Left, Right : Reference)
-   is null;
+   overriding function Get_Kind
+     (This : Instance)
+      return Leander.Core.Kinds.Kind;
+
+   overriding function Show (This : Instance) return String;
+
+   overriding function Contains
+     (This  : Instance;
+      Tyvar : Leander.Core.Tyvars.Instance'Class)
+      return Boolean;
+
+   overriding function Get_Tyvars
+     (This  : Instance)
+      return Leander.Core.Tyvars.Tyvar_Array;
+
+   overriding function Apply
+     (This  : not null access constant Instance;
+      Subst : Leander.Core.Substitutions.Instance'Class)
+      return access constant Instance;
+
+   overriding procedure Dispose (This : in out Instance);
+
+   overriding procedure Traverse
+     (This : not null access constant Instance;
+      Process : not null access
+        procedure (This : not null access constant
+                     Traverseable.Abstraction'Class));
+
+   function Is_Variable
+     (This : Instance)
+      return Boolean
+   is (This.Tag = TVar);
+
+   function Variable
+     (This : Instance)
+      return Tyvars.Instance
+   is (This.Tyvar);
+
+   function Is_Constructor
+     (This : Instance)
+      return Boolean
+   is (This.Tag = TCon);
+
+   function Constructor
+     (This : Instance)
+      return Tycons.Instance
+   is (This.Tycon);
+
+   function Is_Application
+     (This : Instance)
+      return Boolean
+   is (This.Tag = TApp);
+
+   function Left
+     (This : Instance)
+      return Reference
+   is (This.Left);
+
+   function Right
+     (This : Instance)
+      return Reference
+   is (This.Right);
 
 end Leander.Core.Types;

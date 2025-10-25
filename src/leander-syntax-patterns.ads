@@ -1,8 +1,11 @@
+with Leander.Core.Patterns;
+
 package Leander.Syntax.Patterns is
 
    subtype Parent is Leander.Syntax.Instance;
    type Instance is abstract new Parent with private;
    type Reference is access constant Instance'Class;
+   type Reference_Array is array (Positive range <>) of Reference;
 
    function Is_Variable (This : Instance) return Boolean;
    function Variable_Name (This : Instance) return String;
@@ -15,15 +18,18 @@ package Leander.Syntax.Patterns is
       Name     : String)
       return Reference;
 
-   function Constructor
-     (Location : Leander.Source.Source_Location;
-      Name     : String)
+   function Wildcard
+     (Location : Leander.Source.Source_Location)
       return Reference;
 
-   function Application
-     (Location    : Leander.Source.Source_Location;
-      Left, Right : Reference)
+   function Constructor
+     (Location  : Leander.Source.Source_Location;
+      Name      : String;
+      Arguments : Reference_Array)
       return Reference;
+
+   function To_Core (This : Instance) return Leander.Core.Patterns.Reference
+                     is abstract;
 
 private
 

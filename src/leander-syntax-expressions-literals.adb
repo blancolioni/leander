@@ -14,7 +14,7 @@ package body Leander.Syntax.Expressions.Literals is
          when Integer_Literal =>
             return Leander.Core.Expressions.Literal
               (Leander.Core.Literals.Integer_Literal
-                 (Leander.Core.Show (This.Image)));
+                 (Ada.Strings.Unbounded.To_String (This.Image)));
       end case;
    end To_Core;
 

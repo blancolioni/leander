@@ -137,7 +137,6 @@ package body Leander.Logging is
                                 Include_Time_Fraction => True)
                              & HT
                              else "")
-                            & HT
                             & Message;
          begin
             Logger.Log (Log_Message);

@@ -1,18 +1,14 @@
+with Leander.Syntax.Patterns.Constructors;
 with Leander.Syntax.Patterns.Variables;
 
 package body Leander.Syntax.Patterns is
 
-   function Application
-     (Location    : Leander.Source.Source_Location;
-      Left, Right : Reference)
-      return Reference
-   is (null);
-
    function Constructor
-     (Location : Leander.Source.Source_Location;
-      Name     : String)
+     (Location  : Leander.Source.Source_Location;
+      Name      : String;
+      Arguments : Reference_Array)
       return Reference
-   is (null);
+   is (Constructors.Constructor (Location, Name, Arguments));
 
    function Head (This : not null access constant Instance)
                   return Reference
@@ -23,5 +19,10 @@ package body Leander.Syntax.Patterns is
       Name     : String)
       return Reference
    is (Variables.Variable (Location, Name));
+
+   function Wildcard
+     (Location : Leander.Source.Source_Location)
+      return Reference
+   is (Variables.Variable (Location, ""));
 
 end Leander.Syntax.Patterns;

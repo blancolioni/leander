@@ -78,16 +78,17 @@ package body Leander.Parser.Expressions is
      return Leander.Syntax.Expressions.Reference
    is
       use Leander.Syntax.Expressions;
+      Loc : constant Source.Source_Location := Current_Source_Location;
    begin
-      if At_Variable then
+      if At_Variable_Name then
          return Var : constant Reference :=
-           Variable (Current_Source_Location, Tok_Text)
-         do
-            Scan;
-         end return;
+           Variable (Loc, Scan_Identifier);
+      elsif At_Constructor_Name then
+         return Con : constant Reference :=
+           Constructor (Loc, Scan_Identifier);
       elsif Tok = Tok_Integer_Literal then
          return Lit : constant Reference :=
-           Integer_Literal (Current_Source_Location, Tok_Text)
+           Integer_Literal (Loc, Tok_Text)
          do
             Scan;
          end return;
@@ -96,6 +97,23 @@ package body Leander.Parser.Expressions is
          return E : constant Reference := Parse_Expression do
             Expect (Tok_Right_Paren, []);
          end return;
+      elsif Tok = Tok_Left_Bracket then
+         Scan;
+         if Tok = Tok_Right_Bracket then
+            Scan;
+            return Constructor (Loc, "[]");
+         else
+            Error ("lists not Implemented");
+            while Tok /= Tok_End_Of_File
+              and then Tok /= Tok_Right_Bracket
+            loop
+               Scan;
+            end loop;
+            if Tok = Tok_Right_Bracket then
+               Scan;
+            end if;
+            return Constructor (Loc, "[]");
+         end if;
       else
          Error ("expected an atomic expression");
          raise Parse_Error;

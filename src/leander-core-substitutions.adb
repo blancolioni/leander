@@ -1,158 +1,161 @@
-with Ada.Containers.Doubly_Linked_Lists;
 with Leander.Core.Types;
+with Leander.Logging;
 
 package body Leander.Core.Substitutions is
 
-   type Entry_Record is
-      record
-         Tyvar   : Leander.Core.Tyvars.Reference;
-         Binding : Type_Reference;
-      end record;
+   -------------
+   -- Compose --
+   -------------
 
-   package List_Of_Entries is
-     new Ada.Containers.Doubly_Linked_Lists (Entry_Record);
+   function Compose
+     (Left  : Instance;
+      Right : Instance)
+      return Instance
+   is
+      This : Instance;
+   begin
+      if Left.List.Is_Empty then
+         return Right;
+      elsif Right.List.Is_Empty then
+         return Left;
+      end if;
 
-   type Instance is new Abstraction with
-      record
-         List : List_Of_Entries.List;
-      end record;
+      Leander.Logging.Log
+        ("SUBST", "left=" & Left.Show);
+      Leander.Logging.Log
+        ("SUBST", "right=" & Right.Show);
+      for Sr of Right.List loop
+         This.List.Append (Subst_Record'
+                             (Sr.Name,
+                              Sr.Ref.Apply (Left)));
+      end loop;
+      for Sr of Left.List loop
+         This.List.Append (Subst_Record'
+                             (Sr.Name,
+                              Sr.Ref.Apply (Right)));
+      end loop;
 
-   overriding function Show
-     (This : Instance)
-      return String;
+      Leander.Logging.Log
+        ("SUBST", "composed=" & This.Show);
+      return This;
+   end Compose;
 
-   overriding function Lookup
-     (This  : Instance;
-      Tyvar : Core.Tyvars.Reference)
-      return Maybe_Result.Maybe;
+   -------------
+   -- Compose --
+   -------------
 
-   overriding function Merge
-     (This  : not null access constant Instance;
-      Other : not null access constant Abstraction'Class)
-      return Reference;
+   function Compose
+     (Name  : Leander.Names.Leander_Name;
+      Ty    : not null access constant Leander.Core.Types.Instance'Class;
+      Right : Instance)
+      return Instance
+   is
+      Left : Instance;
+   begin
+      Left.List.Append (Subst_Record'(Name, Nullable_Type_Reference (Ty)));
+      return Left.Compose (Right);
+   end Compose;
 
-   Local_Empty_Substitution : aliased constant Instance :=
-                                (List => []);
+   -----------
+   -- Empty --
+   -----------
 
-   function Empty return Reference
-   is (Local_Empty_Substitution'Access);
+   function Empty return Instance is
+   begin
+      return (others => <>);
+   end Empty;
 
    ------------
    -- Lookup --
    ------------
 
-   overriding function Lookup
-     (This  : Instance;
-      Tyvar : Core.Tyvars.Reference)
-      return Maybe_Result.Maybe
+   function Lookup
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Nullable_Type_Reference
    is
+      use type Leander.Names.Leander_Name;
    begin
       for Element of This.List loop
-         if Element.Tyvar.Name = Tyvar.Name then
-            return Maybe_Result.Just (Element.Binding);
+         if Element.Name = Name then
+            return Element.Ref;
          end if;
       end loop;
-      return Maybe_Result.Nothing;
+      return null;
    end Lookup;
-
-   -----------
-   -- Merge --
-   -----------
-
-   overriding function Merge
-     (This  : not null access constant Instance;
-      Other : not null access constant Abstraction'Class)
-      return Reference
-   is
-      Result : Instance;
-   begin
-      for Rec of Instance (Other.all).List loop
-         Result.List.Append
-           (Entry_Record'
-              (Tyvar => Rec.Tyvar,
-               Binding => Type_Reference (Rec.Binding.Apply (This))));
-      end loop;
-      for Rec of This.List loop
-         Result.List.Append (Rec);
-      end loop;
-      return new Instance'(Result);
-   end Merge;
 
    ----------
    -- Show --
    ----------
 
-   overriding function Show
-     (This : Instance)
-      return String
-   is
-      function Show_List
-        (Position : List_Of_Entries.Cursor)
-         return String;
+   overriding function Show (This : Instance) return String is
+      function Show (Position : Subst_Lists.Cursor) return String;
 
-      ---------------
-      -- Show_List --
-      ---------------
+      ----------
+      -- Show --
+      ----------
 
-      function Show_List
-        (Position : List_Of_Entries.Cursor)
-         return String
-      is
+      function Show (Position : Subst_Lists.Cursor) return String is
+         use Subst_Lists;
       begin
-         if not List_Of_Entries.Has_Element (Position) then
+         if not Has_Element (Position) then
             return "";
          else
             declare
-               Item : constant Entry_Record :=
-                        List_Of_Entries.Element (Position);
-               Sep  : constant String :=
-                        (if List_Of_Entries."=" (Position, This.List.First)
-                         then ""
-                         else ";");
+               E   : constant Subst_Record := Element (Position);
+               Img : constant String :=
+                       Leander.Names.To_String (E.Name)
+                     & ":"
+                       & E.Ref.Show;
             begin
-               return Sep
-                 & Item.Tyvar.Show
-                 & "="
-                 & Item.Binding.Show
-                 & Show_List (List_Of_Entries.Next (Position));
+               if Has_Element (Next (Position)) then
+                  return Img & ";" & Show (Next (Position));
+               else
+                  return Img;
+               end if;
             end;
          end if;
-      end Show_List;
+      end Show;
 
    begin
-      return "[" & Show_List (This.List.First) & "]";
+      return "{" & Show (This.List.First) & "}";
    end Show;
 
-   ----------------
-   -- Substitute --
-   ----------------
+   -------------
+   -- Without --
+   -------------
 
-   function Substitute
-     (Tyvar      : Leander.Core.Tyvars.Reference;
-      Element    : not null access constant Types.Abstraction'Class)
-      return Reference
+   function Without
+     (This : Instance;
+      Tvs  : Leander.Names.Name_Array)
+      return Instance
    is
-   begin
-      return new Instance'(List => [(Tyvar, Type_Reference (Element))]);
-   end Substitute;
 
-   ----------------
-   -- Substitute --
-   ----------------
+      function Exclude (Name : Leander.Names.Leander_Name) return Boolean;
 
-   function Substitute
-     (Tyvars   : Leander.Core.Tyvars.Tyvar_Array;
-      Elements : Type_Reference_Array)
-      return Reference
-   is
-      This : Instance;
-      I : Natural := Elements'First - 1;
+      -------------
+      -- Exclude --
+      -------------
+
+      function Exclude (Name : Leander.Names.Leander_Name) return Boolean is
+         use type Leander.Names.Leander_Name;
+      begin
+         for N of Tvs loop
+            if N = Name then
+               return True;
+            end if;
+         end loop;
+         return False;
+      end Exclude;
+
    begin
-      for Tv of Tyvars loop
-         I := I + 1;
-         This.List.Append (Entry_Record'(Tv, Elements (I)));
-      end loop;
-      return new Instance'(This);
-   end Substitute;
+      return Result : Instance do
+         for Subst of This.List loop
+            if not Exclude (Subst.Name) then
+               Result.List.Append (Subst);
+            end if;
+         end loop;
+      end return;
+   end Without;
 
 end Leander.Core.Substitutions;

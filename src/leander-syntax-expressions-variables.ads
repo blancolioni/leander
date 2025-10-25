@@ -16,7 +16,7 @@ private
 
    type Instance is new Parent with
       record
-         Name : Leander.Core.Name_Id;
+         Name : Leander.Core.Varid;
       end record;
 
    overriding function To_Core
@@ -28,6 +28,6 @@ private
      (Location : Leander.Source.Source_Location;
       Name     : String)
       return Reference
-   is (new Instance'(Location, Leander.Core.Id (Name)));
+   is (new Instance'(Location, Leander.Core.To_Varid (Name)));
 
 end Leander.Syntax.Expressions.Variables;

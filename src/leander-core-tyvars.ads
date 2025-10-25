@@ -1,36 +1,46 @@
+private with Ada.Containers.Vectors;
 with Leander.Core.Kinds;
+with Leander.Core.Substitutions;
+with Leander.Names;
 with Leander.Showable;
 
 package Leander.Core.Tyvars is
 
-   type Abstraction is interface
-     and Kinds.Has_Kind
-     and Showable.Abstraction;
+   type Instance is new Kinds.Has_Kind
+     and Showable.Abstraction
+   with private;
 
-   type Reference is not null access constant Abstraction'Class;
-   type Tyvar_Array is array (Positive range <>) of Reference;
+   type Tyvar_Array is array (Positive range <>) of Instance;
 
    function Name
-     (This : Abstraction)
-      return Name_Id
-      is abstract;
+     (This : Instance)
+      return Varid;
 
    function Tyvar
-     (Id : Name_Id;
-      Kind : Kinds.Reference)
-      return Reference;
+     (Id   : Varid;
+      Kind : Leander.Core.Kinds.Kind)
+      return Instance;
+
+   function New_Tyvar
+     return Instance;
 
    type Container_Abstraction is interface;
 
    function Contains
      (This  : Container_Abstraction;
-      Tyvar : Reference)
+      Tyvar : Instance'Class)
       return Boolean
       is abstract;
 
    function Get_Tyvars
      (This  : Container_Abstraction)
       return Tyvar_Array
+      is abstract;
+
+   function Apply
+     (This  : not null access constant Container_Abstraction;
+      Subst : Leander.Core.Substitutions.Instance'Class)
+      return access constant Container_Abstraction
       is abstract;
 
    function "/"
@@ -50,5 +60,52 @@ package Leander.Core.Tyvars is
      (Tvs : Tyvar_Array)
       return Tyvar_Array;
    --  remove duplicates from tvs
+
+   type Tyvar_Array_Builder is tagged private;
+
+   procedure Include (This : in out Tyvar_Array_Builder;
+                      Tv   : Instance'Class);
+
+   procedure Include (This : in out Tyvar_Array_Builder;
+                      Tvs  : Tyvar_Array);
+
+   function To_Tyvar_Array
+     (This : Tyvar_Array_Builder)
+      return Tyvar_Array;
+
+private
+
+   type Instance is new Kinds.Has_Kind
+     and Showable.Abstraction with
+      record
+         Id    : Varid;
+         Kind  : Leander.Core.Kinds.Kind;
+      end record;
+
+   overriding function Get_Kind
+     (This : Instance)
+      return Leander.Core.Kinds.Kind
+   is (This.Kind);
+
+   overriding function Show
+     (This : Instance)
+      return String
+   is (To_String (This.Id));
+
+   function Name
+     (This : Instance)
+      return Varid
+   is (This.Id);
+
+   function To_Varid (S : String) return Varid
+   is (Varid (Leander.Names.To_Leander_Name (S)));
+
+   package Tyvar_Vectors is
+     new Ada.Containers.Vectors (Positive, Instance);
+
+   type Tyvar_Array_Builder is tagged
+      record
+         Vector : Tyvar_Vectors.Vector;
+      end record;
 
 end Leander.Core.Tyvars;

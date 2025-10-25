@@ -1,97 +1,100 @@
-with Ada.Containers.Doubly_Linked_Lists;
+with Leander.Allocator;
 
 package body Leander.Core.Binding_Groups is
 
-   package Container_Lists is
-     new Ada.Containers.Doubly_Linked_Lists
-       (Bindings.Container_Reference, Bindings."=");
+   type Variable_Reference is access all Instance;
 
-   type Instance is new Abstraction with
-      record
-         List : Container_Lists.List;
-      end record;
+   package Allocator is
+     new Leander.Allocator ("bindings", Instance, Variable_Reference);
 
-   overriding function Show
-     (This : Instance)
-      return String;
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Allocator.Allocate (Instance (This))));
 
-   overriding function Implicit_Bindings
-     (This : Instance)
-      return Bindings.Container_Array;
+   ---------------------------
+   -- Add_Explicit_Bindings --
+   ---------------------------
 
-   -------------------
-   -- Binding_Group --
-   -------------------
+   procedure Add_Explicit_Bindings
+     (This : in out Instance_Builder'Class;
+      Bindings : Leander.Core.Bindings.Reference_Array)
+   is
+      pragma Assert (This.Item.Explicit_Bindings.Is_Empty);
+   begin
+      This.Item.Explicit_Bindings.Append (Bindings);
+   end Add_Explicit_Bindings;
 
-   function Binding_Group
-     (Implicit_Bindings : Bindings.Container_Array)
+   ---------------------------
+   -- Add_Implicit_Bindings --
+   ---------------------------
+
+   procedure Add_Implicit_Bindings
+     (This     : in out Instance_Builder'Class;
+      Bindings : Leander.Core.Bindings.Reference_Array)
+   is
+   begin
+      This.Item.Implicit_Bindings.Append (Bindings);
+   end Add_Implicit_Bindings;
+
+   -----------------------
+   -- Get_Binding_Group --
+   -----------------------
+
+   function Get_Binding_Group
+     (This : Instance_Builder'Class)
       return Reference
    is
-      List : Container_Lists.List;
    begin
-      for Container of Implicit_Bindings loop
-         List.Append (Container);
-      end loop;
-      return new Instance'(List => List);
-   end Binding_Group;
-
-   -----------------------
-   -- Implicit_Bindings --
-   -----------------------
-
-   overriding function Implicit_Bindings
-     (This : Instance)
-      return Bindings.Container_Array
-   is
-      use Bindings, Container_Lists;
-
-      function Inner
-        (Position : Cursor)
-         return Container_Array
-      is (if not Has_Element (Position)
-          then []
-          else Element (Position) & Inner (Next (Position)));
-
-   begin
-      return Inner (This.List.First);
-   end Implicit_Bindings;
+      return Allocate (This.Item);
+   end Get_Binding_Group;
 
    ----------
    -- Show --
    ----------
 
-   overriding function Show
-     (This : Instance)
-      return String
-   is
-      function Show_Inner (Position : Container_Lists.Cursor) return String;
+   overriding function Show (This : Instance) return String is
+      package String_Lists is
+        new Ada.Containers.Indefinite_Doubly_Linked_Lists (String);
+      Images : String_Lists.List;
 
-      ----------------
-      -- Show_Inner --
-      ----------------
+      procedure Add (List : Binding_Array_Lists.List);
+      function Join (Position : String_Lists.Cursor) return String;
 
-      function Show_Inner (Position : Container_Lists.Cursor) return String is
+      ---------
+      -- Add --
+      ---------
+
+      procedure Add (List : Binding_Array_Lists.List) is
       begin
-         if not Container_Lists.Has_Element (Position) then
+         for Element of List loop
+            for Binding of Element loop
+               Images.Append (Binding.Show);
+            end loop;
+         end loop;
+      end Add;
+
+      ----------
+      -- Join --
+      ----------
+
+      function Join (Position : String_Lists.Cursor) return String is
+         use String_Lists;
+      begin
+         if not Has_Element (Position) then
             return "";
+         elsif not Has_Element (Next (Position)) then
+            return Element (Position);
          else
-            declare
-               Current : constant String :=
-                           Container_Lists.Element (Position).Show;
-               Next    : constant Container_Lists.Cursor :=
-                           Container_Lists.Next (Position);
-            begin
-               if not Container_Lists.Has_Element (Next) then
-                  return Current;
-               else
-                  return Current & "," & Show_Inner (Next);
-               end if;
-            end;
+            return Element (Position) & ";" & Join (Next (Position));
          end if;
-      end Show_Inner;
+      end Join;
 
    begin
-      return "{" & Show_Inner (This.List.First) & "}";
+      Add (This.Explicit_Bindings);
+      Add (This.Implicit_Bindings);
+
+      return Join (Images.First);
    end Show;
 
 end Leander.Core.Binding_Groups;

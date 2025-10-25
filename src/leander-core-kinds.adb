@@ -1,57 +1,72 @@
+with Ada.Containers.Vectors;
+
 package body Leander.Core.Kinds is
 
-   type Instance_Class is (Star, KFun);
-
-   type Instance (Class : Instance_Class) is new Abstraction with
+   type KFun is
       record
-         case Class is
-            when Star =>
-               null;
-            when KFun =>
-               Left, Right : Reference;
-         end case;
+         Left, Right : Kind;
       end record;
 
-   overriding function KAp
-     (This : Instance)
-      return Reference
-   is (case This.Class is
-          when Star =>
-             raise Constraint_Error
-               with "cannot extract kind from *",
-          when KFun => This.Right);
+   subtype KFun_Index is Kind range 1 .. Kind'Last;
 
-   overriding function Show
-     (This : Instance)
-      return String;
+   package KFun_Vectors is
+     new Ada.Containers.Vectors (KFun_Index, KFun);
 
-   Local_Star_Kind : aliased constant Instance := (Class => Star);
+   KFun_Vector : KFun_Vectors.Vector;
 
-   function Star return Reference
-   is (Local_Star_Kind'Access);
+   -------------------
+   -- Kind_Function --
+   -------------------
 
-   function KFun (Left, Right : Reference) return Reference
-   is (new Instance'(KFun, Left, Right));
+   function Kind_Function (Left, Right : Kind) return Kind is
+      Rec : constant KFun := (Left, Right);
+   begin
+      for I in 1 .. KFun_Vector.Last_Index loop
+         if KFun_Vector (I) = Rec then
+            return I;
+         end if;
+      end loop;
+      KFun_Vector.Append (KFun'(Left, Right));
+      return KFun_Vector.Last_Index;
+   end Kind_Function;
+
+   ---------------
+   -- Left_Kind --
+   ---------------
+
+   function Left_Kind (K : Kind) return Kind is
+   begin
+      return KFun_Vector (K).Left;
+   end Left_Kind;
+
+   ----------------
+   -- Right_Kind --
+   ----------------
+
+   function Right_Kind (K : Kind) return Kind is
+   begin
+      return KFun_Vector (K).Right;
+   end Right_Kind;
 
    ----------
    -- Show --
    ----------
 
-   overriding function Show
-     (This : Instance)
-      return String
-   is
+   function Show (K : Kind) return String is
    begin
-      case This.Class is
-         when Star =>
-            return "*";
-         when KFun =>
-            if Instance (This.Right.all).Class = KFun then
-               return This.Left.Show & "->(" & This.Right.Show & ")";
+      if K = Star then
+         return "*";
+      else
+         declare
+            This : KFun renames KFun_Vector (K);
+         begin
+            if This.Right = Star then
+               return Show (This.Left) & "->*";
             else
-               return This.Left.Show & "->" & This.Right.Show;
+               return Show (This.Left) & "->(" & Show (This.Right) & ")";
             end if;
-      end case;
+         end;
+      end if;
    end Show;
 
 end Leander.Core.Kinds;

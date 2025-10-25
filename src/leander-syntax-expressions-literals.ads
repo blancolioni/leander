@@ -1,3 +1,5 @@
+private with Ada.Strings.Unbounded;
+
 private package Leander.Syntax.Expressions.Literals is
 
    subtype Parent is Leander.Syntax.Expressions.Instance;
@@ -20,13 +22,14 @@ private
    type Instance is new Parent with
       record
          Class : Literal_Class;
-         Image : Leander.Core.Name_Id;
+         Image : Ada.Strings.Unbounded.Unbounded_String;
       end record;
 
    function Integer_Literal
      (Location : Leander.Source.Source_Location;
       Image    : String)
       return Reference
-   is (new Instance'(Location, Integer_Literal, Leander.Core.Id (Image)));
+   is (new Instance'(Location, Integer_Literal,
+       Ada.Strings.Unbounded.To_Unbounded_String (Image)));
 
 end Leander.Syntax.Expressions.Literals;

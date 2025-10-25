@@ -1,9 +1,11 @@
 with Ada.Characters.Handling;
+with Ada.Directories;
 
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 
 with Leander.Parser.Expressions;
+with Leander.Parser.Modules;
 
 package body Leander.Parser is
 
@@ -103,6 +105,25 @@ package body Leander.Parser is
          return Tok_Text (1);
       end if;
    end Get_Identifier;
+
+   -----------------
+   -- Load_Module --
+   -----------------
+
+   function Load_Module
+     (Path : String)
+      return Leander.Environment.Reference
+   is
+      Name : constant String :=
+               Ada.Directories.Base_Name (Path);
+   begin
+      Open (Path);
+      return Env : constant Leander.Environment.Reference :=
+        Leander.Parser.Modules.Parse_Module (Name)
+      do
+         Close;
+      end return;
+   end Load_Module;
 
    ----------------------
    -- Parse_Expression --

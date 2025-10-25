@@ -12,11 +12,11 @@ tags = ["haskell", "compiler"]
 executables = ["leander-driver"]
 
 [[depends-on]]
-sk_machine="*"
+skit="*"
 gcs="*"
 
 [[pins]]
-sk_machine = { path = "../sk_machine" }
+skit = { path = "../skit" }
 gcs = { path = "../gcs" }
 
 [build-profiles]
@@ -29,3 +29,5 @@ Development.Runtime_Checks = "Everything"
 development.contracts = "yes"
 "*".compile_checks = "errors"
 
+[[depends-on]]
+wl_lib = "~0.1.4"

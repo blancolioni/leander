@@ -1,32 +1,45 @@
+private with Ada.Strings.Unbounded;
+
 with Leander.Core.Types;
 with Leander.Showable;
 
 package Leander.Core.Literals is
 
-   type Abstraction is interface
-     and Leander.Showable.Abstraction;
+   type Instance is new Leander.Showable.Abstraction with private;
 
-   type Reference is access constant Abstraction'Class;
-
-   function Literal_Type
-     (This : Abstraction)
-      return Leander.Core.Types.Reference
-      is abstract;
+   function Get_Type
+     (This : Instance)
+      return Leander.Core.Types.Reference;
 
    function Integer_Literal
      (Image : String)
-      return Reference;
+      return Instance;
 
    function Character_Literal
      (Code : Natural)
-      return Reference;
+      return Instance;
 
    function Float_Literal
      (Image : String)
-      return Reference;
+      return Instance;
 
    function String_Literal
      (S : String)
-      return Reference;
+      return Instance;
+
+private
+
+   type Instance_Tag is (LChar, LFloat, LInteger, LString);
+
+   type Instance is new Leander.Showable.Abstraction with
+      record
+         Tag   : Instance_Tag;
+         Image : Ada.Strings.Unbounded.Unbounded_String;
+      end record;
+
+   overriding function Show
+     (This : Instance)
+      return String
+   is (Ada.Strings.Unbounded.To_String (This.Image));
 
 end Leander.Core.Literals;

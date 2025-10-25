@@ -1,13 +1,19 @@
+with Leander.Environment;
 with Leander.Source;
 
 package Leander.Syntax is
 
    type Instance is abstract tagged private;
-   type Reference is access constant Instance'Class;
+   type Reference is access all Instance'Class;
 
    function Location
      (This : Instance'Class)
       return Leander.Source.Source_Location;
+
+   procedure Decorate
+     (This : in out Instance;
+      Env  : Leander.Environment.Reference)
+   is null;
 
 private
 
