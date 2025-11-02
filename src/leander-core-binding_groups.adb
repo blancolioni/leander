@@ -49,6 +49,48 @@ package body Leander.Core.Binding_Groups is
       return Allocate (This.Item);
    end Get_Binding_Group;
 
+   ------------
+   -- Lookup --
+   ------------
+
+   function Lookup
+     (This : Instance'Class;
+      Name : Leander.Names.Leander_Name)
+      return Leander.Core.Bindings.Reference
+   is
+      function Find
+        (List : Binding_Array_Lists.List)
+         return Leander.Core.Bindings.Reference;
+
+      ----------
+      -- Find --
+      ----------
+
+      function Find
+        (List : Binding_Array_Lists.List)
+         return Leander.Core.Bindings.Reference
+      is
+      begin
+         for Arr of List loop
+            for B of Arr loop
+               if B.Name = Varid (Name) then
+                  return B;
+               end if;
+            end loop;
+         end loop;
+         return null;
+      end Find;
+
+      use type Leander.Core.Bindings.Reference;
+      B : Leander.Core.Bindings.Reference :=
+            Find (This.Explicit_Bindings);
+   begin
+      if B = null then
+         B := Find (This.Implicit_Bindings);
+      end if;
+      return B;
+   end Lookup;
+
    ----------
    -- Show --
    ----------

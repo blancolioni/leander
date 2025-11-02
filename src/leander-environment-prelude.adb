@@ -2,7 +2,7 @@ with Leander.Core.Kinds;
 with Leander.Core.Types;
 with Leander.Core.Tycons;
 with Leander.Core.Tyvars;
-with Leander.Core.Type_Env;
+with Leander.Data_Types.Builder;
 
 package body Leander.Environment.Prelude is
 
@@ -11,7 +11,7 @@ package body Leander.Environment.Prelude is
    ------------
 
    function Create return Reference is
-      use Leander.Core.Type_Env, Leander.Core.Schemes;
+      use Leander.Core.Schemes;
       Env    : constant Reference := New_Environment ("Prelude");
       Tv_A   : constant Core.Tyvars.Instance :=
                  Core.Tyvars.Tyvar (Core.To_Varid ("a"), Core.Kinds.Star);
@@ -24,23 +24,40 @@ package body Leander.Environment.Prelude is
                        Core.Kinds.Star));
       T_List_A : constant Core.Types.Reference :=
                    Core.Types.List_Of (T_A);
+      Builder  : Leander.Data_Types.Builder.Data_Type_Builder;
    begin
-      Env.Data_Type
+
+      Builder.Start
+        (Tycon => Core.Types.T_Unit,
+         Kind  => Core.Kinds.Star);
+      Builder.Add_Con
+        (Core.To_Conid ("()"), To_Scheme (Core.Types.T_Unit));
+      Builder.Build;
+      Env.Data_Type (Builder.Data_Type);
+
+      Builder.Start
         (Tycon => T_Bool,
-         Kind => Core.Kinds.Star,
-         Cons => Compose (Empty, "True", To_Scheme (T_Bool))
-         .Compose ("False", To_Scheme (T_Bool)));
-      Env.Data_Type
+         Kind  => Core.Kinds.Star);
+      Builder.Add_Con
+        (Core.To_Conid ("True"), To_Scheme (T_Bool));
+      Builder.Add_Con
+        (Core.To_Conid ("False"), To_Scheme (T_Bool));
+      Builder.Build;
+      Env.Data_Type (Builder.Data_Type);
+
+      Builder.Start
         (Tycon => Core.Types.T_List,
-         Kind => Core.Kinds.Kind_Function (Core.Kinds.Star, Core.Kinds.Star),
-         Cons =>
-           Empty
-         .Compose ("[]", Quantify ([Tv_A], T_List_A))
-         .Compose (":",
-           Quantify
-             ([Tv_A],
-              Core.Types.Fn (T_A,
-                Core.Types.Fn (T_List_A, T_List_A)))));
+         Kind  => Core.Kinds.Kind_Function (Core.Kinds.Star, Core.Kinds.Star));
+      Builder.Add_Con
+        (Core.To_Conid ("[]"), Quantify ([Tv_A], T_List_A));
+      Builder.Add_Con
+        (Core.To_Conid (":"),
+         Quantify
+           ([Tv_A],
+            Core.Types.Fn (T_A,
+              Core.Types.Fn (T_List_A, T_List_A))));
+      Builder.Build;
+      Env.Data_Type (Builder.Data_Type);
 
       return Env;
    end Create;

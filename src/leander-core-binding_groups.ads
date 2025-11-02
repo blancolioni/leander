@@ -11,6 +11,11 @@ package Leander.Core.Binding_Groups is
 
    type Reference is access constant Instance'Class;
 
+   function Lookup
+     (This : Instance'Class;
+      Name : Leander.Names.Leander_Name)
+      return Leander.Core.Bindings.Reference;
+
    type Instance_Builder is tagged private;
 
    procedure Add_Explicit_Bindings

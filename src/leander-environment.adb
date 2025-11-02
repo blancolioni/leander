@@ -1,33 +1,31 @@
-with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Text_IO;
-with Leander.Calculus;
 with Leander.Core.Binding_Groups.Inference;
+with Leander.Core.Bindings;
 with Leander.Core.Inference;
+with Leander.Names.Maps;
 with WL.String_Maps;
 
 package body Leander.Environment is
 
-   package Name_Id_Lists is
-     new Ada.Containers.Doubly_Linked_Lists
-       (Leander.Names.Leander_Name, Leander.Names."=");
-
-   type Data_Type_Record is
-      record
-         Tycon  : Leander.Core.Types.Reference;
-         Cons   : Name_Id_Lists.List;
-      end record;
-
    package Tycon_Maps is
-     new WL.String_Maps (Data_Type_Record);
+     new WL.String_Maps (Leander.Data_Types.Reference,
+                         Leander.Data_Types."=");
 
    type Con_Record is
       record
          Scheme : Leander.Core.Schemes.Reference;
          Defn   : Leander.Calculus.Tree;
+         DT     : Leander.Data_Types.Reference;
       end record;
 
    package Con_Maps is
      new WL.String_Maps (Con_Record);
+
+   package Value_Maps is
+     new Leander.Names.Maps
+       (Leander.Calculus.Tree, Leander.Calculus."=");
+
+   type Value_Map_Reference is access Value_Maps.Map;
 
    type Instance is new Abstraction with
       record
@@ -35,6 +33,8 @@ package body Leander.Environment is
          Tycons   : Tycon_Maps.Map;
          Cons     : Con_Maps.Map;
          Bindings : Leander.Core.Binding_Groups.Reference;
+         Values   : Value_Map_Reference;
+         Context  : Leander.Core.Inference.Inference_Context;
          Type_Env : Leander.Core.Type_Env.Reference;
       end record;
 
@@ -47,11 +47,20 @@ package body Leander.Environment is
       Name : Leander.Names.Leander_Name)
       return Leander.Core.Schemes.Reference;
 
+   overriding function Constructor
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Leander.Calculus.Tree;
+
+   overriding function Con_Data_Type
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Data_Types.Reference
+   is (This.Cons.Element (Core.To_String (Id)).DT);
+
    overriding procedure Data_Type
      (This   : in out Instance;
-      Tycon  : Leander.Core.Types.Reference;
-      Kind   : Leander.Core.Kinds.Kind;
-      Cons   : Leander.Core.Type_Env.Reference);
+      DT     : Leander.Data_Types.Reference);
 
    overriding function Exists
      (This  : Instance;
@@ -61,6 +70,11 @@ package body Leander.Environment is
 
    overriding procedure Elaborate
      (This : in out Instance);
+
+   overriding function Lookup
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Leander.Calculus.Tree;
 
    overriding function Type_Env
      (This : Instance)
@@ -92,84 +106,46 @@ package body Leander.Environment is
       return This.Cons.Element (Leander.Names.To_String (Name)).Scheme;
    end Constructor;
 
+   -----------------
+   -- Constructor --
+   -----------------
+
+   overriding function Constructor
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Leander.Calculus.Tree
+   is
+   begin
+      return This.Cons.Element (Leander.Names.To_String (Name)).Defn;
+   end Constructor;
+
    ---------------
    -- Data_Type --
    ---------------
 
    overriding procedure Data_Type
      (This   : in out Instance;
-      Tycon  : Leander.Core.Types.Reference;
-      Kind   : Leander.Core.Kinds.Kind;
-      Cons   : Leander.Core.Type_Env.Reference)
+      DT     : Leander.Data_Types.Reference)
    is
-      Name : constant String :=
-               Leander.Core.To_String (Tycon.Constructor.Id);
-      Ids  : constant Leander.Names.Name_Array := Cons.Ids;
-
-      Data_Type_Rec : constant Data_Type_Record :=
-                        Data_Type_Record'
-                          (Tycon,
-                           [for Id of Ids => Id]);
-      Var_Ids       : constant Leander.Names.Name_Array :=
-                        [for Id of Ids => Leander.Names.New_Name];
-
-      function Con_Arg_Count
-        (Scheme : Leander.Core.Schemes.Reference)
-         return Natural;
-
-      -------------------
-      -- Con_Arg_Count --
-      -------------------
-
-      function Con_Arg_Count
-        (Scheme : Leander.Core.Schemes.Reference)
-         return Natural
-      is
-         use type Core.Types.Reference;
-         T : Core.Types.Reference := Scheme.Fresh_Instance;
-         Count : Natural := 0;
-      begin
-         while T.Is_Application
-           and then T.Left.Is_Application
-           and then T.Left.Left = Core.Types.T_Arrow
-         loop
-            Count := Count + 1;
-            T := T.Right;
-         end loop;
-         return Count;
-      end Con_Arg_Count;
-
-      Con_Index : Natural := 0;
    begin
-      This.Tycons.Insert
-        (Key      => Name,
-         New_Item => Data_Type_Rec);
-
-      for Id of Cons.Ids loop
-         Con_Index := Con_Index + 1;
+      This.Tycons.Insert (Core.To_String (DT.Id), DT);
+      for I in 1 .. DT.Constructor_Count loop
          declare
-            Scheme    : constant Leander.Core.Schemes.Reference :=
-                          Cons.Element (Id);
-            Arg_Count : constant Natural := Con_Arg_Count (Scheme);
-            Pat_Ids   : constant Leander.Names.Name_Array (1 .. Arg_Count) :=
-                          [others => Names.New_Name];
-            E         : Calculus.Tree := Calculus.Symbol (Var_Ids (Con_Index));
+            Id : constant Leander.Core.Conid :=
+                   DT.Constructor_Name (I);
          begin
-            for Id of Pat_Ids loop
-               E := Calculus.Apply (E, Calculus.Symbol (Id));
-            end loop;
-            for Id of reverse Var_Ids loop
-               E := Calculus.Lambda (Id, E);
-            end loop;
-            for Id of reverse Pat_Ids loop
-               E := Calculus.Lambda (Id, E);
-            end loop;
+            This.Values.Insert
+              (Leander.Names.Leander_Name (Id), DT.Constructor_Calculus (I));
             This.Cons.Insert
-              (Leander.Names.To_String (Id),
+              (Core.To_String (Id),
                Con_Record'
-                 (Scheme => Scheme,
-                  Defn   => E));
-            This.Type_Env := This.Type_Env.Compose (Core.Varid (Id), Scheme);
+                 (DT.Constructor_Type (I),
+                  DT.Constructor_Calculus (I),
+                  DT));
+            This.Type_Env :=
+              This.Type_Env.Compose
+                (Core.Varid (Id),
+                 DT.Constructor_Type (I));
          end;
       end loop;
    end Data_Type;
@@ -187,6 +163,7 @@ package body Leander.Environment is
       Leander.Core.Binding_Groups.Inference.Infer
         (Context, This.Bindings);
 
+      This.Context := Context;
       This.Type_Env :=
         Context.Type_Env.Save (This.Type_Env, Context.Current_Substitution);
 
@@ -220,6 +197,40 @@ package body Leander.Environment is
       end case;
    end Exists;
 
+   ------------
+   -- Lookup --
+   ------------
+
+   overriding function Lookup
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Leander.Calculus.Tree
+   is
+   begin
+      if This.Values.Contains (Name) then
+         return This.Values.Element (Name);
+      else
+         declare
+            use type Leander.Core.Bindings.Reference;
+            Binding : constant Leander.Core.Bindings.Reference :=
+                     This.Bindings.Lookup (Name);
+         begin
+            if Binding /= null then
+               declare
+                  Tree : constant Leander.Calculus.Tree :=
+                           Binding.To_Calculus (This.Context, This'Access);
+               begin
+                  This.Values.Insert (Name, Tree);
+                  return Tree;
+               end;
+            else
+               raise Constraint_Error with
+                 "undefined: " & Leander.Names.To_String (Name);
+            end if;
+         end;
+      end if;
+   end Lookup;
+
    ---------------------
    -- New_Environment --
    ---------------------
@@ -229,6 +240,7 @@ package body Leander.Environment is
       return new Instance'
         (Name     => Leander.Names.To_Leander_Name (Name),
          Type_Env => Core.Type_Env.Empty,
+         Values   => new Value_Maps.Map,
          others   => <>);
    end New_Environment;
 

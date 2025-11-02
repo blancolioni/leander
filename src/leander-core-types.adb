@@ -239,6 +239,27 @@ package body Leander.Core.Types is
       end case;
    end Get_Tyvars;
 
+   ----------
+   -- Head --
+   ----------
+
+   function Head
+     (This : Instance)
+      return Conid
+   is
+   begin
+      case This.Tag is
+         when TVar =>
+            raise Constraint_Error with "precondition false";
+         when TCon =>
+            return This.Tycon.Id;
+         when TApp =>
+            return This.Left.Head;
+         when TGen =>
+            raise Constraint_Error with "precondition false";
+      end case;
+   end Head;
+
    -----------------
    -- Instantiate --
    -----------------

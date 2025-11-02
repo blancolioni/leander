@@ -35,15 +35,8 @@ package body Leander.Core.Binding_Groups.Inference is
             Leander.Core.Alts.Inference.Infer (Context, Alt);
          end loop;
          for Alt of Alts loop
-            declare
-               Subst : constant Leander.Core.Substitutions.Instance :=
-                         Leander.Core.Types.Unification.Most_General_Unifier
-                           (T, Context.Binding (Alt));
-            begin
-               Leander.Logging.Log
-                 ("INFER-ALT", Alt.Show & " ==> " & Subst.Show);
-               pragma Unreferenced (Subst);
-            end;
+            Leander.Core.Types.Unification.Unify
+              (Context, T, Context.Binding (Alt));
          end loop;
       end Infer_Alts;
 

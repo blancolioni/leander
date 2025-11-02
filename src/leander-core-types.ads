@@ -38,6 +38,11 @@ package Leander.Core.Types is
       return Tycons.Instance
      with Pre'Class => This.Is_Constructor;
 
+   function Head
+     (This : Instance)
+      return Conid
+     with Pre => not This.Is_Variable;
+
    function Is_Application
      (This : Instance)
       return Boolean;

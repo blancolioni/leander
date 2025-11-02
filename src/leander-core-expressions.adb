@@ -1,5 +1,7 @@
 with Leander.Allocator;
 with Leander.Core.Binding_Groups;
+with Leander.Environment;
+with Leander.Logging;
 
 package body Leander.Core.Expressions is
 
@@ -168,6 +170,40 @@ package body Leander.Core.Expressions is
       end case;
    end Show;
 
+   -----------------
+   -- To_Calculus --
+   -----------------
+
+   function To_Calculus
+     (This : Instance'Class;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree
+   is
+      use Leander.Calculus;
+   begin
+      Leander.Logging.Log
+        ("CALC", This.Show);
+      case This.Tag is
+         when EVar =>
+            return Symbol (Leander.Names.Leander_Name (This.Var_Id));
+         when ECon =>
+            return Env.Constructor (Leander.Names.Leander_Name (This.Con_Id));
+         when ELit =>
+            return Number (Integer'Value (This.Literal.Show));
+         when EApp =>
+            return Apply
+              (This.Left.To_Calculus (Types, Env),
+               This.Right.To_Calculus (Types, Env));
+         when ELam =>
+            return Lambda
+              (To_String (This.LVar),
+               This.LBody.To_Calculus (Types, Env));
+         when ELet =>
+            return Number (999);
+      end case;
+   end To_Calculus;
+
    --------------
    -- Traverse --
    --------------
@@ -193,7 +229,8 @@ package body Leander.Core.Expressions is
          when ELam =>
             This.LBody.Traverse (Process);
          when ELet =>
-            null;      end case;
+            null;
+      end case;
    end Traverse;
 
    --------------

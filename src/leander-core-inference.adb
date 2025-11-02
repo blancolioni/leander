@@ -82,7 +82,9 @@ package body Leander.Core.Inference is
       Subst : Leander.Core.Substitutions.Instance'Class)
    is
    begin
-      This.Subst := Leander.Core.Substitutions.Instance (Subst);
+      This.Subst :=
+        Leander.Core.Substitutions.Instance (Subst)
+        .Compose (This.Subst);
    end Save_Substitution;
 
    -------------------

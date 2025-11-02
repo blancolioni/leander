@@ -1,14 +1,16 @@
+with Leander.Calculus;
 with Leander.Core.Binding_Groups;
-with Leander.Core.Kinds;
 with Leander.Core.Schemes;
 with Leander.Core.Type_Env;
-with Leander.Core.Types;
+with Leander.Data_Types;
 with Leander.Names;
 --  with Leander.Types.Bindings;
 
 package Leander.Environment is
 
-   type Abstraction is interface;
+   type Abstraction is interface
+     and Leander.Calculus.Calculus_Environment;
+
    type Reference is access all Abstraction'Class;
 
    type Element_Class is
@@ -39,6 +41,21 @@ package Leander.Environment is
       return Leander.Core.Schemes.Reference
    is (This.Constructor (Leander.Names.To_Leander_Name (Name)));
 
+   function Constructor
+     (This : Abstraction;
+      Name : Leander.Names.Leander_Name)
+      return Leander.Calculus.Tree
+      is abstract
+     with Pre'Class => This.Exists (Name, Constructor);
+
+   function Con_Data_Type
+     (This : Abstraction;
+      Id   : Leander.Core.Conid)
+      return Leander.Data_Types.Reference
+      is abstract
+     with Pre'Class => This.Exists (Leander.Names.Leander_Name (Id),
+                                    Constructor);
+
    procedure Bindings
      (This   : in out Abstraction;
       Groups : Leander.Core.Binding_Groups.Reference)
@@ -46,9 +63,7 @@ package Leander.Environment is
 
    procedure Data_Type
      (This   : in out Abstraction;
-      Tycon  : Leander.Core.Types.Reference;
-      Kind   : Leander.Core.Kinds.Kind;
-      Cons   : Leander.Core.Type_Env.Reference)
+      DT     : Leander.Data_Types.Reference)
    is abstract;
 
    procedure Elaborate

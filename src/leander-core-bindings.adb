@@ -1,4 +1,5 @@
 with Leander.Allocator;
+with Leander.Core.Alts.Compiler;
 
 package body Leander.Core.Bindings is
 
@@ -58,5 +59,31 @@ package body Leander.Core.Bindings is
    begin
       return Core.To_String (This.Name) & "=" & Show_Alts (1);
    end Show;
+
+   -----------------
+   -- To_Calculus --
+   -----------------
+
+   function To_Calculus
+     (This  : Instance'Class;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree
+   is
+   begin
+      if This.Alt_Count = 1
+        and then This.Alts (1).Patterns'Length = 0
+      then
+         return This.Alts (1).Expression.To_Calculus (Types, Env);
+      end if;
+
+      declare
+         Builder : Leander.Core.Alts.Compiler.Builder;
+      begin
+         Builder.Initialize (Types, Env);
+         Builder.Add (This.Alts);
+         return Builder.To_Calculus;
+      end;
+   end To_Calculus;
 
 end Leander.Core.Bindings;

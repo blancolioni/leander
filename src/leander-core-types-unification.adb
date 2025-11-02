@@ -1,3 +1,5 @@
+with Leander.Logging;
+
 package body Leander.Core.Types.Unification is
 
    function Bind_Variable
@@ -44,6 +46,9 @@ package body Leander.Core.Types.Unification is
       return Leander.Core.Substitutions.Instance
    is
    begin
+      Leander.Logging.Log
+        ("MGU",
+         Left.Show & " <> " & Right.Show);
       if Left.Tag = TVar then
          return Bind_Variable (Left.Tyvar.Name, Right);
       elsif Right.Tag = TVar then
@@ -82,6 +87,22 @@ package body Leander.Core.Types.Unification is
          end case;
       end if;
    end Most_General_Unifier;
+
+   -----------
+   -- Unify --
+   -----------
+
+   procedure Unify
+     (Context     : in out Leander.Core.Inference.Inference_Context'Class;
+      Left, Right : Reference)
+   is
+      U : constant Leander.Core.Substitutions.Instance :=
+            Most_General_Unifier
+              (Left.Apply (Context.Current_Substitution),
+               Right.Apply (Context.Current_Substitution));
+   begin
+      Context.Save_Substitution (U);
+   end Unify;
 
    -------------------------
    -- Unification_Failure --

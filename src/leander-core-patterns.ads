@@ -17,9 +17,19 @@ package Leander.Core.Patterns is
    type Reference is not null access constant Instance'Class;
    type Reference_Array is array (Positive range <>) of Reference;
 
-   function Variable (Id : Varid) return Reference;
-
    type Conargs is array (Positive range <>) of Varid;
+
+   function Is_Variable (This : Instance) return Boolean;
+   function Variable (This : Instance) return Varid
+     with Pre => This.Is_Variable;
+
+   function Is_Constructor (This : Instance) return Boolean;
+   function Constructor (This : Instance) return Conid
+     with Pre => This.Is_Constructor;
+   function Con_Arguments (This : Instance) return Conargs
+     with Pre => This.Is_Constructor;
+
+   function Variable (Id : Varid) return Reference;
 
    function Constructor
      (Id   : Conid;
@@ -80,5 +90,20 @@ private
    function Allocate
      (This : Instance)
       return Reference;
+
+   function Is_Variable (This : Instance) return Boolean
+   is (This.Tag = PVar);
+
+   function Variable (This : Instance) return Varid
+   is (This.Var_Id);
+
+   function Is_Constructor (This : Instance) return Boolean
+   is (This.Tag = PCon);
+
+   function Constructor (This : Instance) return Conid
+   is (This.Con_Id);
+
+   function Con_Arguments (This : Instance) return Conargs
+   is (This.Con_Args);
 
 end Leander.Core.Patterns;

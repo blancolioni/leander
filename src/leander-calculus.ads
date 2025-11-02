@@ -1,5 +1,6 @@
 with Leander.Names;
-with Skit.Machine;
+with Skit;
+with Skit.Environment;
 
 package Leander.Calculus is
 
@@ -11,7 +12,7 @@ package Leander.Calculus is
       return Tree;
 
    function Lambda
-     (Name : Leander.Names.leander_Name;
+     (Name : Leander.Names.Leander_Name;
       Expr : Tree)
       return Tree;
 
@@ -28,14 +29,25 @@ package Leander.Calculus is
       return Tree;
 
    function Symbol
-     (Name : Leander.Names.leander_Name)
+     (Name : Leander.Names.Leander_Name)
       return Tree;
 
+   type Calculus_Environment is interface;
+
+   function Lookup
+     (This : Calculus_Environment;
+      Name : Leander.Names.Leander_Name)
+      return Tree
+      is abstract;
+
    procedure Compile
-     (This    : Tree;
-      Machine : not null access Skit.Machine.Abstraction'Class);
+     (This     : Tree;
+      Env      : not null access constant Calculus_Environment'Class;
+      Skit_Env : Skit.Environment.Reference);
 
    procedure Dispose (This : in out Tree);
+
+   function To_String (This : Tree) return String;
 
 private
 

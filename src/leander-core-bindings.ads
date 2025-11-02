@@ -1,5 +1,8 @@
+with Leander.Calculus;
 with Leander.Core.Alts;
+with Leander.Core.Inference;
 with Leander.Core.Types;
+limited with Leander.Environment;
 with Leander.Showable;
 
 package Leander.Core.Bindings is
@@ -22,6 +25,12 @@ package Leander.Core.Bindings is
      (Name : Varid;
       Alts : Leander.Core.Alts.Reference_Array)
       return Reference;
+
+   function To_Calculus
+     (This : Instance'Class;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree;
 
    procedure Prune;
 

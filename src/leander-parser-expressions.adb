@@ -79,6 +79,58 @@ package body Leander.Parser.Expressions is
    is
       use Leander.Syntax.Expressions;
       Loc : constant Source.Source_Location := Current_Source_Location;
+
+      function Parse_Rest_Of_List
+        return Leander.Syntax.Expressions.Reference
+        with Pre => At_Expression;
+
+      ------------------------
+      -- Parse_Rest_Of_List --
+      ------------------------
+
+      function Parse_Rest_Of_List
+        return Leander.Syntax.Expressions.Reference
+      is
+         Loc : constant Source.Source_Location := Current_Source_Location;
+         X   : constant Reference := Parse_Expression;
+         XS  : Reference;
+      begin
+         if Tok = Tok_Comma then
+            Scan;
+            if At_Expression then
+               XS := Parse_Rest_Of_List;
+            else
+               Error ("missing list element");
+               while Tok /= Tok_Right_Bracket
+                 and then Tok /= Tok_End_Of_File
+               loop
+                  Scan;
+               end loop;
+               XS := Constructor
+                 (Current_Source_Location, "[]");
+               if Tok = Tok_Right_Bracket then
+                  Scan;
+               end if;
+            end if;
+         elsif Tok = Tok_Right_Bracket then
+            XS := Constructor
+              (Current_Source_Location, "[]");
+            Scan;
+         else
+            Error ("missing ']'");
+            XS := Constructor
+              (Current_Source_Location, "[]");
+         end if;
+
+         return Syntax.Expressions.Application
+           (Loc,
+            Syntax.Expressions.Application
+              (Loc,
+               Constructor (Loc, ":"),
+               X),
+            Xs);
+      end Parse_Rest_Of_List;
+
    begin
       if At_Variable_Name then
          return Var : constant Reference :=
@@ -102,16 +154,10 @@ package body Leander.Parser.Expressions is
          if Tok = Tok_Right_Bracket then
             Scan;
             return Constructor (Loc, "[]");
+         elsif At_Expression then
+            return Parse_Rest_Of_List;
          else
-            Error ("lists not Implemented");
-            while Tok /= Tok_End_Of_File
-              and then Tok /= Tok_Right_Bracket
-            loop
-               Scan;
-            end loop;
-            if Tok = Tok_Right_Bracket then
-               Scan;
-            end if;
+            Error ("missing list");
             return Constructor (Loc, "[]");
          end if;
       else

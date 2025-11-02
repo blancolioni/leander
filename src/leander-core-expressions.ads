@@ -1,7 +1,10 @@
+with Leander.Calculus;
 limited with Leander.Core.Binding_Groups;
+with Leander.Core.Inference;
 with Leander.Core.Literals;
 with Leander.Core.Typeable;
 with Leander.Disposable;
+limited with Leander.Environment;
 with Leander.Showable;
 with Leander.Traverseable;
 
@@ -39,6 +42,12 @@ package Leander.Core.Expressions is
      (This : Instance'Class;
       To   : Varid)
       return Boolean;
+
+   function To_Calculus
+     (This : Instance'Class;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree;
 
    procedure Prune;
 
