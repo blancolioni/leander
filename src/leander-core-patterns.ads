@@ -20,6 +20,7 @@ package Leander.Core.Patterns is
    type Conargs is array (Positive range <>) of Varid;
 
    function Is_Variable (This : Instance) return Boolean;
+   function Is_Wildcard (This : Instance) return Boolean;
    function Variable (This : Instance) return Varid
      with Pre => This.Is_Variable;
 
@@ -28,6 +29,10 @@ package Leander.Core.Patterns is
      with Pre => This.Is_Constructor;
    function Con_Arguments (This : Instance) return Conargs
      with Pre => This.Is_Constructor;
+
+   function Is_Literal (This : Instance) return Boolean;
+   function Literal (This : Instance) return Literals.Instance
+     with Pre => This.Is_Literal;
 
    function Variable (Id : Varid) return Reference;
 
@@ -94,8 +99,18 @@ private
    function Is_Variable (This : Instance) return Boolean
    is (This.Tag = PVar);
 
+   function Is_Wildcard (This : Instance) return Boolean
+   is (This.Tag = PVar
+       and then To_String (This.Var_Id) = "_");
+
    function Variable (This : Instance) return Varid
    is (This.Var_Id);
+
+   function Is_Literal (This : Instance) return Boolean
+   is (This.Tag = PLit);
+
+   function Literal (This : Instance) return Literals.Instance
+   is (This.Literal);
 
    function Is_Constructor (This : Instance) return Boolean
    is (This.Tag = PCon);

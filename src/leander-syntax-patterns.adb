@@ -1,4 +1,5 @@
 with Leander.Syntax.Patterns.Constructors;
+with Leander.Syntax.Patterns.Literals;
 with Leander.Syntax.Patterns.Variables;
 
 package body Leander.Syntax.Patterns is
@@ -14,6 +15,12 @@ package body Leander.Syntax.Patterns is
                   return Reference
    is (Reference (This));
 
+   function Integer_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference
+   is (Literals.Integer_Literal (Location, Image));
+
    function Variable
      (Location : Leander.Source.Source_Location;
       Name     : String)
@@ -23,6 +30,6 @@ package body Leander.Syntax.Patterns is
    function Wildcard
      (Location : Leander.Source.Source_Location)
       return Reference
-   is (Variables.Variable (Location, ""));
+   is (Variables.Variable (Location, "_"));
 
 end Leander.Syntax.Patterns;

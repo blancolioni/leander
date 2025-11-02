@@ -21,6 +21,28 @@ package body Leander.Core.Alts.Compiler is
       if Pat_Type.Is_Variable then
          This.Con_Dfl := (Nullable_Pattern (Pat),
                           Nullable_Expression (Alt.Expr));
+      elsif Pat_Type.Is_Constructor
+        and then Pat_Type.Head = To_Conid ("Int")
+      then
+         This.Compare_Mode := True;
+         for Alt of Alts loop
+            declare
+               Pat  : constant Leander.Core.Patterns.Reference :=
+                        Alt.Pats (1);
+            begin
+               if Pat.Is_Variable then
+                  This.Con_Dfl := (Nullable_Pattern (Pat),
+                                   Nullable_Expression (Alt.Expr));
+                  exit;
+               end if;
+
+               This.Con_Pats.Append
+                (Con_Pat_Expr'
+                   (Nullable_Pattern (Pat),
+                    Nullable_Expression (Alt.Expr)));
+            end;
+         end loop;
+
       else
          declare
             Con : constant Leander.Core.Conid := Pat_Type.Head;
@@ -102,39 +124,72 @@ package body Leander.Core.Alts.Compiler is
       return Leander.Calculus.Tree
    is
       use Leander.Calculus;
-      V : constant Leander.Names.Leander_Name :=
-            Leander.Names.New_Name;
-      R : Tree := Symbol (V);
-      Err : Tree;
+      V          : constant Leander.Names.Leander_Name :=
+                     Leander.Names.New_Name;
+      R          : Tree := Symbol (V);
+      Err        : Tree;
       Have_Error : Boolean := False;
    begin
-      for I in 1 .. This.Con_Pats.Last_Index loop
-         declare
-            Cp : Con_Pat_Expr renames This.Con_Pats (I);
-            E  : Tree;
-         begin
-            if Cp.Expr = null then
-               if This.Con_Dfl.Expr = null then
-                  if not Have_Error then
-                     Err := Symbol ("#error");
-                     Have_Error := True;
-                  end if;
-                  E := Err;
-               else
-                  E := This.Con_Dfl.Expr.To_Calculus (This.Context, This.Env);
-                  E := Lambda
-                    (Leander.Names.Leander_Name (This.Con_Dfl.Pat.Variable),
-                     E);
-               end if;
-            else
-               E := Cp.Expr.To_Calculus (This.Context, This.Env);
-               for Id of reverse Cp.Pat.Con_Arguments loop
-                  E := Lambda (Leander.Names.Leander_Name (Id), E);
-               end loop;
+      if This.Compare_Mode then
+         if This.Con_Dfl.Expr = null then
+            R := Symbol ("#error");
+         else
+            R := This.Con_Dfl.Expr.To_Calculus
+              (This.Context, This.Env);
+            if not This.Con_Dfl.Pat.Is_Wildcard then
+               R :=
+                 Apply
+                   (Lambda
+                      (Leander.Names.Leander_Name (This.Con_Dfl.Pat.Variable),
+                       R),
+                    Symbol (V));
             end if;
-            R := Apply (R, E);
-         end;
-      end loop;
+         end if;
+         for Cp of reverse This.Con_Pats loop
+            R :=
+              Apply
+                (Apply
+                   (Apply
+                      (Apply
+                           (Symbol ("#eq"),
+                            Symbol (V)),
+                       Cp.Pat.Literal.To_Calculus),
+                    Cp.Expr.To_Calculus (This.Context, This.Env)),
+                 R);
+         end loop;
+      else
+         R := Symbol (V);
+         for I in 1 .. This.Con_Pats.Last_Index loop
+            declare
+               Cp : Con_Pat_Expr renames This.Con_Pats (I);
+               E  : Tree;
+            begin
+               if Cp.Expr = null then
+                  if This.Con_Dfl.Expr = null then
+                     if not Have_Error then
+                        Err := Symbol ("#error");
+                        Have_Error := True;
+                     end if;
+                     E := Err;
+                  else
+                        E := This.Con_Dfl.Expr.To_Calculus
+                          (This.Context, This.Env);
+                     E := Lambda
+                       (Leander.Names.Leander_Name (This.Con_Dfl.Pat.Variable),
+                        E);
+                  end if;
+               else
+                  E := Cp.Expr.To_Calculus (This.Context, This.Env);
+                  for Id of reverse Cp.Pat.Con_Arguments loop
+                     E := Lambda (Leander.Names.Leander_Name (Id), E);
+                  end loop;
+               end if;
+               R := Apply (R, E);
+            end;
+         end loop;
+
+      end if;
+
       R := Lambda (V, R);
 
       for Name of This.Names loop

@@ -1,5 +1,6 @@
 private with Ada.Strings.Unbounded;
 
+with Leander.Calculus;
 with Leander.Core.Types;
 with Leander.Showable;
 
@@ -10,6 +11,10 @@ package Leander.Core.Literals is
    function Get_Type
      (This : Instance)
       return Leander.Core.Types.Reference;
+
+   function To_Calculus
+     (This : Instance)
+      return Leander.Calculus.Tree;
 
    function Integer_Literal
      (Image : String)

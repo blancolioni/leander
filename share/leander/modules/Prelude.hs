@@ -10,3 +10,12 @@ null ((:) x xs) = False
 
 length [] = 0
 length ((:) x xs) = #primIntAdd 1 (length xs)
+
+zero 0 = True
+zero _ = False
+
+small 0 = True
+small 1 = True
+small 2 = True
+small 3 = True
+small x = False

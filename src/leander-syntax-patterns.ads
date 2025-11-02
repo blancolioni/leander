@@ -28,6 +28,11 @@ package Leander.Syntax.Patterns is
       Arguments : Reference_Array)
       return Reference;
 
+   function Integer_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference;
+
    function To_Core (This : Instance) return Leander.Core.Patterns.Reference
                      is abstract;
 

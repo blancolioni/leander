@@ -74,4 +74,29 @@ package body Leander.Core.Literals is
       return Make (LString, S);
    end String_Literal;
 
+   -----------------
+   -- To_Calculus --
+   -----------------
+
+   function To_Calculus
+     (This : Instance)
+      return Leander.Calculus.Tree
+   is
+      use Leander.Calculus;
+      Image : constant String :=
+                Ada.Strings.Unbounded.To_String (This.Image);
+   begin
+      case This.Tag is
+         when LChar =>
+            return Number (Character'Pos (Image (Image'First)));
+         when LFloat =>
+            return Number (Integer (Float'Value (Image)));
+         when LInteger =>
+            return Number (Integer'Value (Image));
+         when LString =>
+            raise Constraint_Error with
+              "string literals not Supported";
+      end case;
+   end To_Calculus;
+
 end Leander.Core.Literals;

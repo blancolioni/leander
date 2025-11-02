@@ -1,3 +1,4 @@
+with Ada.Command_Line;
 with Ada.Text_IO;
 
 with Leander.Core;
@@ -76,13 +77,14 @@ package body Leander.Tests is
       Leander.Tests.Parser.Run_Tests;
       Leander.Tests.Prelude.Run_Tests;
       Leander.Tests.Evaluation.Run_Tests;
+      Leander.Core.Prune;
       Ada.Text_IO.Put_Line
         ("Tests:" & Total_Tests'Image
          & "; passed:"
          & Passed'Image
          & "; failed"
          & Failed'Image);
-      Leander.Core.Prune;
+      Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Failed));
    end Run_Tests;
 
    ----------

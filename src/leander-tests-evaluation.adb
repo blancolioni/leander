@@ -45,6 +45,11 @@ package body Leander.Tests.Evaluation is
       Test ("length []", "Int", "0", Env, Prelude);
       Test ("length [1]", "Int", "1", Env, Prelude);
       Test ("length [1,2,3,4]", "Int", "4", Env, Prelude);
+      Test ("zero 0", "Bool", "K", Env, Prelude);
+      Test ("zero 1", "Bool", "K I", Env, Prelude);
+      Test ("zero 100", "Bool", "K I", Env, Prelude);
+      Test ("small 3", "Bool", "K", Env, Prelude);
+      Test ("small 5", "Bool", "K I", Env, Prelude);
       Machine.Report;
    end Run_Tests;
 
@@ -86,6 +91,7 @@ package body Leander.Tests.Evaluation is
                begin
                   Leander.Calculus.Compile
                     (Tree, Prelude, Skit_Env);
+
                   Skit.Compiler.Compile (Skit_Env.Machine);
                   Skit_Env.Machine.Evaluate;
                   declare

@@ -33,6 +33,12 @@ package body Leander.Parser.Patterns is
             Scan;
             Scan;
          end return;
+      elsif Tok = Tok_Integer_Literal then
+         return Pat : constant Reference :=
+           Leander.Syntax.Patterns.Integer_Literal (Loc, Tok_Text)
+         do
+            Scan;
+         end return;
       elsif Tok = Tok_Left_Paren then
          if Next_Tok = Tok_Right_Paren then
             return Pat : constant Reference :=

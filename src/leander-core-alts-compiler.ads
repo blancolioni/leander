@@ -47,11 +47,12 @@ private
 
    type Builder is tagged
       record
-         Context  : Leander.Core.Inference.Inference_Context;
-         Env      : Leander.Environment.Reference;
-         Names    : Varid_Vectors.Vector;
-         Con_Pats : Con_Pat_Expr_Vectors.Vector;
-         Con_Dfl  : Con_Pat_Expr;
+         Context      : Leander.Core.Inference.Inference_Context;
+         Env          : Leander.Environment.Reference;
+         Names        : Varid_Vectors.Vector;
+         Compare_Mode : Boolean := False;
+         Con_Pats     : Con_Pat_Expr_Vectors.Vector;
+         Con_Dfl      : Con_Pat_Expr;
       end record;
 
 end Leander.Core.Alts.Compiler;
