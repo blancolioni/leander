@@ -5,6 +5,10 @@ foreign import skit "#eq" #primCharEq :: Char -> Char -> Char
 
 foreign import skit "#add" #primIntAdd :: Int -> Int -> Int
 
+id x = x
+
+const x _ = x
+
 null [] = True
 null ((:) x xs) = False
 

@@ -77,6 +77,29 @@ package body Leander.Core.Bindings is
          return This.Alts (1).Expression.To_Calculus (Types, Env);
       end if;
 
+      if This.Alt_Count = 1
+        and then (for all Pat of This.Alts (1).Patterns =>
+                      Pat.Is_Variable)
+      then
+         declare
+            E : Leander.Calculus.Tree :=
+                  This.Alts (1).Expression.To_Calculus (Types, Env);
+         begin
+            for Pat of reverse This.Alts (1).Patterns loop
+               if Pat.Is_Wildcard then
+                  E :=
+                    Leander.Calculus.Lambda
+                      (Leander.Names.New_Name, E);
+               else
+                  E :=
+                    Leander.Calculus.Lambda
+                      (Leander.Names.Leander_Name (Pat.Variable), E);
+               end if;
+            end loop;
+            return E;
+         end;
+      end if;
+
       declare
          Builder : Leander.Core.Alts.Compiler.Builder;
       begin
