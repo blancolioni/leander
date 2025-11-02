@@ -7,6 +7,8 @@ with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Expressions;
 with Leander.Parser.Modules;
 
+with WL.String_Maps;
+
 package body Leander.Parser is
 
    function Is_Alphanumeric_Identifier (Name : String) return Boolean
@@ -19,6 +21,12 @@ package body Leander.Parser is
    function Is_Constructor (Name : String) return Boolean
    is (Name (Name'First) in 'A' .. 'Z'
        or else Name (Name'First) = ':');
+
+   package Loaded_Module_Maps is
+     new WL.String_Maps (Leander.Environment.Reference,
+                         Leander.Environment."=");
+
+   Loaded_Module_Map : Loaded_Module_Maps.Map;
 
    --------------------
    -- At_Constructor --
@@ -117,12 +125,17 @@ package body Leander.Parser is
       Name : constant String :=
                Ada.Directories.Base_Name (Path);
    begin
-      Open (Path);
-      return Env : constant Leander.Environment.Reference :=
-        Leander.Parser.Modules.Parse_Module (Name)
-      do
-         Close;
-      end return;
+      if Loaded_Module_Map.Contains (Name) then
+         return Loaded_Module_Map (Name);
+      else
+         Open (Path);
+         return Env : constant Leander.Environment.Reference :=
+           Leander.Parser.Modules.Parse_Module (Name)
+         do
+            Loaded_Module_Map.Insert (Name, Env);
+            Close;
+         end return;
+      end if;
    end Load_Module;
 
    ----------------------

@@ -1,4 +1,5 @@
 with Leander.Parser.Bindings;
+with Leander.Parser.Expressions;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 with Leander.Parser.Types;
@@ -46,6 +47,48 @@ package body Leander.Parser.Declarations is
                   Scan;
                end loop;
             end if;
+         elsif Tok in Tok_Infix | Tok_Infixl | Tok_Infixr then
+            declare
+               Assoc : constant Expressions.Associativity_Type :=
+                         (if Tok = Tok_Infixl
+                          then Expressions.Left
+                          elsif Tok = Tok_Infixr
+                          then Expressions.Right
+                          else Expressions.None);
+               Priority : Expressions.Priority_Range := 0;
+            begin
+               Scan;
+               if Tok /= Tok_Integer_Literal then
+                  Error ("expected an integer Precedence");
+               else
+                  declare
+                     P : constant Natural :=
+                           Natural'Value (Tok_Text);
+                  begin
+                     if P in 0 .. 9 then
+                        Priority := Expressions.Priority_Range (P);
+                     else
+                        Error ("priority must be in the range 0 .. 9");
+                     end if;
+                  end;
+                  Scan;
+               end if;
+
+               Expressions.Add_Fixity (Scan_Identifier, Assoc, Priority);
+
+               while Tok = Tok_Comma loop
+                  Scan;
+                  if not At_Operator then
+                     Error ("operator expected");
+                     while Tok_Indent > 1 and then not At_Operator loop
+                        Scan;
+                     end loop;
+                  end if;
+                  if At_Operator then
+                     Expressions.Add_Fixity (Scan_Identifier, Assoc, Priority);
+                  end if;
+               end loop;
+            end;
          else
             Error ("only bindings are supported");
             Scan;

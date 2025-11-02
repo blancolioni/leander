@@ -11,7 +11,7 @@ with Leander.Syntax.Types;
 package body Leander.Parser.Bindings is
 
    function At_Binding return Boolean
-   is (Tok = Tok_Identifier);
+   is (At_Variable);
 
    -------------------
    -- Parse_Binding --
@@ -21,11 +21,10 @@ package body Leander.Parser.Bindings is
      (To : Leander.Syntax.Bindings.Reference)
    is
       Loc  : constant Source.Source_Location := Current_Source_Location;
-      Name : constant String := Tok_Text;
+      Name : constant String := Scan_Identifier;
       Pats : Leander.Syntax.Patterns.Reference_Array (1 .. 20);
       Last : Natural := 0;
    begin
-      Scan;
       while Patterns.At_Pattern loop
          Last := Last + 1;
          Pats (Last) := Patterns.Parse_Pattern;

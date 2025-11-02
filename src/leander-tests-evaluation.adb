@@ -52,6 +52,8 @@ package body Leander.Tests.Evaluation is
       Test ("small 5", "Bool", "K I", Env, Prelude);
       Test ("id 123", "Int", "123", Env, Prelude);
       Test ("const 3 []", "Int", "3", Env, Prelude);
+      Test ("2 * 3 + 4", "Int", "10", Env, Prelude);
+      Test ("2 + 3 * 4", "Int", "14", Env, Prelude);
       Machine.Report;
    end Run_Tests;
 
