@@ -34,6 +34,12 @@ package body Leander.Core.Alts.Inference is
 
       Context.Restore_Type_Env;
 
+      if not Context.OK then
+         Context.Add_Error_Context
+           ("in " & Alt.Show);
+         return;
+      end if;
+
       declare
          T : Leander.Core.Types.Reference := Context.Binding (Alt.Expr);
       begin

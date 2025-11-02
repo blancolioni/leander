@@ -61,16 +61,12 @@ package body Leander.Core.Types.Unification is
             when TVar =>
                raise Program_Error with "never happens";
             when TCon =>
-               declare
-                  use type Leander.Core.Tycons.Instance;
-               begin
-                  if Left.Tycon = Right.Tycon then
-                     return Leander.Core.Substitutions.Empty;
-                  else
-                     Unification_Failure ("types do not unify",
-                                          Left.Show, Right.Show);
-                  end if;
-               end;
+               if Left.Tycon.Id = Right.Tycon.Id then
+                  return Leander.Core.Substitutions.Empty;
+               else
+                  Unification_Failure ("types do not unify",
+                                       Left.Show, Right.Show);
+               end if;
             when TApp =>
                declare
                   S1 : constant Leander.Core.Substitutions.Instance :=

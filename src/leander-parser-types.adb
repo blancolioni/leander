@@ -62,15 +62,15 @@ package body Leander.Parser.Types is
                  Current_Source_Location;
       Expr : Reference := Parse_Atomic_Type;
    begin
-      while At_Atomic_Type loop
 
+      while Tok_Indent > Indent
+        and then At_Atomic_Type
+      loop
          declare
             Right : constant Reference := Parse_Atomic_Type;
          begin
             Expr := Application (Loc, Expr, Right);
          end;
-
-         exit when Tok_Indent <= Indent;
       end loop;
 
       if Tok = Tok_Right_Arrow then

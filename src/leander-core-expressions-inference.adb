@@ -39,7 +39,6 @@ package body Leander.Core.Expressions.Inference is
       is
       begin
          Context.Bind (Expr, Ty);
-         --  Result.Expr_Types.Insert (Expr, Nullable_Type_Reference (Ty));
       end Bind;
 
       -------------

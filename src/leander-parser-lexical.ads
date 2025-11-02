@@ -17,8 +17,8 @@ private package Leander.Parser.Lexical is
                  First_Keyword      => Tok_Else,
                  Keywords           => "else if then case of do type " &
                                        "class where instance data deriving " &
-                                       "let in infix infixl infixr module " &
-                                       "import newtype foreign " &
+                                       "import in infix infixl infixr " &
+                                       "let module newtype foreign " &
                                        "= \ .. | -> <- => ::",
                  First_Symbol       => Tok_Left_Paren,
                  Symbols            => "( ) , ; [ ] ` { }",

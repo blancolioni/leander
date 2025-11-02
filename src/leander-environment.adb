@@ -71,6 +71,12 @@ package body Leander.Environment is
    overriding procedure Elaborate
      (This : in out Instance);
 
+   overriding procedure Foreign_Import
+     (This         : in out Instance;
+      Name         : String;
+      Foreign_Name : String;
+      Signature    : Leander.Core.Types.Reference);
+
    overriding function Lookup
      (This : Instance;
       Name : Leander.Names.Leander_Name)
@@ -167,8 +173,6 @@ package body Leander.Environment is
       This.Type_Env :=
         Context.Type_Env.Save (This.Type_Env, Context.Current_Substitution);
 
-      --  This.Type_Env := Context.Type_Env.Compose (This.Type_Env);
-
       if not Context.OK then
          Ada.Text_IO.Put_Line
            (Context.Error_Message);
@@ -196,6 +200,26 @@ package body Leander.Environment is
             return False;
       end case;
    end Exists;
+
+   --------------------
+   -- Foreign_Import --
+   --------------------
+
+   overriding procedure Foreign_Import
+     (This         : in out Instance;
+      Name         : String;
+      Foreign_Name : String;
+      Signature    : Leander.Core.Types.Reference)
+   is
+   begin
+      This.Values.Insert
+        (Leander.Names.To_Leander_Name (Name),
+         Leander.Calculus.Symbol (Foreign_Name));
+      This.Type_Env :=
+        This.Type_Env.Compose
+          (Core.To_Varid (Name),
+           Leander.Core.Schemes.To_Scheme (Signature));
+   end Foreign_Import;
 
    ------------
    -- Lookup --

@@ -2,6 +2,7 @@ with Leander.Calculus;
 with Leander.Core.Binding_Groups;
 with Leander.Core.Schemes;
 with Leander.Core.Type_Env;
+with Leander.Core.Types;
 with Leander.Data_Types;
 with Leander.Names;
 --  with Leander.Types.Bindings;
@@ -64,6 +65,13 @@ package Leander.Environment is
    procedure Data_Type
      (This   : in out Abstraction;
       DT     : Leander.Data_Types.Reference)
+   is abstract;
+
+   procedure Foreign_Import
+     (This         : in out Abstraction;
+      Name         : String;
+      Foreign_Name : String;
+      Signature    : Leander.Core.Types.Reference)
    is abstract;
 
    procedure Elaborate

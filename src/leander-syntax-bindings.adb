@@ -289,13 +289,6 @@ package body Leander.Syntax.Bindings is
                     (Binding_Graphs.Get_Sub_Graph (Subgraphs, I)));
             end loop;
             return Builder.Get_Binding_Group;
-
-            --  return Leander.Core.Binding_Groups.Binding_Group
-            --    (Containers,
-            --     [for Rec of Explicit =>
-            --          Leander.Core.Bindings.Explicit_Binding
-            --        (Rec.Name, Core.Schemes.To_Scheme (Rec.T),
-            --         Rec.Expr)]);
          end;
       end;
 

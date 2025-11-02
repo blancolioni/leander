@@ -12,6 +12,7 @@ with Skit.Compiler;
 with Skit.Debug;
 with Skit.Environment;
 with Skit.Impl;
+with Skit.Library;
 with Skit.Machine;
 
 package body Leander.Tests.Evaluation is
@@ -37,6 +38,7 @@ package body Leander.Tests.Evaluation is
                   Skit.Environment.Create
                     (Machine);
    begin
+      Skit.Library.Load_Primitives (Env);
       Test ("1", "Int", "1", Env, Prelude);
       Test ("null []", "Bool", "K", Env, Prelude);
       Test ("null [1]", "Bool", "K I", Env, Prelude);
