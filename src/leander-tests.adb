@@ -6,7 +6,6 @@ with Leander.Tests.Evaluation;
 with Leander.Tests.Expressions;
 with Leander.Tests.Inference;
 with Leander.Tests.Kinds;
-with Leander.Tests.Parser;
 with Leander.Tests.Prelude;
 with Leander.Tests.Tycons;
 with Leander.Tests.Types;
@@ -74,7 +73,6 @@ package body Leander.Tests is
       Leander.Tests.Types.Run_Tests;
       Leander.Tests.Expressions.Run_Tests;
       Leander.Tests.Inference.Run_Tests;
-      Leander.Tests.Parser.Run_Tests;
       Leander.Tests.Prelude.Run_Tests;
       Leander.Tests.Evaluation.Run_Tests;
       Leander.Core.Prune;
