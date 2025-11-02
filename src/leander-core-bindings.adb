@@ -81,6 +81,9 @@ package body Leander.Core.Bindings is
          Builder : Leander.Core.Alts.Compiler.Builder;
       begin
          Builder.Initialize (Types, Env);
+         if (for some Alt of This.Alts => Alt.Has_Reference (This.Name)) then
+            Builder.Add_Name (This.Name);
+         end if;
          Builder.Add (This.Alts);
          return Builder.To_Calculus;
       end;

@@ -13,6 +13,10 @@ package Leander.Core.Alts.Compiler is
       Context   : Leander.Core.Inference.Inference_Context'Class;
       Env       : Leander.Environment.Reference);
 
+   procedure Add_Name
+     (This : in out Builder'Class;
+      Name : Varid);
+
    procedure Add (This : in out Builder'Class;
                   Alts : Reference_Array)
      with Pre => Alts'Length > 0
@@ -38,10 +42,14 @@ private
    package Con_Pat_Expr_Vectors is
      new Ada.Containers.Vectors (Positive, Con_Pat_Expr);
 
+   package Varid_Vectors is
+     new Ada.Containers.Vectors (Positive, Varid);
+
    type Builder is tagged
       record
          Context  : Leander.Core.Inference.Inference_Context;
          Env      : Leander.Environment.Reference;
+         Names    : Varid_Vectors.Vector;
          Con_Pats : Con_Pat_Expr_Vectors.Vector;
          Con_Dfl  : Con_Pat_Expr;
       end record;

@@ -3,6 +3,10 @@ with Leander.Data_Types;
 
 package body Leander.Core.Alts.Compiler is
 
+   ---------
+   -- Add --
+   ---------
+
    procedure Add
      (This : in out Builder'Class;
       Alts : Reference_Array)
@@ -63,6 +67,18 @@ package body Leander.Core.Alts.Compiler is
       end if;
    end Add;
 
+   --------------
+   -- Add_Name --
+   --------------
+
+   procedure Add_Name
+     (This : in out Builder'Class;
+      Name : Varid)
+   is
+   begin
+      This.Names.Append (Name);
+   end Add_Name;
+
    ----------------
    -- Initialize --
    ----------------
@@ -119,7 +135,19 @@ package body Leander.Core.Alts.Compiler is
             R := Apply (R, E);
          end;
       end loop;
-      return Lambda (V, R);
+      R := Lambda (V, R);
+
+      for Name of This.Names loop
+         R :=
+           Apply
+             (Symbol ("Y"),
+              Lambda
+                (Leander.Names.Leander_Name (Name),
+                 R));
+      end loop;
+
+      return R;
+
    end To_Calculus;
 
 

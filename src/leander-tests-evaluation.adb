@@ -42,6 +42,9 @@ package body Leander.Tests.Evaluation is
       Test ("1", "Int", "1", Env, Prelude);
       Test ("null []", "Bool", "K", Env, Prelude);
       Test ("null [1]", "Bool", "K I", Env, Prelude);
+      Test ("length []", "Int", "0", Env, Prelude);
+      Test ("length [1]", "Int", "1", Env, Prelude);
+      Test ("length [1,2,3,4]", "Int", "4", Env, Prelude);
       Machine.Report;
    end Run_Tests;
 
