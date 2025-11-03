@@ -1,5 +1,5 @@
 with Ada.Exceptions;
---  with Ada.Text_IO;
+with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Schemes;
 with Leander.Core.Substitutions;
@@ -53,6 +53,7 @@ package body Leander.Core.Expressions.Inference is
          return Context.Binding (Expr);
       exception
          when others =>
+            Ada.Text_IO.Put_Line ("binding not found: " & Expr.Show);
             Context.Error ("binding not found: " & Expr.Show);
             raise;
       end Binding;
@@ -173,6 +174,10 @@ package body Leander.Core.Expressions.Inference is
 
       exception
          when Ex : others =>
+            Ada.Text_IO.Put_Line
+              (Ada.Exceptions.Exception_Message (Ex));
+            Ada.Text_IO.Put_Line
+              (Ada.Exceptions.Exception_Information (Ex));
             Context.Error (Ada.Exceptions.Exception_Message (Ex));
             Context.Add_Error_Context
               ("in " & E.Show);

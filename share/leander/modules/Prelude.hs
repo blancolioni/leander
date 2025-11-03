@@ -6,6 +6,9 @@ foreign import skit "#eq" #primCharEq :: Char -> Char -> Char
 foreign import skit "#add" #primIntAdd :: Int -> Int -> Int
 foreign import skit "#mul" #primIntMul :: Int -> Int -> Int
 
+foreign import skit "#seq" #primSeq :: a -> b -> b
+foreign import skit "#trace" #trace :: a -> a
+
 infixr 9  .
 infixr 8  ^, ^^, **
 infixl 7  *, /, `quot`, `rem`, `div`, `mod`
@@ -35,6 +38,14 @@ length ((:) x xs) = #primIntAdd 1 (length xs)
 (+) = #primIntAdd
 (*) = #primIntMul
 
+succ x = x + 1
+
+map f [] = []
+map f ((:) x xs) = f x : map f xs
+
+sum [] = 0
+sum ((:) x xs) = x + sum xs
+
 zero 0 = True
 zero _ = False
 
@@ -43,3 +54,5 @@ small 1 = True
 small 2 = True
 small 3 = True
 small x = False
+
+seq = #primSeq

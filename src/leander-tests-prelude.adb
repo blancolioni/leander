@@ -58,8 +58,9 @@ package body Leander.Tests.Prelude is
    begin
       Infer (Result, Core);
       if not Result.OK then
-         Fail (Core.Show, Expected_Type, "type inference Failed");
+         Fail (Core.Show, Expected_Type, "type inference failed");
          Ada.Text_IO.Put_Line (Result.Error_Message);
+         raise Program_Error;
       else
          declare
             Inferred_Type : constant String :=

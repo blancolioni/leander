@@ -51,7 +51,7 @@ package body Leander.Tests.Inference is
       Core.Expressions.Inference.Infer (Result, Expression);
 
       if not Result.OK then
-         Fail (Expression.Show, Expected, "type inference Failed");
+         Fail (Expression.Show, Expected, "type inference failed");
          Ada.Text_IO.Put_Line (Result.Error_Message);
       else
          declare

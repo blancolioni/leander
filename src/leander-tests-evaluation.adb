@@ -54,6 +54,9 @@ package body Leander.Tests.Evaluation is
       Test ("const 3 []", "Int", "3", Env, Prelude);
       Test ("2 * 3 + 4", "Int", "10", Env, Prelude);
       Test ("2 + 3 * 4", "Int", "14", Env, Prelude);
+      Test ("seq (#trace 42) 4", "Int", "4", Env, Prelude);
+      Test ("sum [1,2,3,4]", "Int", "10", Env, Prelude);
+      --  Test ("sum (map succ [1])", "Int", "2", Env, Prelude);
       Machine.Report;
    end Run_Tests;
 
@@ -79,7 +82,7 @@ package body Leander.Tests.Evaluation is
    begin
       Infer (Result, Core);
       if not Result.OK then
-         Fail (Core.Show, Expected_Type, "type inference Failed");
+         Fail (Core.Show, Expected_Type, "type inference failed");
          Ada.Text_IO.Put_Line (Result.Error_Message);
       else
          declare

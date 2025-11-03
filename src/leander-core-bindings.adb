@@ -1,5 +1,6 @@
 with Leander.Allocator;
 with Leander.Core.Alts.Compiler;
+with Leander.Core.Expressions;
 
 package body Leander.Core.Bindings is
 
@@ -77,9 +78,9 @@ package body Leander.Core.Bindings is
          return This.Alts (1).Expression.To_Calculus (Types, Env);
       end if;
 
-      if This.Alt_Count = 1
-        and then (for all Pat of This.Alts (1).Patterns =>
-                      Pat.Is_Variable)
+      if (for all Alt of This.Alts =>
+            (for all Pat of Alt.Patterns =>
+               Pat.Is_Variable))
       then
          declare
             E : Leander.Calculus.Tree :=
