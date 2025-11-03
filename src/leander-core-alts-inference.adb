@@ -5,11 +5,6 @@ with Leander.Logging;
 
 package body Leander.Core.Alts.Inference is
 
-   type Nullable_Type_Reference is
-     access constant Leander.Core.Types.Instance'Class;
-
-   type Type_Array is array (Positive range <>) of Nullable_Type_Reference;
-
    -----------
    -- Infer --
    -----------
@@ -18,17 +13,13 @@ package body Leander.Core.Alts.Inference is
      (Context : in out Leander.Core.Inference.Inference_Context'Class;
       Alt     : Reference)
    is
-      Ts : Type_Array (1 .. Alt.Pat_Count);
-      Last : Natural := 0;
    begin
 
       Context.Save_Type_Env;
 
-      for Pat of Alt.Pats loop
-         Leander.Core.Patterns.Inference.Infer (Context, Pat);
-         Last := @ + 1;
-         Ts (Last) := Nullable_Type_Reference (Context.Binding (Pat));
-      end loop;
+      if Alt.Has_Pattern then
+         Leander.Core.Patterns.Inference.Infer (Context, Alt.Pat);
+      end if;
 
       Leander.Core.Expressions.Inference.Infer (Context, Alt.Expr);
 
@@ -40,19 +31,23 @@ package body Leander.Core.Alts.Inference is
          return;
       end if;
 
-      declare
-         T : Leander.Core.Types.Reference := Context.Binding (Alt.Expr);
-      begin
-         Leander.Logging.Log
-           ("ALT", Alt.Show & " :: " & T.Show);
-         for Pat_Type of reverse Ts loop
-            T := Core.Types.Fn (Core.Types.Reference (Pat_Type), T);
+      if Alt.Has_Pattern then
+         declare
+            Pat_T : constant Leander.Core.Types.Reference :=
+                      Context.Binding (Alt.Pat);
+            T     : Leander.Core.Types.Reference :=
+                      Context.Binding (Alt.Expr);
+         begin
             Leander.Logging.Log
               ("ALT", Alt.Show & " :: " & T.Show);
-         end loop;
-         Context.Bind (Alt, T);
-      end;
-
+            T := Core.Types.Fn (Pat_T, T);
+            Leander.Logging.Log
+              ("ALT", Alt.Show & " :: " & T.Show);
+            Context.Bind (Alt, T);
+         end;
+      else
+         Context.Bind (Alt, Context.Binding (Alt.Expr));
+      end if;
    end Infer;
 
 end Leander.Core.Alts.Inference;

@@ -1,3 +1,5 @@
+with Ada.Text_IO;
+
 with Leander.Core.Alts;
 with Leander.Core.Bindings;
 with Leander.Core.Patterns;
@@ -168,9 +170,18 @@ package body Leander.Syntax.Bindings is
                   Pats : constant Leander.Core.Patterns.Reference_Array :=
                            [for Pat of Equation.Pats => Pat.To_Core];
                begin
-                  List.Append
-                    (Leander.Core.Alts.Alt
-                       (Pats, Equation.Expr.To_Core));
+                  if Pats'Length = 0 then
+                     List.Append
+                       (Leander.Core.Alts.Alt
+                          (Equation.Expr.To_Core));
+                  elsif Pats'Length = 1 then
+                     List.Append
+                       (Leander.Core.Alts.Alt
+                          (Pats (Pats'First), Equation.Expr.To_Core));
+                  else
+                     raise Constraint_Error with
+                       "only single patterns supported";
+                  end if;
                end;
             end loop;
          end return;
@@ -178,10 +189,20 @@ package body Leander.Syntax.Bindings is
 
    begin
       for Binding of Bindings loop
-         Implicit.Insert
-           (Leander.Names.To_String (Binding.Name),
-            Implicit_Binding_Entry'
-              (Binding.Name, To_Alts (Binding.Equations), 1));
+         begin
+            Implicit.Insert
+              (Leander.Names.To_String (Binding.Name),
+               Implicit_Binding_Entry'
+                 (Name  => Binding.Name,
+                  Alts  => To_Alts (Binding.Equations),
+                  Index => 1));
+         exception
+            when others =>
+               Ada.Text_IO.Put_Line
+                 ("problem in binding for "
+                  & Leander.Names.To_String (Binding.Name));
+               raise;
+         end;
       end loop;
       for Type_Binding of Types loop
          declare

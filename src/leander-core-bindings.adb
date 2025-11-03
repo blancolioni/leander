@@ -1,6 +1,7 @@
 with Leander.Allocator;
 with Leander.Core.Alts.Compiler;
 with Leander.Core.Expressions;
+with Leander.Core.Patterns;
 
 package body Leander.Core.Bindings is
 
@@ -72,31 +73,24 @@ package body Leander.Core.Bindings is
       return Leander.Calculus.Tree
    is
    begin
-      if This.Alt_Count = 1
-        and then This.Alts (1).Patterns'Length = 0
-      then
+      if not This.Alts (1).Has_Pattern then
          return This.Alts (1).Expression.To_Calculus (Types, Env);
-      end if;
-
-      if (for all Alt of This.Alts =>
-            (for all Pat of Alt.Patterns =>
-               Pat.Is_Variable))
-      then
+      elsif This.Alts (1).Pattern.Is_Variable then
          declare
-            E : Leander.Calculus.Tree :=
-                  This.Alts (1).Expression.To_Calculus (Types, Env);
+            Pat : constant Leander.Core.Patterns.Reference :=
+                    This.Alts (1).Pattern;
+            E   : Leander.Calculus.Tree :=
+                    This.Alts (1).Expression.To_Calculus (Types, Env);
          begin
-            for Pat of reverse This.Alts (1).Patterns loop
-               if Pat.Is_Wildcard then
-                  E :=
-                    Leander.Calculus.Lambda
-                      (Leander.Names.New_Name, E);
-               else
-                  E :=
-                    Leander.Calculus.Lambda
-                      (Leander.Names.Leander_Name (Pat.Variable), E);
-               end if;
-            end loop;
+            if Pat.Is_Wildcard then
+               E :=
+                 Leander.Calculus.Lambda
+                   (Leander.Names.New_Name, E);
+            else
+               E :=
+                 Leander.Calculus.Lambda
+                   (Leander.Names.Leander_Name (Pat.Variable), E);
+            end if;
             return E;
          end;
       end if;

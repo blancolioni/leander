@@ -24,12 +24,32 @@ package body Leander.Core.Alts is
    ---------
 
    function Alt
-     (Pats : Leander.Core.Patterns.Reference_Array;
+     (Pat  : Leander.Core.Patterns.Reference;
       Expr : Leander.Core.Expressions.Reference)
       return Reference
    is
    begin
-      return Allocate (Instance'(Pats'Length, Typeable.New_Id, Pats, Expr));
+      return Allocate
+        (Instance'
+           (Id => Typeable.New_Id,
+            Pat => Nullable_Pattern_Reference (Pat),
+            Expr => Expr));
+   end Alt;
+
+   ---------
+   -- Alt --
+   ---------
+
+   function Alt
+     (Expr : Leander.Core.Expressions.Reference)
+      return Reference
+   is
+   begin
+      return Allocate
+        (Instance'
+           (Id => Typeable.New_Id,
+            Pat => null,
+            Expr => Expr));
    end Alt;
 
    -------------------
@@ -42,7 +62,7 @@ package body Leander.Core.Alts is
       return Boolean
    is
    begin
-      return (for all Pat of This.Pats => not Pat.Has_Reference (Name))
+      return (This.Pat = null or else not This.Pat.Has_Reference (Name))
         and then This.Expr.Has_Reference (Name);
    end Has_Reference;
 
@@ -60,18 +80,10 @@ package body Leander.Core.Alts is
    ----------
 
    overriding function Show (This : Instance) return String is
-      function Show_Pats (Index : Positive) return String
-      is ((if Index = 1 then "" else " ")
-          & This.Pats (Index).Show
-          & (if Index < This.Pat_Count
-            then Show_Pats (Index + 1)
-            else ""));
    begin
-      if This.Pat_Count = 0 then
-         return This.Expr.Show;
-      else
-         return Show_Pats (1) & "->" & This.Expr.Show;
-      end if;
+      return (if This.Pat = null
+              then This.Expr.Show
+              else This.Pat.Show & " -> " & This.Expr.Show);
    end Show;
 
 end Leander.Core.Alts;

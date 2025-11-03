@@ -27,7 +27,7 @@ infixr 0  $, $!, `seq`
 
 id x = x
 
-const x _ = x
+const x = \y -> x
 
 null [] = True
 null ((:) x xs) = False
@@ -40,8 +40,8 @@ length ((:) x xs) = #primIntAdd 1 (length xs)
 
 succ x = x + 1
 
-map f [] = []
-map f ((:) x xs) = f x : map f xs
+--  map f [] = []
+--  map f ((:) x xs) = f x : map f xs
 
 sum [] = 0
 sum ((:) x xs) = x + sum xs

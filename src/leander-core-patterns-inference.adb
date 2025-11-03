@@ -3,11 +3,16 @@ with Leander.Core.Type_Env;
 with Leander.Core.Types;
 with Leander.Core.Types.Unification;
 with Leander.Logging;
+
 package body Leander.Core.Patterns.Inference is
+
+   -----------
+   -- Infer --
+   -----------
 
    procedure Infer
      (Context : in out Leander.Core.Inference.Inference_Context'Class;
-      Pattern : Reference)
+      Pattern : not null access constant Instance'Class)
    is
    begin
       case Pattern.Tag is
