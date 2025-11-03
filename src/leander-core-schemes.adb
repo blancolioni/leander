@@ -21,11 +21,9 @@ package body Leander.Core.Schemes is
       Subst : Leander.Core.Substitutions.Instance'Class)
       return access constant Instance
    is
-      W : Leander.Names.Name_Array (This.Tyvars'Range);
+      W : constant Leander.Names.Name_Array :=
+            [for Tv of This.Tyvars => Leander.Names.Leander_Name (Tv.Name)];
    begin
-      for I in W'Range loop
-         W (I) := Leander.Names.Leander_Name (This.Tyvars (I).Name);
-      end loop;
       return Quantify (This.Tyvars, This.Ty.Apply (Subst.Without (W)));
    end Apply;
 
