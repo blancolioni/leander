@@ -1,0 +1,37 @@
+name: Ada (GNAT)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Checkout GCS
+      uses: actions/checkout@v4
+      with:
+        repository: blancolioni/gcs
+        path: ./gcs
+        
+    - name: Checkout Skit
+      uses: actions/checkout@v4
+      with:
+        repository: blancolioni/skit
+        path: ./skit
+                
+    - name: Set up alire
+      uses: alire-project/setup-alire@v2
+
+    - name: Build Leander
+      run: alr build
+      
+    - name: Run tests
+      run: ./bin/leander
+      

@@ -16,8 +16,8 @@ skit="*"
 gcs="*"
 
 [[pins]]
-skit = { path = "../skit" }
-gcs = { path = "../gcs" }
+skit = { path = "./skit" }
+gcs = { path = "./gcs" }
 
 [build-profiles]
 "*" = "development"
@@ -30,4 +30,4 @@ development.contracts = "yes"
 "*".compile_checks = "errors"
 
 [[depends-on]]
-wl_lib = "~0.1.4"
+wl_lib = "~0.1.2"
