@@ -16,8 +16,8 @@ skit="*"
 gcs="*"
 
 [[pins]]
-skit = { path = "../skit" }
-gcs = { path = "../gcs" }
+skit = { path = "./skit" }
+gcs = { path = "./gcs" }
 
 [build-profiles]
 "*" = "development"
