@@ -15,6 +15,19 @@ package body Leander.Core.Bindings is
       return Reference
    is (Reference (Allocator.Allocate (Instance (This))));
 
+   -------------------
+   -- Has_Reference --
+   -------------------
+
+   function Has_Reference
+     (This : Instance'Class;
+      To   : Varid)
+      return Boolean
+   is
+   begin
+      return (for some Alt of This.Alts => Alt.Has_Reference (To));
+   end Has_Reference;
+
    ----------------------
    -- Implicit_Binding --
    ----------------------
@@ -91,6 +104,16 @@ package body Leander.Core.Bindings is
                  Leander.Calculus.Lambda
                    (Leander.Names.Leander_Name (Pat.Variable), E);
             end if;
+            if not Pat.Has_Reference (This.Name)
+              and then This.Alts (1).Has_Reference (This.Name)
+            then
+               E := Leander.Calculus.Apply
+                 (Leander.Calculus.Symbol ("Y"),
+                  Leander.Calculus.Lambda
+                    (Leander.Names.Leander_Name (This.Name),
+                     E));
+            end if;
+
             return E;
          end;
       end if;

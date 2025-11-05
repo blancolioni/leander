@@ -1,9 +1,7 @@
-with Ada.Text_IO;
-
 with Leander.Core.Alts;
 with Leander.Core.Bindings;
-with Leander.Core.Patterns;
 with Leander.Core.Types;
+with Leander.Syntax.Bindings.Transform;
 with Leander.Syntax.Expressions;
 
 with WL.Graphs;
@@ -11,29 +9,19 @@ with WL.String_Maps;
 
 package body Leander.Syntax.Bindings is
 
-   package Alt_Lists is
-     new Ada.Containers.Doubly_Linked_Lists
-       (Leander.Core.Alts.Reference, Leander.Core.Alts."=");
+   type Nullable_Type_Reference is
+     access constant Leander.Core.Types.Instance'Class;
 
-   type Implicit_Binding_Entry is
+   type Binding_Entry (Alt_Count : Natural) is
       record
          Name  : Leander.Names.Leander_Name;
-         Alts  : Alt_Lists.List;
+         Alts  : Leander.Core.Alts.Reference_Array (1 .. Alt_Count);
          Index : Positive;
+         T     : Nullable_Type_Reference;
       end record;
 
-   package Implicit_Binding_Maps is
-     new WL.String_Maps (Implicit_Binding_Entry);
-
-   type Explicit_Binding_Entry is
-      record
-         Name  : Leander.Names.Leander_Name;
-         Alts  : Alt_Lists.List;
-         T     : Leander.Core.Types.Reference;
-      end record;
-
-   package Explicit_Binding_Maps is
-     new WL.String_Maps (Explicit_Binding_Entry);
+   package Binding_Maps is
+     new WL.String_Maps (Binding_Entry);
 
    function To_Binding_Group
      (Bindings : Name_Binding_Lists.List;
@@ -125,25 +113,25 @@ package body Leander.Syntax.Bindings is
       Types    : Type_Binding_Lists.List)
       return Leander.Core.Binding_Groups.Reference
    is
-      Implicit : Implicit_Binding_Maps.Map;
-      Explicit : Explicit_Binding_Maps.Map;
+      Implicit : Binding_Maps.Map;
+      Explicit : Binding_Maps.Map;
       Next     : Natural := 0;
       Graph    : Binding_Graphs.Graph;
 
       function References
-        (Binding : Implicit_Binding_Entry;
+        (Binding : Binding_Entry;
          Name    : Leander.Names.Leander_Name)
          return Boolean;
 
-      function To_Alts (Equations : Binding_Record_Lists.List)
-                        return Alt_Lists.List;
+      --  function To_Alts (Equations : Binding_Record_Lists.List)
+      --                    return Alt_Lists.List;
 
       ----------------
       -- References --
       ----------------
 
       function References
-        (Binding : Implicit_Binding_Entry;
+        (Binding : Binding_Entry;
          Name    : Leander.Names.Leander_Name)
          return Boolean
       is
@@ -160,48 +148,53 @@ package body Leander.Syntax.Bindings is
       -- To_Alts --
       -------------
 
-      function To_Alts (Equations : Binding_Record_Lists.List)
-                        return Alt_Lists.List
-      is
-      begin
-         return List : Alt_Lists.List do
-            for Equation of Equations loop
-               declare
-                  Pats : constant Leander.Core.Patterns.Reference_Array :=
-                           [for Pat of Equation.Pats => Pat.To_Core];
-               begin
-                  if Pats'Length = 0 then
-                     List.Append
-                       (Leander.Core.Alts.Alt
-                          (Equation.Expr.To_Core));
-                  elsif Pats'Length = 1 then
-                     List.Append
-                       (Leander.Core.Alts.Alt
-                          (Pats (Pats'First), Equation.Expr.To_Core));
-                  else
-                     raise Constraint_Error with
-                       "only single patterns supported";
-                  end if;
-               end;
-            end loop;
-         end return;
-      end To_Alts;
+      --  function To_Alts (Equations : Binding_Record_Lists.List)
+      --                    return Alt_Lists.List
+      --  is
+      --  begin
+      --     return List : Alt_Lists.List do
+      --        for Equation of Equations loop
+      --           declare
+      --              Pats : constant Core.Patterns.Reference_Array :=
+      --                       [for Pat of Equation.Pats =>
+      --                                 Pat.To_Core];
+      --           begin
+      --              if Pats'Length = 0 then
+      --                 List.Append
+      --                   (Leander.Core.Alts.Alt
+      --                      (Equation.Expr.To_Core));
+      --              elsif Pats'Length = 1 then
+      --                 List.Append
+      --                   (Leander.Core.Alts.Alt
+      --                      (Pats (Pats'First), Equation.Expr.To_Core));
+      --              else
+      --                 raise Constraint_Error with
+      --                   "only single patterns supported";
+      --              end if;
+      --           end;
+      --        end loop;
+      --     end return;
+      --  end To_Alts;
 
    begin
       for Binding of Bindings loop
+         declare
+            Alts : constant Leander.Core.Alts.Reference_Array :=
+                     Transform.To_Alts (Binding.Equations);
          begin
             Implicit.Insert
               (Leander.Names.To_String (Binding.Name),
-               Implicit_Binding_Entry'
-                 (Name  => Binding.Name,
-                  Alts  => To_Alts (Binding.Equations),
-                  Index => 1));
+               Binding_Entry'
+                 (Alt_Count => Alts'Length,
+                  Name      => Binding.Name,
+                  Alts      => Alts,
+                  Index     => 1,
+                  T         => null));
          exception
             when others =>
-               Ada.Text_IO.Put_Line
-                 ("problem in binding for "
-                  & Leander.Names.To_String (Binding.Name));
-               raise;
+               raise Program_Error with
+                 "problem in binding for "
+                 & Leander.Names.To_String (Binding.Name);
          end;
       end loop;
       for Type_Binding of Types loop
@@ -216,10 +209,10 @@ package body Leander.Syntax.Bindings is
             end if;
             Explicit.Insert
               (Key,
-               Explicit_Binding_Entry'
-                 (Name => Type_Binding.Name,
-                  Alts => Implicit.Element (Key).Alts,
-                  T    => Type_Binding.Type_Expr.To_Core));
+               Binding_Entry'
+                 (Implicit.Element (Key) with delta
+                      T    => nullable_Type_Reference
+                        (Type_Binding.Type_Expr.To_Core)));
             Implicit.Delete (Key);
          end;
       end loop;
@@ -274,7 +267,7 @@ package body Leander.Syntax.Bindings is
                ---------
 
                procedure Add (Vertex : Graph_Vertex) is
-                  Binding : constant Implicit_Binding_Entry :=
+                  Binding : constant Binding_Entry :=
                               Implicit.Element
                                 (Leander.Names.To_String (Vertex.Name));
 
@@ -326,16 +319,5 @@ package body Leander.Syntax.Bindings is
    begin
       return To_Binding_Group (This.Bindings, This.Types);
    end To_Core;
-
-   --     Container : constant Leander.Core.Bindings.Container_Reference :=
-   --                   Leander.Core.Bindings.Container
-   --                     ([for B of This.Bindings =>
-   --                         Core.Bindings.Implicit_Binding
-   --                           (B.Name,
-   --                            B.Equations.First_Element.Expr.To_Core)]);
-   --  begin
-   --     return Leander.Core.Binding_Groups.Binding_Group
-   --       ([Container]);
-   --  end To_Core;
 
 end Leander.Syntax.Bindings;

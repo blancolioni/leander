@@ -36,7 +36,7 @@ package Leander.Syntax.Expressions is
    function Lambda
      (Location    : Leander.Source.Source_Location;
       Pat         : Leander.Syntax.Patterns.Reference;
-      Expr        : Reference)
+      Expr        : not null access constant Instance'Class)
       return Reference;
 
    function Let

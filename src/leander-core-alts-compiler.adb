@@ -70,6 +70,14 @@ package body Leander.Core.Alts.Compiler is
       else
          declare
             Con : constant Leander.Core.Conid := Pat_Type.Head;
+            pragma Assert
+              (This.Env.Exists
+                 (Leander.Names.Leander_Name (Con),
+                  Leander.Environment.Constructor),
+               "undefined constructor: "
+               & Leander.Core.To_String (Con)
+               & " in pat type "
+               & Pat_Type.Show);
             DT  : constant Leander.Data_Types.Reference :=
                     This.Env.Con_Data_Type (Con);
          begin

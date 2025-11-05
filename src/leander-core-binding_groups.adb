@@ -1,3 +1,4 @@
+with Ada.Containers.Doubly_Linked_Lists;
 with Leander.Allocator;
 
 package body Leander.Core.Binding_Groups is
@@ -48,6 +49,38 @@ package body Leander.Core.Binding_Groups is
    begin
       return Allocate (This.Item);
    end Get_Binding_Group;
+
+   -------------------
+   -- Has_Reference --
+   -------------------
+
+   function Has_Reference
+     (This : Instance'Class;
+      To   : Varid)
+      return Boolean
+   is
+      function Exists_In (List : Binding_Array_Lists.List) return Boolean;
+
+      ---------------
+      -- Exists_In --
+      ---------------
+
+      function Exists_In (List : Binding_Array_Lists.List) return Boolean is
+      begin
+         for Arr of List loop
+            for B of Arr loop
+               if B.Has_Reference (To) then
+                  return True;
+               end if;
+            end loop;
+         end loop;
+         return False;
+      end Exists_In;
+
+   begin
+      return Exists_In (This.Explicit_Bindings)
+        or else Exists_In (This.Implicit_Bindings);
+   end Has_Reference;
 
    ------------
    -- Lookup --
@@ -138,5 +171,38 @@ package body Leander.Core.Binding_Groups is
 
       return Join (Images.First);
    end Show;
+
+   ------------
+   -- Varids --
+   ------------
+
+   function Varids
+     (This : Instance'Class)
+      return Varid_Array
+   is
+      package Varid_Lists is
+        new Ada.Containers.Doubly_Linked_Lists (Varid);
+      Varid_List : Varid_Lists.List;
+
+      procedure Add (List : Binding_Array_Lists.List) ;
+
+      ---------
+      -- Add --
+      ---------
+
+      procedure Add (List : Binding_Array_Lists.List) is
+      begin
+         for Element of List loop
+            for Binding of Element loop
+               Varid_List.Append (Binding.Name);
+            end loop;
+         end loop;
+      end Add;
+
+   begin
+      Add (This.Explicit_Bindings);
+      Add (This.Implicit_Bindings);
+      return [for Id of Varid_List => Id];
+   end Varids;
 
 end Leander.Core.Binding_Groups;

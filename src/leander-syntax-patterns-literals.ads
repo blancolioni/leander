@@ -12,14 +12,26 @@ private package Leander.Syntax.Patterns.Literals is
 
 private
 
-   type Literal_Class is
-     (Integer_Literal);
-
    type Instance is new Parent with
       record
-         Class : Literal_Class;
+         Class : Syntax.Literal_Class;
          Image : Ada.Strings.Unbounded.Unbounded_String;
       end record;
+
+   overriding function Is_Literal
+     (This : Instance)
+      return Boolean
+   is (True);
+
+   overriding function Literal_Class
+     (This : Instance)
+      return Syntax.Literal_Class
+   is (This.Class);
+
+   overriding function Literal
+     (This : Instance)
+      return String
+   is (Ada.Strings.Unbounded.To_String (This.Image));
 
    overriding function To_Core
      (This : Instance)

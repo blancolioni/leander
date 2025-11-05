@@ -8,7 +8,23 @@ package Leander.Syntax.Patterns is
    type Reference_Array is array (Positive range <>) of Reference;
 
    function Is_Variable (This : Instance) return Boolean;
-   function Variable_Name (This : Instance) return String;
+   function Is_Constructor (This : Instance) return Boolean;
+   function Is_Literal (This : Instance) return Boolean;
+
+   function Variable_Name (This : Instance) return String
+     with Pre'Class => This.Is_Variable;
+
+   function Constructor_Name (This : Instance) return String
+     with Pre'Class => This.Is_Constructor;
+
+   function Constructor_Args (This : Instance) return Reference_Array
+     with Pre'Class => This.Is_Constructor;
+
+   function Literal_Class (This : Instance) return Syntax.Literal_Class
+     with Pre'Class => This.Is_Literal;
+
+   function Literal (This : Instance) return String
+     with Pre'Class => This.Is_Literal;
 
    function Head (This : not null access constant Instance)
                   return Reference;
@@ -44,6 +60,15 @@ private
       end record;
 
    function Is_Variable (This : Instance) return Boolean is (False);
+   function Is_Constructor (This : Instance) return Boolean is (False);
+   function Is_Literal (This : Instance) return Boolean is (False);
+
    function Variable_Name (This : Instance) return String is ("");
+   function Constructor_Name (This : Instance) return String is ("");
+   function Constructor_Args (This : Instance) return Reference_Array is ([]);
+   function Literal_Class (This : Instance) return Syntax.Literal_Class
+   is (Syntax.Integer_Literal);
+   function Literal (This : Instance) return String
+   is ("");
 
 end Leander.Syntax.Patterns;

@@ -21,6 +21,11 @@ package Leander.Core.Bindings is
      (This : Instance)
       return Leander.Core.Alts.Reference_Array;
 
+   function Has_Reference
+     (This : Instance'Class;
+      To   : Varid)
+      return Boolean;
+
    function Implicit_Binding
      (Name : Varid;
       Alts : Leander.Core.Alts.Reference_Array)
