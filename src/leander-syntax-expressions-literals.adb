@@ -13,7 +13,8 @@ package body Leander.Syntax.Expressions.Literals is
       case This.Class is
          when Integer_Literal =>
             return Leander.Core.Expressions.Literal
-              (Leander.Core.Literals.Integer_Literal
+              (This.Location,
+               Leander.Core.Literals.Integer_Literal
                  (Ada.Strings.Unbounded.To_String (This.Image)));
       end case;
    end To_Core;

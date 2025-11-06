@@ -1,6 +1,7 @@
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Directories;
 
+with Ada.Text_IO;
 with WL.String_Maps;
 
 package body Leander.Source is
@@ -42,6 +43,20 @@ package body Leander.Source is
       return (File_Name_Map.Element (File_Name), Line, Column);
    end Create_Location;
 
+   -----------
+   -- Error --
+   -----------
+
+   procedure Error
+     (This    : Has_Source_Location'Class;
+      Message : String)
+   is
+   begin
+      Ada.Text_IO.Put_Line
+        (Ada.Text_IO.Standard_Error,
+         This.Show_Location & ": " & Message);
+   end Error;
+
    --------------------
    -- Full_File_Name --
    --------------------
@@ -65,13 +80,19 @@ package body Leander.Source is
    ----------
 
    function Show (Location : Source_Location) return String is
-      Line_Img  : String := Positive'Image (Location.Line);
-      Col_Img   : String := Positive'Image (Location.Col);
-      File_Name : constant String := Simple_File_Name (Location);
    begin
-      Line_Img (Line_Img'First) := ':';
-      Col_Img (Col_Img'First) := ':';
-      return File_Name & Line_Img & Col_Img;
+      if Location.File = 0 then
+         return "internal";
+      end if;
+      declare
+         Line_Img  : String := Positive'Image (Location.Line);
+         Col_Img   : String := Positive'Image (Location.Col);
+         File_Name : constant String := Simple_File_Name (Location);
+      begin
+         Line_Img (Line_Img'First) := ':';
+         Col_Img (Col_Img'First) := ':';
+         return File_Name & Line_Img & Col_Img;
+      end;
    end Show;
 
    ----------------------
@@ -83,4 +104,7 @@ package body Leander.Source is
       return Ada.Directories.Simple_Name (Full_File_Name (Location));
    end Simple_File_Name;
 
+begin
+   File_Name_Vector.Append ("internal");
+   File_Name_Map.Insert ("internal", 0);
 end Leander.Source;

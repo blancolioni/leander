@@ -27,13 +27,13 @@ package body Leander.Core.Expressions is
    -----------------
 
    function Application
-     (Left  : Reference;
-      Right : Reference)
+     (Loc         : Leander.Source.Source_Location;
+      Left, Right : Reference)
       return Reference
    is
    begin
       return Allocate
-        (Instance'(EApp, Core.Typeable.New_Id, Left, Right));
+        (Instance'(EApp, Core.Typeable.New_Id, Loc, Left, Right));
    end Application;
 
    -----------------
@@ -41,11 +41,12 @@ package body Leander.Core.Expressions is
    -----------------
 
    function Constructor
-     (Id      : Conid)
+     (Loc     : Leander.Source.Source_Location;
+      Id      : Conid)
       return Reference
    is
    begin
-      return Allocate ((ECon, Core.Typeable.New_Id, Id));
+      return Allocate ((ECon, Core.Typeable.New_Id, Loc, Id));
    end Constructor;
 
    -------------
@@ -90,12 +91,13 @@ package body Leander.Core.Expressions is
    -- Lambda --
    ------------
 
-   function Lambda (Id : Varid;
-                    Expression : Reference)
+   function Lambda (Loc        : Leander.Source.Source_Location;
+      Id         : Varid;
+      Expression : Reference)
                     return Reference
    is
    begin
-      return Allocate ((ELam, Core.Typeable.New_Id, Id, Expression));
+      return Allocate ((ELam, Core.Typeable.New_Id, Loc, Id, Expression));
    end Lambda;
 
    ---------
@@ -103,23 +105,26 @@ package body Leander.Core.Expressions is
    ---------
 
    function Let
-     (Bindings : Leander.Core.Binding_Groups.Reference;
+     (Loc      : Leander.Source.Source_Location;
+      Bindings : Leander.Core.Binding_Groups.Reference;
       Expr     : Reference)
       return Reference
    is
       Ref : constant Binding_Group_Reference :=
               Binding_Group_Reference (Bindings);
    begin
-      return Allocate ((ELet, Core.Typeable.New_Id, Ref, Expr));
+      return Allocate ((ELet, Core.Typeable.New_Id, Loc, Ref, Expr));
    end Let;
 
    -------------
    -- Literal --
    -------------
 
-   function Literal (Lit : Literals.Instance) return Reference is
+   function Literal (Loc : Leander.Source.Source_Location;
+      Lit : Literals.Instance)
+                     return Reference is
    begin
-      return Allocate ((ELit, Core.Typeable.New_Id, Lit));
+      return Allocate ((ELit, Core.Typeable.New_Id, Loc, Lit));
    end Literal;
 
    -----------
@@ -254,9 +259,11 @@ package body Leander.Core.Expressions is
    -- Variable --
    --------------
 
-   function Variable (Id : Varid) return Reference is
+   function Variable (Loc : Leander.Source.Source_Location;
+      Id  : Varid)
+                      return Reference is
    begin
-      return Allocate (Instance'(EVar, Core.Typeable.New_Id, Id));
+      return Allocate (Instance'(EVar, Core.Typeable.New_Id, Loc, Id));
    end Variable;
 
 end Leander.Core.Expressions;

@@ -25,7 +25,8 @@ private
    overriding function To_Core
      (This : Instance)
       return Leander.Core.Expressions.Reference
-   is (Leander.Core.Expressions.Constructor (This.Name));
+   is (Leander.Core.Expressions.Constructor
+       (This.Location, This.Name));
 
    function Constructor
      (Location : Leander.Source.Source_Location;

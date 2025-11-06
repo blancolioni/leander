@@ -5,6 +5,7 @@ with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
 with Leander.Core.Literals;
 with Leander.Core.Type_Env;
+with Leander.Source;
 
 package body Leander.Tests.Inference is
 
@@ -20,17 +21,19 @@ package body Leander.Tests.Inference is
       use Leander.Core, Leander.Core.Expressions;
       function Int (Img : String) return Leander.Core.Literals.Instance
       is (Leander.Core.Literals.Integer_Literal (Img));
+      Loc : constant Leander.Source.Source_Location :=
+              Leander.Source.No_Location;
    begin
-      Test (Literal (Int ("1")), "Int");
+      Test (Literal (Loc, Int ("1")), "Int");
       Test (Lambda
-            (To_Varid ("x"),
-               Variable (To_Varid ("x"))),
+            (Loc, To_Varid ("x"),
+               Variable (Loc, To_Varid ("x"))),
             "a->a");
       Test (Lambda
-            (To_Varid ("x"),
+            (Loc, To_Varid ("x"),
                Lambda
-                 (To_Varid ("y"),
-                  Variable (To_Varid ("x")))),
+                 (Loc, To_Varid ("y"),
+                  Variable (Loc, To_Varid ("x")))),
             "a->b->a");
    end Run_Tests;
 

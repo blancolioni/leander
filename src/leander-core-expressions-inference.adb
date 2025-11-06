@@ -53,7 +53,7 @@ package body Leander.Core.Expressions.Inference is
          return Context.Binding (Expr);
       exception
          when others =>
-            Ada.Text_IO.Put_Line ("binding not found: " & Expr.Show);
+            Expr.Error ("binding not found: " & Expr.Show);
             Context.Error ("binding not found: " & Expr.Show);
             raise;
       end Binding;
@@ -132,6 +132,8 @@ package body Leander.Core.Expressions.Inference is
                         Bind (E, Tv.Apply (S3));
                         return S3.Compose (S2).Compose (S1);
                      else
+                        E.Error
+                          ("unification failed: " & Context.Error_Message);
                         Context.Add_Error_Context
                           ("in " & E.Show);
                         return Substitutions.Empty;

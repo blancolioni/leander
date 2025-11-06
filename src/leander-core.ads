@@ -1,4 +1,5 @@
 with Leander.Names;
+with Leander.Source;
 
 package Leander.Core is
 
@@ -9,6 +10,8 @@ package Leander.Core is
    function To_Varid (S : String) return Varid;
 
    type Varid_Array is array (Positive range <>) of Varid;
+
+   type Abstraction is interface and Leander.Source.Has_Source_Location;
 
    procedure Prune;
 

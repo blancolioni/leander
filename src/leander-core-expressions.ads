@@ -14,27 +14,41 @@ package Leander.Core.Expressions is
      new Leander.Showable.Abstraction
      and Leander.Core.Typeable.Abstraction
      and Leander.Disposable.Abstraction
+     and Leander.Source.Has_Source_Location
      and Leander.Traverseable.Abstraction
    with private;
 
    type Reference is not null access constant Instance'Class;
 
-   function Variable (Id : Varid) return Reference;
-
-   function Constructor
-     (Id      : Conid)
+   function Variable
+     (Loc : Leander.Source.Source_Location;
+      Id  : Varid)
       return Reference;
 
-   function Literal (Lit : Literals.Instance) return Reference;
+   function Constructor
+     (Loc     : Leander.Source.Source_Location;
+      Id      : Conid)
+      return Reference;
 
-   function Application (Left, Right : Reference) return Reference;
+   function Literal
+     (Loc : Leander.Source.Source_Location;
+      Lit : Literals.Instance)
+      return Reference;
 
-   function Lambda (Id         : Varid;
-                    Expression : Reference)
-                    return Reference;
+   function Application
+     (Loc         : Leander.Source.Source_Location;
+      Left, Right : Reference)
+      return Reference;
+
+   function Lambda
+     (Loc        : Leander.Source.Source_Location;
+      Id         : Varid;
+      Expression : Reference)
+      return Reference;
 
    function Let
-     (Bindings : Leander.Core.Binding_Groups.Reference;
+     (Loc      : Leander.Source.Source_Location;
+      Bindings : Leander.Core.Binding_Groups.Reference;
       Expr     : Reference)
       return Reference;
 
@@ -62,9 +76,11 @@ private
      new Leander.Showable.Abstraction
      and Leander.Core.Typeable.Abstraction
      and Leander.Disposable.Abstraction
+     and Leander.Source.Has_Source_Location
      and Leander.Traverseable.Abstraction with
       record
          Id : Core.Typeable.Typeable_Id;
+         Loc : Leander.Source.Source_Location;
          case Tag is
             when EVar =>
                Var_Id      : Varid;
@@ -86,6 +102,11 @@ private
    overriding function Show
      (This : Instance)
       return String;
+
+   overriding function Location
+     (This : Instance)
+      return Leander.Source.Source_Location
+   is (This.Loc);
 
    overriding procedure Dispose (This : in out Instance);
 

@@ -11,7 +11,8 @@ package body Leander.Syntax.Expressions.Lambdas is
    begin
       if This.Pat.Is_Variable then
          return Leander.Core.Expressions.Lambda
-           (Leander.Core.To_Varid (This.Pat.Variable_Name),
+           (This.Location,
+            Leander.Core.To_Varid (This.Pat.Variable_Name),
             This.Expr.To_Core);
       else
          raise Constraint_Error with
