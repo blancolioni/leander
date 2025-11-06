@@ -16,9 +16,6 @@ private package Leander.Syntax.Expressions.Literals is
 
 private
 
-   type Literal_Class is
-     (Integer_Literal);
-
    type Instance is new Parent with
       record
          Class : Literal_Class;

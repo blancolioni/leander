@@ -5,7 +5,7 @@ with Leander.Showable;
 
 package Leander.Core.Alts is
 
-   type Instance (<>) is
+   type Instance is
      new Leander.Showable.Abstraction
      and Leander.Core.Typeable.Abstraction
    with private;
@@ -14,13 +14,22 @@ package Leander.Core.Alts is
    type Reference_Array is array (Positive range <>) of Reference;
 
    function Alt
-     (Pats : Leander.Core.Patterns.Reference_Array;
+     (Pat  : Leander.Core.Patterns.Reference;
       Expr : Leander.Core.Expressions.Reference)
       return Reference;
 
-   function Patterns
+   function Alt
+     (Expr : Leander.Core.Expressions.Reference)
+      return Reference;
+
+   function Has_Pattern
      (This : Instance)
-      return Leander.Core.Patterns.Reference_Array;
+      return Boolean;
+
+   function Pattern
+     (This : Instance)
+      return Leander.Core.Patterns.Reference
+     with Pre => This.Has_Pattern;
 
    function Expression
      (This : Instance)
@@ -35,12 +44,15 @@ package Leander.Core.Alts is
 
 private
 
-   type Instance (Pat_Count : Natural) is
+   type Nullable_Pattern_Reference is
+     access constant Leander.Core.Patterns.Instance'Class;
+
+   type Instance is
      new Leander.Showable.Abstraction
      and Leander.Core.Typeable.Abstraction with
       record
          Id   : Leander.Core.Typeable.Typeable_Id;
-         Pats : Leander.Core.Patterns.Reference_Array (1 .. Pat_Count);
+         Pat  : Nullable_Pattern_Reference;
          Expr : Leander.Core.Expressions.Reference;
       end record;
 
@@ -51,10 +63,15 @@ private
       return Leander.Core.Typeable.Typeable_Id
    is (This.Id);
 
-   function Patterns
+   function Has_Pattern
      (This : Instance)
-      return Leander.Core.Patterns.Reference_Array
-   is (This.Pats);
+      return Boolean
+   is (This.Pat /= null);
+
+   function Pattern
+     (This : Instance)
+      return Leander.Core.Patterns.Reference
+   is (Leander.Core.Patterns.Reference (This.Pat));
 
    function Expression
      (This : Instance)

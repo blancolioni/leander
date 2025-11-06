@@ -19,8 +19,7 @@ package Leander.Core.Alts.Compiler is
 
    procedure Add (This : in out Builder'Class;
                   Alts : Reference_Array)
-     with Pre => Alts'Length > 0
-     and then Alts (Alts'First).Patterns'Length > 0;
+     with Pre => Alts'Length > 0;
 
    function To_Calculus
      (This : Builder'Class)

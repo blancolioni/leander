@@ -4,6 +4,6 @@ package Leander.Core.Patterns.Inference is
 
    procedure Infer
      (Context : in out Leander.Core.Inference.Inference_Context'Class;
-      Pattern : Reference);
+      Pattern : not null access constant Instance'Class);
 
 end Leander.Core.Patterns.Inference;

@@ -15,6 +15,9 @@ package Leander.Syntax is
       Env  : Leander.Environment.Reference)
    is null;
 
+   type Literal_Class is
+     (Integer_Literal);
+
 private
 
    type Instance is abstract tagged

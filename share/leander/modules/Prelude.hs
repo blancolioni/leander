@@ -5,6 +5,7 @@ foreign import skit "#eq" #primCharEq :: Char -> Char -> Char
 
 foreign import skit "#add" #primIntAdd :: Int -> Int -> Int
 foreign import skit "#mul" #primIntMul :: Int -> Int -> Int
+foreign import skit "#sub" #primIntSub :: Int -> Int -> Int
 
 foreign import skit "#seq" #primSeq :: a -> b -> b
 foreign import skit "#trace" #trace :: a -> a
@@ -27,7 +28,7 @@ infixr 0  $, $!, `seq`
 
 id x = x
 
-const x _ = x
+const x = \y -> x
 
 null [] = True
 null ((:) x xs) = False
@@ -37,11 +38,16 @@ length ((:) x xs) = #primIntAdd 1 (length xs)
 
 (+) = #primIntAdd
 (*) = #primIntMul
+(-) = #primIntSub
 
 succ x = x + 1
 
 map f [] = []
 map f ((:) x xs) = f x : map f xs
+
+take 0 _ = []
+take _ [] = []
+take n ((:) x xs) = x : take (n - 1) xs
 
 sum [] = 0
 sum ((:) x xs) = x + sum xs

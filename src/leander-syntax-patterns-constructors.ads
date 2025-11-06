@@ -19,6 +19,21 @@ private
          Args  : Reference_Array (1 .. Arg_Count);
       end record;
 
+   overriding function Is_Constructor
+     (This : Instance)
+      return Boolean
+   is (True);
+
+   overriding function Constructor_Name
+     (This : Instance)
+      return String
+   is (Leander.Names.To_String (This.Name));
+
+   overriding function Constructor_Args
+     (This : Instance)
+      return Reference_Array
+   is (This.Args);
+
    overriding function To_Core
      (This : Instance)
       return Leander.Core.Patterns.Reference;

@@ -81,7 +81,8 @@ package body Leander.Core.Expressions is
             return This.LVar /= To
               and then This.LBody.Has_Reference (To);
          when ELet =>
-            return False;
+            return This.Let_Bindings.Has_Reference (To)
+              or else This.Let_Body.Has_Reference (To);
       end case;
    end Has_Reference;
 
@@ -200,7 +201,23 @@ package body Leander.Core.Expressions is
               (To_String (This.LVar),
                This.LBody.To_Calculus (Types, Env));
          when ELet =>
-            return Number (999);
+            declare
+               E : Tree := This.Let_Body.To_Calculus (Types, Env);
+               Ids : constant Varid_Array :=
+                       This.Let_Bindings.Varids;
+            begin
+               for Id of reverse Ids loop
+                  E := Lambda (Leander.Names.Leander_Name (Id), E);
+               end loop;
+               for Id of Ids loop
+                  E := Apply
+                    (E,
+                     This.Let_Bindings.Lookup
+                       (Leander.Names.Leander_Name (Id))
+                     .To_Calculus (Types, Env));
+               end loop;
+               return E;
+            end;
       end case;
    end To_Calculus;
 

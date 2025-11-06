@@ -54,9 +54,12 @@ package body Leander.Tests.Evaluation is
       Test ("const 3 []", "Int", "3", Env, Prelude);
       Test ("2 * 3 + 4", "Int", "10", Env, Prelude);
       Test ("2 + 3 * 4", "Int", "14", Env, Prelude);
+      Test ("2 - 3 * 4", "Int", "-10", Env, Prelude);
       Test ("seq (#trace 42) 4", "Int", "4", Env, Prelude);
       Test ("sum [1,2,3,4]", "Int", "10", Env, Prelude);
-      --  Test ("sum (map succ [1])", "Int", "2", Env, Prelude);
+      Test ("sum (map succ [1,2,3])", "Int", "9", Env, Prelude);
+      Test ("length (take 10 [1,2,3])", "Int", "3", Env, Prelude);
+      Test ("length (take 2 [1,2,3])", "Int", "2", Env, Prelude);
       Machine.Report;
    end Run_Tests;
 

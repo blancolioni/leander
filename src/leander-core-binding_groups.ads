@@ -16,6 +16,15 @@ package Leander.Core.Binding_Groups is
       Name : Leander.Names.Leander_Name)
       return Leander.Core.Bindings.Reference;
 
+   function Varids
+     (This : Instance'Class)
+      return Varid_Array;
+
+   function Has_Reference
+     (This : Instance'Class;
+      To   : Varid)
+      return Boolean;
+
    type Instance_Builder is tagged private;
 
    procedure Add_Explicit_Bindings
