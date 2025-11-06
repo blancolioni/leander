@@ -23,7 +23,7 @@ private
      (This : Instance)
       return Leander.Core.Expressions.Reference
    is (Leander.Core.Expressions.Application
-         (This.Left.To_Core, This.Right.To_Core));
+         (This.Location, This.Left.To_Core, This.Right.To_Core));
 
    function Application
      (Location    : Leander.Source.Source_Location;

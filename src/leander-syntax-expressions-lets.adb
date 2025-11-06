@@ -10,7 +10,7 @@ package body Leander.Syntax.Expressions.Lets is
    is
    begin
       return Leander.Core.Expressions.Let
-        (This.Bindings.To_Core, This.Expr.To_Core);
+        (This.Location, This.Bindings.To_Core, This.Expr.To_Core);
    end To_Core;
 
 end Leander.Syntax.Expressions.Lets;

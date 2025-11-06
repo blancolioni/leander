@@ -9,12 +9,14 @@ package body Leander.Syntax.Bindings.Transform is
 
    type Variable_Pattern (Pat_Count : Natural) is
       record
+         Location : Leander.Source.Source_Location;
          Patvar   : Leander.Core.Patterns.Reference;
          Equation : Binding_Record (Pat_Count);
       end record;
 
    type Literal_Pattern (Pat_Count : Natural) is
       record
+         Location : Leander.Source.Source_Location;
          Literal  : Leander.Core.Patterns.Reference;
          Equation : Binding_Record (Pat_Count);
       end record;
@@ -25,6 +27,7 @@ package body Leander.Syntax.Bindings.Transform is
 
    type Constructor_Pattern (Arg_Count : Natural; Pat_Count : Natural) is
       record
+         Location : Leander.Source.Source_Location;
          Con      : Leander.Core.Conid;
          Args     : Leander.Core.Patterns.Conargs (1 .. Arg_Count);
          Equation : Binding_Record (Pat_Count);
@@ -38,7 +41,8 @@ package body Leander.Syntax.Bindings.Transform is
      new Ada.Containers.Indefinite_Doubly_Linked_Lists (Variable_Pattern);
 
    function To_Core_Alt
-     (Vars : Variable_Pattern_Lists.List)
+     (Loc  : Leander.Source.Source_Location;
+      Vars : Variable_Pattern_Lists.List)
       return Leander.Core.Alts.Reference;
 
    package Literal_Pattern_Lists is
@@ -59,7 +63,8 @@ package body Leander.Syntax.Bindings.Transform is
       return Leander.Core.Alts.Reference_Array;
 
    function To_Core_Expression
-     (Partial : Binding_Record;
+     (Loc     : Leander.Source.Source_Location;
+      Partial : Binding_Record;
       Vars    : Leander.Names.Name_Array)
       return Leander.Core.Expressions.Reference;
 
@@ -103,7 +108,7 @@ package body Leander.Syntax.Bindings.Transform is
    begin
       return Leander.Core.Alts.Alt
         (Pat.Literal,
-         To_Core_Expression (Pat.Equation, []));
+         To_Core_Expression (Pat.Location, Pat.Equation, []));
    end To_Core_Alt;
 
    -----------------
@@ -118,7 +123,7 @@ package body Leander.Syntax.Bindings.Transform is
       return Leander.Core.Alts.Alt
         (Leander.Core.Patterns.Constructor
            (Pat.Con, Pat.Args),
-         To_Core_Expression (Pat.Equation, []));
+         To_Core_Expression (Pat.Location, Pat.Equation, []));
    end To_Core_Alt;
 
    -----------------
@@ -126,7 +131,8 @@ package body Leander.Syntax.Bindings.Transform is
    -----------------
 
    function To_Core_Alt
-     (Vars : Variable_Pattern_Lists.List)
+     (Loc  : Leander.Source.Source_Location;
+      Vars : Variable_Pattern_Lists.List)
       return Leander.Core.Alts.Reference
    is
       use type Core.Varid;
@@ -176,8 +182,8 @@ package body Leander.Syntax.Bindings.Transform is
       end loop;
 
       declare
-         Alts : constant Leander.Core.Alts.Reference_Array :=
-                  To_Alts (Equations);
+         Alts    : constant Leander.Core.Alts.Reference_Array :=
+                     To_Alts (Equations);
          Builder : Core.Binding_Groups.Instance_Builder;
          F       : constant Core.Varid := Core.Varid (Leander.Names.New_Name);
          X       : constant Core.Varid := Core.Varid (Leander.Names.New_Name);
@@ -192,13 +198,17 @@ package body Leander.Syntax.Bindings.Transform is
            Core.Alts.Alt
              (Core.Patterns.Variable (V),
               Core.Expressions.Lambda
-                (X,
+                (Loc, X,
                  Core.Expressions.Let
-                   (Bindings => Builder.Get_Binding_Group,
+                   (Loc      => Loc,
+                    Bindings => Builder.Get_Binding_Group,
                     Expr     =>
                       Core.Expressions.Application
-                        (Core.Expressions.Variable (F),
-                         Core.Expressions.Variable (X)))));
+                        (Loc,
+                         Core.Expressions.Variable
+                           (Loc, F),
+                         Core.Expressions.Variable
+                           (Loc, X)))));
       end;
    end To_Core_Alt;
 
@@ -207,7 +217,8 @@ package body Leander.Syntax.Bindings.Transform is
    ------------------------
 
    function To_Core_Expression
-     (Partial : Binding_Record;
+     (Loc     : Leander.Source.Source_Location;
+      Partial : Binding_Record;
       Vars    : Leander.Names.Name_Array)
       return Leander.Core.Expressions.Reference
    is
@@ -222,13 +233,15 @@ package body Leander.Syntax.Bindings.Transform is
          (F, Alts)]);
 
       declare
-         E : Core.Expressions.Reference := Core.Expressions.Variable (F);
+         E : Core.Expressions.Reference :=
+               Core.Expressions.Variable (Loc, F);
       begin
          E :=
            Core.Expressions.Let
-             (Bindings => Builder.Get_Binding_Group,
+             (Loc      => Loc,
+              Bindings => Builder.Get_Binding_Group,
               Expr     => E);
-          return E;
+         return E;
       end;
    end To_Core_Expression;
 
@@ -244,8 +257,8 @@ package body Leander.Syntax.Bindings.Transform is
    begin
       for Equation of Equations loop
          declare
-            Pat : constant Syntax.Patterns.Reference :=
-                    Equation.Pats (1);
+            Pat  : constant Syntax.Patterns.Reference :=
+                     Equation.Pats (1);
             Rest : constant Binding_Record :=
                      Binding_Record'
                        (Equation.Pat_Count - 1,
@@ -255,7 +268,7 @@ package body Leander.Syntax.Bindings.Transform is
             if Pat.Is_Variable then
                Partial.Vars.Append
                  (Variable_Pattern'
-                    (Rest.Pat_Count, Pat.To_Core, Rest));
+                    (Rest.Pat_Count, Pat.Location, Pat.To_Core, Rest));
             elsif Pat.Is_Constructor then
                declare
                   Args : constant Syntax.Patterns.Reference_Array :=
@@ -264,14 +277,14 @@ package body Leander.Syntax.Bindings.Transform is
                   Partial.Cons.Append
                     (Constructor_Pattern'
                        (Pat.Constructor_Args'Length, Rest.Pat_Count,
-                        Core.To_Conid (Pat.Constructor_Name),
+                        Pat.Location, Core.To_Conid (Pat.Constructor_Name),
                         [for Arg of Args => Core.To_Varid (Arg.Variable_Name)],
                         Rest));
                end;
             elsif Pat.Is_Literal then
                Partial.Literals.Append
                  (Literal_Pattern'
-                    (Rest.Pat_Count, Pat.To_Core, Rest));
+                    (Rest.Pat_Count, Pat.Location, Pat.To_Core, Rest));
             else
                raise Constraint_Error with
                  "unknown pattern type";
@@ -297,8 +310,11 @@ package body Leander.Syntax.Bindings.Transform is
             Last := Last + 1;
             Alts (Last) := To_Core_Alt (Lit);
          end loop;
-         Last := Last + 1;
-         Alts (Last) := To_Core_Alt (Partial.Vars);
+         if not Partial.Vars.Is_Empty then
+            Last := Last + 1;
+            Alts (Last) := To_Core_Alt (Partial.Vars.First_Element.Location,
+                                        Partial.Vars);
+         end if;
          return Alts;
       end;
    end To_Multipattern_Alts;
