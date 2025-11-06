@@ -29,6 +29,28 @@ id x = x
 
 const x _ = x
 
+(.) f g x = f (g x)
+
+flip f x y = f y x
+
+seq = #primSeq
+
+($) f x = f x
+($!) f x = seq x (f x)
+
+not True = False
+not False = True
+
+(&&) True b = b
+(&&) False _ = False
+
+(||) True _ = True
+(||) False b = b
+
+(==) = #primIntEq
+
+(/=) x y = not (x == y)
+
 null [] = True
 null ((:) x xs) = False
 
@@ -55,4 +77,3 @@ small 2 = True
 small 3 = True
 small x = False
 
-seq = #primSeq
