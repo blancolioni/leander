@@ -13,6 +13,10 @@ package Leander.Syntax.Expressions is
       return Leander.Core.Expressions.Reference
       is abstract;
 
+   function To_Pattern
+     (This : Instance)
+      return Leander.Syntax.Patterns.Reference;
+
    function Variable
      (Location : Leander.Source.Source_Location;
       Name     : String)
@@ -51,5 +55,10 @@ private
       record
          null;
       end record;
+
+   function To_Pattern
+     (This : Instance)
+      return Leander.Syntax.Patterns.Reference
+   is (raise Constraint_Error with "invalid pattern");
 
 end Leander.Syntax.Expressions;

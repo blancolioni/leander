@@ -1,8 +1,11 @@
+with Leander.Syntax.Patterns;
 private package Leander.Parser.Expressions is
 
    function At_Expression return Boolean;
+   function At_Pattern return Boolean;
 
    function Parse_Expression return Leander.Syntax.Expressions.Reference;
+   function Parse_Patterns return Leander.Syntax.Patterns.Reference_Array;
 
    type Associativity_Type is (Left, Right, None);
    type Priority_Range is range 0 .. 9;

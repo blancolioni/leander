@@ -22,6 +22,10 @@ private
          Image : Ada.Strings.Unbounded.Unbounded_String;
       end record;
 
+   overriding function To_Pattern
+     (This : Instance)
+      return Leander.Syntax.Patterns.Reference;
+
    function Integer_Literal
      (Location : Leander.Source.Source_Location;
       Image    : String)

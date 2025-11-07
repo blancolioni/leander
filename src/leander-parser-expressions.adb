@@ -2,13 +2,15 @@ with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Strings.Fixed.Hash;
+with Ada.Text_IO;
 
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
 with Leander.Parser.Bindings;
+with Leander.Parser.Sequences;
+with Leander.Source;
 with Leander.Syntax.Bindings;
-with Leander.Syntax.Patterns;
 
 package body Leander.Parser.Expressions is
 
@@ -32,6 +34,34 @@ package body Leander.Parser.Expressions is
      return Leander.Syntax.Expressions.Reference;
    function Parse_Left_Expression
      return Leander.Syntax.Expressions.Reference;
+
+   type Statement_Type is
+     (Expression_Statement,
+      Binding_Statement,
+      Let_Statement);
+
+   type Statement_Record (Class : Statement_Type) is
+      record
+         Location : Leander.Source.Source_Location;
+         case Class is
+            when Expression_Statement =>
+               Expression : Syntax.Expressions.Reference;
+            when Binding_Statement =>
+               Pattern    : Syntax.Patterns.Reference;
+               Value      : Syntax.Expressions.Reference;
+            when Let_Statement =>
+               Bindings   : Syntax.Bindings.Reference;
+         end case;
+      end record;
+
+   function Parse_Statement return Statement_Record;
+
+   package Statement_Sequence_Parser is
+     new Leander.Parser.Sequences
+       (Element_Name => "statement",
+        Element_Type => Statement_Record,
+        At_Element   => At_Expression,
+        Parse      => Parse_Statement);
 
    ----------------
    -- Add_Fixity --
@@ -71,8 +101,17 @@ package body Leander.Parser.Expressions is
    begin
       return At_Atomic_Expression
         or else (At_Operator and then Tok_Text = "-")
-        or else Tok <= [Tok_Lambda, Tok_Let];
+        or else Tok <= [Tok_Lambda, Tok_Let, Tok_Do];
    end At_Expression;
+
+   ----------------
+   -- At_Pattern --
+   ----------------
+
+   function At_Pattern return Boolean is
+   begin
+      return At_Atomic_Expression;
+   end At_Pattern;
 
    -----------------------------
    -- Parse_Atomic_Expression --
@@ -398,10 +437,208 @@ package body Leander.Parser.Expressions is
                  (Loc, Bs, Expr);
             end;
          end;
+      elsif Tok = Tok_Do then
+         Scan;
+         declare
+
+            package Statement_Lists is
+              new Ada.Containers.Indefinite_Doubly_Linked_Lists
+                (Statement_Record);
+
+            Stmts : Statement_Lists.List;
+
+            procedure On_Statement (Item : Statement_Record);
+
+            function To_Expression
+              (Position : Statement_Lists.Cursor)
+               return Syntax.Expressions.Reference;
+
+            ------------------
+            -- On_Statement --
+            ------------------
+
+            procedure On_Statement (Item : Statement_Record) is
+            begin
+               Stmts.Append (Item);
+            end On_Statement;
+
+            -------------------
+            -- To_Expression --
+            -------------------
+
+            function To_Expression
+              (Position : Statement_Lists.Cursor)
+               return Syntax.Expressions.Reference
+            is
+               use Leander.Syntax.Expressions;
+               use Statement_Lists;
+               Stmt     : constant Statement_Record :=
+                            Element (Position);
+               Next_Pos : constant Statement_Lists.Cursor :=
+                            Next (Position);
+            begin
+               case Stmt.Class is
+                  when Expression_Statement =>
+                     if Has_Element (Next_Pos) then
+                        return Application
+                          (Stmt.Location,
+                           Application
+                             (Stmt.Location,
+                              Variable
+                                (Stmt.Location,
+                                 ">>"),
+                              Stmt.Expression),
+                           To_Expression (Next_Pos));
+                     else
+                        return Stmt.Expression;
+                     end if;
+                  when Binding_Statement =>
+                     if not Has_Element (Next_Pos) then
+                        Ada.Text_IO.Put_Line
+                          (Leander.Source.Show (Stmt.Location)
+                           & ": binding cannot be the last expression");
+                        return Stmt.Value;
+                     else
+                        declare
+                           Rest : constant Syntax.Expressions.Reference :=
+                                    To_Expression (Next_Pos);
+                           Ok   : constant String := "$ok";
+                           Bs   : constant Syntax.Bindings.Reference :=
+                                    Syntax.Bindings.Empty;
+                        begin
+                           Bs.Add_Binding
+                             (Stmt.Location, Ok, [Stmt.Pattern], Rest);
+
+                           declare
+                              E_Let : constant Syntax.Expressions.Reference :=
+                                        Syntax.Expressions.Let
+                                          (Stmt.Location,
+                                           Bs,
+                                           Application
+                                             (Stmt.Location,
+                                              Application
+                                                (Stmt.Location,
+                                                 Variable
+                                                   (Stmt.Location,
+                                                    ">>="),
+                                                 Stmt.Value),
+                                              Variable (Stmt.Location, Ok)));
+                           begin
+                              return E_Let;
+                           end;
+                        end;
+                     end if;
+                  when Let_Statement =>
+                     return Syntax.Expressions.Let
+                       (Stmt.Location,
+                        Stmt.Bindings,
+                        To_Expression (Next_Pos));
+               end case;
+            end To_Expression;
+
+         begin
+            Statement_Sequence_Parser.Parse_Sequence (On_Statement'Access);
+            return To_Expression (Stmts.First);
+         end;
       else
          Error ("expected to be at an expression");
          raise Parse_Error;
       end if;
    end Parse_Left_Expression;
+
+   --------------------
+   -- Parse_Patterns --
+   --------------------
+
+   function Parse_Patterns return Leander.Syntax.Patterns.Reference_Array is
+      use type Leander.Syntax.Expressions.Reference;
+      use type Leander.Syntax.Patterns.Reference_Array;
+   begin
+      if not At_Atomic_Expression then
+         return [];
+      end if;
+
+      declare
+         Expr : constant Syntax.Expressions.Reference := Parse_Atomic_Expression;
+         Pat  : constant Syntax.Patterns.Reference :=
+                  (if Expr = null then null else Expr.To_Pattern);
+      begin
+         if Expr = null then
+            return [];
+         end if;
+         if At_Atomic_Expression then
+            return Pat & Parse_Patterns;
+         else
+            return [Pat];
+         end if;
+      end;
+   end Parse_Patterns;
+
+   ---------------------
+   -- Parse_Statement --
+   ---------------------
+
+   function Parse_Statement return Statement_Record is
+      Loc : constant Source.Source_Location := Current_Source_Location;
+   begin
+      if Tok = Tok_Let then
+         declare
+            Bs  : constant Leander.Syntax.Bindings.Reference :=
+                    Leander.Syntax.Bindings.Empty;
+         begin
+            Scan;
+            if Tok = Tok_Left_Brace then
+               Scan;
+               loop
+                  Bindings.Parse_Binding (Bs);
+                  if Tok = Tok_Semi then
+                     Scan;
+                  else
+                     exit;
+                  end if;
+               end loop;
+               if Tok = Tok_Right_Brace then
+                  Scan;
+               else
+                  Error ("missing '}'");
+               end if;
+            else
+               while Bindings.At_Binding loop
+                  Bindings.Parse_Binding (Bs);
+               end loop;
+            end if;
+
+            return Statement_Record'
+              (Class    => Let_Statement,
+               Location => Loc,
+               Bindings => Bs);
+         end;
+      else
+         declare
+            E : Syntax.Expressions.Reference :=
+                  Parse_Expression;
+         begin
+            if Tok = Tok_Left_Arrow then
+               declare
+                  Pat : constant Syntax.Patterns.Reference :=
+                        E.To_Pattern;
+               begin
+                  Scan;
+                  E := Parse_Expression;
+                  return Statement_Record'
+                    (Class    => Binding_Statement,
+                     Location => Loc,
+                     Pattern  => Pat,
+                     Value    => E);
+               end;
+            else
+               return Statement_Record'
+                 (Class      => Expression_Statement,
+                  Location   => Loc,
+                  Expression => E);
+            end if;
+         end;
+      end if;
+   end Parse_Statement;
 
 end Leander.Parser.Expressions;

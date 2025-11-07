@@ -19,6 +19,13 @@ private
          Name : Leander.Core.Varid;
       end record;
 
+   overriding function To_Pattern
+     (This : Instance)
+      return Leander.Syntax.Patterns.Reference
+   is (Leander.Syntax.Patterns.Variable
+       (This.Location,
+          Leander.Core.To_String (This.Name)));
+
    overriding function To_Core
      (This : Instance)
       return Leander.Core.Expressions.Reference
