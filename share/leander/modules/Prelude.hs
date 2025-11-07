@@ -74,6 +74,15 @@ take n ((:) x xs) = x : take (n - 1) xs
 sum [] = 0
 sum ((:) x xs) = x + sum xs
 
+return x = [x]
+(>>=) xs f = concat (map f xs)
+
+concat [] = []
+concat ((:) xs xss) = xs ++ concat xss
+
+(++) [] ys = ys
+(++) ((:) x xs) ys = x : (xs ++ ys)
+
 zero 0 = True
 zero _ = False
 

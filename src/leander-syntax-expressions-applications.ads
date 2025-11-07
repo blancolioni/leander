@@ -19,6 +19,10 @@ private
          Left, Right : Reference;
       end record;
 
+   overriding function To_Pattern
+     (This : Instance)
+      return Leander.Syntax.Patterns.Reference;
+
    overriding function To_Core
      (This : Instance)
       return Leander.Core.Expressions.Reference

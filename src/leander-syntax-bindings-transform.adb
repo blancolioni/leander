@@ -274,12 +274,22 @@ package body Leander.Syntax.Bindings.Transform is
                   Args : constant Syntax.Patterns.Reference_Array :=
                            Pat.Constructor_Args;
                begin
-                  Partial.Cons.Append
-                    (Constructor_Pattern'
-                       (Pat.Constructor_Args'Length, Rest.Pat_Count,
-                        Pat.Location, Core.To_Conid (Pat.Constructor_Name),
-                        [for Arg of Args => Core.To_Varid (Arg.Variable_Name)],
-                        Rest));
+                  if Args'Length = 0 then
+                     Partial.Cons.Append
+                       (Constructor_Pattern'
+                          (0, Rest.Pat_Count,
+                           Pat.Location, Core.To_Conid (Pat.Constructor_Name),
+                           [],
+                           Rest));
+                  else
+                     Partial.Cons.Append
+                       (Constructor_Pattern'
+                          (Pat.Constructor_Args'Length, Rest.Pat_Count,
+                           Pat.Location, Core.To_Conid (Pat.Constructor_Name),
+                           [for Arg of Args =>
+                                Core.To_Varid (Arg.Variable_Name)],
+                           Rest));
+                  end if;
                end;
             elsif Pat.Is_Literal then
                Partial.Literals.Append

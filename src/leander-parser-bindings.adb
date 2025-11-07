@@ -2,7 +2,6 @@ with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
 with Leander.Parser.Expressions;
-with Leander.Parser.Patterns;
 with Leander.Parser.Types;
 
 with Leander.Syntax.Patterns;
@@ -22,14 +21,9 @@ package body Leander.Parser.Bindings is
    is
       Loc  : constant Source.Source_Location := Current_Source_Location;
       Name : constant String := Scan_Identifier;
-      Pats : Leander.Syntax.Patterns.Reference_Array (1 .. 20);
-      Last : Natural := 0;
+      Pats : constant Leander.Syntax.Patterns.Reference_Array :=
+               Expressions.Parse_Patterns;
    begin
-      while Patterns.At_Pattern loop
-         Last := Last + 1;
-         Pats (Last) := Patterns.Parse_Pattern;
-      end loop;
-
       if Tok = Tok_Colon_Colon then
          Scan;
          declare
@@ -44,7 +38,7 @@ package body Leander.Parser.Bindings is
             Expr : constant Leander.Syntax.Expressions.Reference :=
                      Leander.Parser.Expressions.Parse_Expression;
          begin
-            To.Add_Binding (Loc, Name, Pats (1 .. Last), Expr);
+            To.Add_Binding (Loc, Name, Pats, Expr);
          end;
       else
          Error ("expected '::' or '=' at " & Tok'Image);
