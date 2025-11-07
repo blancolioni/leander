@@ -53,10 +53,10 @@ not False = True
 (/=) x y = not (x == y)
 
 null [] = True
-null ((:) x xs) = False
+null (x:xs) = False
 
 length [] = 0
-length ((:) x xs) = #primIntAdd 1 (length xs)
+length (x:xs) = #primIntAdd 1 (length xs)
 
 (+) = #primIntAdd
 (*) = #primIntMul
@@ -65,23 +65,23 @@ length ((:) x xs) = #primIntAdd 1 (length xs)
 succ x = x + 1
 
 map f [] = []
-map f ((:) x xs) = f x : map f xs
+map f (x:xs) = f x : map f xs
 
 take 0 _ = []
 take _ [] = []
-take n ((:) x xs) = x : take (n - 1) xs
+take n (x:xs) = x : take (n - 1) xs
 
 sum [] = 0
-sum ((:) x xs) = x + sum xs
+sum (x:xs) = x + sum xs
 
 return x = [x]
 (>>=) xs f = concat (map f xs)
 
 concat [] = []
-concat ((:) xs xss) = xs ++ concat xss
+concat (xs:xss) = xs ++ concat xss
 
 (++) [] ys = ys
-(++) ((:) x xs) ys = x : (xs ++ ys)
+(++) (x:xs) ys = x : (xs ++ ys)
 
 zero 0 = True
 zero _ = False
