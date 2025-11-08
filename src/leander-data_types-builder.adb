@@ -29,13 +29,13 @@ package body Leander.Data_Types.Builder is
       function Pat_Id
         (Index : Positive)
          return String
-      is ("~" & Character'Val (Character'Pos ('a')
+      is ("$" & Character'Val (Character'Pos ('a')
           + Index + This.Cons.Last_Index - 1));
 
       function Var_Id
         (Index : Positive)
          return String
-      is ("~" & Character'Val (Character'Pos ('a') + Index - 1));
+      is ("$" & Character'Val (Character'Pos ('a') + Index - 1));
 
       Var_Ids : constant Leander.Names.Name_Array :=
                   [for I in 1 .. This.Cons.Last_Index =>
@@ -73,7 +73,7 @@ package body Leander.Data_Types.Builder is
       end Con_Arg_Count;
 
       -----------------------
-      -- Create_Definition --
+      -- Create_Con_Record --
       -----------------------
 
       function Create_Con_Record
@@ -123,6 +123,10 @@ package body Leander.Data_Types.Builder is
          Kind      => This.Kind,
          Cons      => [for I in 1 .. This.Cons.Last_Index =>
                            Create_Con_Record (I)]);
+      Leander.Logging.Log
+        ("DATA",
+         Core.To_String (This.DT.Id)
+         & " :: " & Core.Kinds.Show (This.DT.Kind));
    end Build;
 
    ---------------
@@ -143,13 +147,19 @@ package body Leander.Data_Types.Builder is
 
    procedure Start
      (This  : in out Data_Type_Builder'Class;
-      Tycon : Leander.Core.Types.Reference;
-      Kind  : Leander.Core.Kinds.Kind)
+      Ty    : Leander.Core.Types.Reference)
    is
+      T : Leander.Core.Types.Reference := Ty;
+      K : Leander.Core.Kinds.Kind := Leander.Core.Kinds.Star;
    begin
-      This.Id := Tycon.Constructor.Id;
-      This.Kind := Kind;
-      This.Tycon := Nullable_Type_Reference (Tycon);
+      while T.Is_Application loop
+         T := T.Left;
+         K := Leander.Core.Kinds.Kind_Function (K, Leander.Core.Kinds.Star);
+      end loop;
+
+      This.Id := T.Constructor.Id;
+      This.Kind := K;
+      This.Tycon := Nullable_Type_Reference (T);
       This.Cons.Clear;
       This.DT := null;
    end Start;

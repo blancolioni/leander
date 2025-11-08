@@ -57,6 +57,14 @@ package Leander.Environment is
      with Pre'Class => This.Exists (Leander.Names.Leander_Name (Id),
                                     Constructor);
 
+   function Data_Type
+     (This : Abstraction;
+      Id   : Leander.Core.Conid)
+      return Leander.Data_Types.Reference
+      is abstract
+     with Pre'Class => This.Exists (Leander.Names.Leander_Name (Id),
+                                    Type_Constructor);
+
    procedure Bindings
      (This   : in out Abstraction;
       Groups : Leander.Core.Binding_Groups.Reference)

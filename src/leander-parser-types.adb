@@ -6,9 +6,6 @@ package body Leander.Parser.Types is
    function At_Atomic_Type return Boolean
    is (At_Name or else Tok <= [Tok_Left_Bracket, Tok_Left_Paren]);
 
-   function Parse_Atomic_Type
-     return Leander.Syntax.Types.Reference;
-
    -----------------------
    -- Parse_Atomic_Type --
    -----------------------

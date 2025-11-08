@@ -62,6 +62,7 @@ package body Leander.Tests.Evaluation is
       Test ("length (take 2 [1,2,3])", "Int", "2", Env, Prelude);
       Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);
       Test ("sum (do { let x = 42; return x })", "Int", "42", Env, Prelude);
+      Test ("maybe 42 id Nothing", "Int", "42", Env, Prelude);
       Machine.Report;
    end Run_Tests;
 

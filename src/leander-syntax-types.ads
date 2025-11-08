@@ -7,6 +7,8 @@ package Leander.Syntax.Types is
    type Instance is abstract new Parent with private;
    type Reference is access constant Instance'Class;
 
+   function Kind (This : Instance) return Leander.Core.Kinds.Kind;
+
    function To_Core (This : Instance) return Leander.Core.Types.Reference
                      is abstract;
 
@@ -43,5 +45,8 @@ private
 
    function Is_Variable (This : Instance) return Boolean is (False);
    function Variable_Name (This : Instance) return String is ("");
+
+   function Kind (This : Instance) return Leander.Core.Kinds.Kind
+   is (This.Kind);
 
 end Leander.Syntax.Types;

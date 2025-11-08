@@ -6,8 +6,7 @@ package Leander.Data_Types.Builder is
 
    procedure Start
      (This  : in out Data_Type_Builder'Class;
-      Tycon : Leander.Core.Types.Reference;
-      Kind  : Leander.Core.Kinds.Kind);
+      Ty    : Leander.Core.Types.Reference);
 
    procedure Add_Con
      (This   : in out Data_Type_Builder'Class;
