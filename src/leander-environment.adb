@@ -58,6 +58,12 @@ package body Leander.Environment is
       return Leander.Data_Types.Reference
    is (This.Cons.Element (Core.To_String (Id)).DT);
 
+   overriding function Data_Type
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Data_Types.Reference
+   is (This.Tycons.Element (Core.To_String (Id)));
+
    overriding procedure Data_Type
      (This   : in out Instance;
       DT     : Leander.Data_Types.Reference);

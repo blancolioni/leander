@@ -92,3 +92,10 @@ small 2 = True
 small 3 = True
 small x = False
 
+-- Maybe type
+
+data  Maybe a  =  Nothing | Just a
+
+maybe n f Nothing  =  n
+maybe n f (Just x) =  f x
+

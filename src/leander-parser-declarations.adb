@@ -1,3 +1,7 @@
+with Leander.Core.Schemes;
+with Leander.Core.Types;
+with Leander.Data_Types;
+with Leander.Data_Types.Builder;
 with Leander.Parser.Bindings;
 with Leander.Parser.Expressions;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
@@ -8,8 +12,13 @@ with Leander.Syntax.Types;
 
 package body Leander.Parser.Declarations is
 
+   procedure Parse_Data_Declaration
+     (Env : Leander.Environment.Reference);
+
    procedure Parse_Foreign_Import
      (Env : Leander.Environment.Reference);
+
+   procedure Skip_Declaration;
 
    --------------------
    -- At_Declaration --
@@ -22,6 +31,93 @@ package body Leander.Parser.Declarations is
                 Tok_Infix, Tok_Infixl, Tok_Infixr,
                 Tok_Instance];
    end At_Declaration;
+
+   ----------------------------
+   -- Parse_Data_Declaration --
+   ----------------------------
+
+   procedure Parse_Data_Declaration
+     (Env : Leander.Environment.Reference)
+   is
+      Builder : Leander.Data_Types.Builder.Data_Type_Builder;
+   begin
+      pragma Assert (Tok = Tok_Data);
+      Scan;
+
+      if not At_Constructor then
+         Error ("expected a type constructor");
+         return;
+      end if;
+
+      declare
+         TExpr : constant Leander.Syntax.Types.Reference :=
+                   Leander.Parser.Types.Parse_Type_Expression;
+         Data : constant Leander.Core.Types.Reference :=
+                   TExpr.To_Core;
+      begin
+
+         if Tok /= Tok_Equal then
+            Error ("expected '='");
+            Skip_Declaration;
+            return;
+         end if;
+
+         Scan;
+
+         Builder.Start (Data);
+
+         loop
+            if not At_Constructor then
+               Error ("expected constructor");
+               while Tok /= Tok_Vertical_Bar
+                 and then Tok_Indent > 1
+               loop
+                  Scan;
+               end loop;
+            else
+               declare
+                  Con_Name : constant String := Tok_Text;
+                  Con_Args : array (1 .. 10) of Leander.Syntax.Types.Reference;
+                  Count    : Natural := 0;
+                  Indent   : constant Positive := Tok_Indent;
+               begin
+                  Scan;
+                  while Tok_Indent > Indent
+                    and then Parser.Types.At_Atomic_Type loop
+                     Count := Count + 1;
+                     Con_Args (Count) :=
+                       Parser.Types.Parse_Atomic_Type;
+                  end loop;
+
+                  declare
+                     Con_Type : Leander.Core.Types.Reference := Data;
+                  begin
+                     for I in reverse 1 .. Count loop
+                        Con_Type :=
+                          Leander.Core.Types.Fn
+                            (Con_Args (I).To_Core, Con_Type);
+                     end loop;
+
+                     Builder.Add_Con
+                       (Leander.Core.To_Conid (Con_Name),
+                        Leander.Core.Schemes.Quantify
+                          (Con_Type.Get_Tyvars, Con_Type));
+                  end;
+               end;
+            end if;
+            if Tok = Tok_Vertical_Bar then
+               Scan;
+            else
+               exit;
+            end if;
+         end loop;
+
+         Builder.Build;
+
+         Env.Data_Type (Builder.Data_Type);
+      end;
+
+   end Parse_Data_Declaration;
 
    ------------------------
    -- Parse_Declarations --
@@ -89,12 +185,12 @@ package body Leander.Parser.Declarations is
                   end if;
                end loop;
             end;
+         elsif Tok = Tok_Data then
+            Parse_Data_Declaration (Env);
          else
             Error ("only bindings are supported");
             Scan;
-            while Tok_Indent > 1 loop
-               Scan;
-            end loop;
+            Skip_Declaration;
          end if;
       end loop;
       Env.Bindings (Bindings.To_Core);
@@ -148,5 +244,16 @@ package body Leander.Parser.Declarations is
          Error ("missing local name");
       end if;
    end Parse_Foreign_Import;
+
+   ----------------------
+   -- Skip_Declaration --
+   ----------------------
+
+   procedure Skip_Declaration is
+   begin
+      while Tok_Indent > 1 loop
+         Scan;
+      end loop;
+   end Skip_Declaration;
 
 end Leander.Parser.Declarations;

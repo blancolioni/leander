@@ -73,13 +73,13 @@ package body Leander.Core.Alts.Compiler is
             pragma Assert
               (This.Env.Exists
                  (Leander.Names.Leander_Name (Con),
-                  Leander.Environment.Constructor),
+                  Leander.Environment.Type_Constructor),
                "undefined constructor: "
                & Leander.Core.To_String (Con)
                & " in pat type "
                & Pat_Type.Show);
             DT  : constant Leander.Data_Types.Reference :=
-                    This.Env.Con_Data_Type (Con);
+                    This.Env.Data_Type (Con);
          begin
             for I in 1 .. DT.Constructor_Count loop
                This.Con_Pats.Append

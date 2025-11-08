@@ -26,18 +26,15 @@ package body Leander.Environment.Prelude is
                    Core.Types.List_Of (T_A);
       Builder  : Leander.Data_Types.Builder.Data_Type_Builder;
    begin
-
       Builder.Start
-        (Tycon => Core.Types.T_Unit,
-         Kind  => Core.Kinds.Star);
+        (Core.Types.T_Unit);
       Builder.Add_Con
         (Core.To_Conid ("()"), To_Scheme (Core.Types.T_Unit));
       Builder.Build;
       Env.Data_Type (Builder.Data_Type);
 
       Builder.Start
-        (Tycon => T_Bool,
-         Kind  => Core.Kinds.Star);
+        (T_Bool);
       Builder.Add_Con
         (Core.To_Conid ("True"), To_Scheme (T_Bool));
       Builder.Add_Con
@@ -46,8 +43,7 @@ package body Leander.Environment.Prelude is
       Env.Data_Type (Builder.Data_Type);
 
       Builder.Start
-        (Tycon => Core.Types.T_List,
-         Kind  => Core.Kinds.Kind_Function (Core.Kinds.Star, Core.Kinds.Star));
+        (T_List_A);
       Builder.Add_Con
         (Core.To_Conid ("[]"), Quantify ([Tv_A], T_List_A));
       Builder.Add_Con
