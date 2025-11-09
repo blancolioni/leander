@@ -134,6 +134,13 @@ package body Leander.Parser is
          do
             Loaded_Module_Map.Insert (Name, Env);
             Close;
+
+            if Name /= "Prelude" then
+               Env.Import
+                 (Load_Module ("./shared/leander/modules/Prelude.hs"));
+            end if;
+
+            Env.Elaborate;
          end return;
       end if;
    end Load_Module;

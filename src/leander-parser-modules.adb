@@ -1,5 +1,3 @@
-with GCS.Errors;
-
 with Leander.Environment.Prelude;
 
 with Leander.Parser.Declarations;
@@ -45,10 +43,6 @@ package body Leander.Parser.Modules is
          when Parse_Error =>
             null;
       end;
-
-      if not GCS.Errors.Has_Errors then
-         Env.Elaborate;
-      end if;
 
       return Env;
    end Parse_Module;

@@ -116,11 +116,25 @@ small 2 = True
 small 3 = True
 small x = False
 
-fst :: (a,b) -> a
-fst (x,y) = x
+-- component projections for pairs:
+-- (NB: not provided for triples, quadruples, etc.)
 
-snd :: (a,b) -> b
-snd (x,y) = y
+fst              :: (a,b) -> a
+fst (x,y)        =  x
+
+
+snd              :: (a,b) -> b
+snd (x,y)        =  y
+
+-- curry converts an uncurried function to a curried function;
+-- uncurry converts a curried function to a function on pairs.
+
+curry            :: ((a, b) -> c) -> a -> b -> c
+curry f x y      =  f (x, y)
+
+
+uncurry          :: (a -> b -> c) -> ((a, b) -> c)
+uncurry f p      =  f (fst p) (snd p)
 
 
 foldr            :: (a -> b -> b) -> b -> [a] -> b
@@ -165,6 +179,9 @@ putChar ch = IO (\w -> ((), #primPutChar w 1 ch))
 
 putStr :: [Char] -> IO ()
 putStr = mapM_ putChar
+
+putStrLn :: [Char] -> IO ()
+putStrLn str = putStr str >> putChar '\n'
 
 runIO :: IO a -> a
 runIO a = let getf (IO f) = f

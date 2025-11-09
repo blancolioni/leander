@@ -1,7 +1,9 @@
+with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
 with Leander.Core.Inference;
+with Leander.Logging;
 with Leander.Names.Maps;
 with WL.String_Maps;
 
@@ -27,9 +29,13 @@ package body Leander.Environment is
 
    type Value_Map_Reference is access Value_Maps.Map;
 
+   package Import_Lists is
+     new Ada.Containers.Doubly_Linked_Lists (Reference);
+
    type Instance is new Abstraction with
       record
          Name     : Leander.Names.Leander_Name;
+         Imports  : Import_Lists.List;
          Tycons   : Tycon_Maps.Map;
          Cons     : Con_Maps.Map;
          Bindings : Leander.Core.Binding_Groups.Reference;
@@ -37,6 +43,10 @@ package body Leander.Environment is
          Context  : Leander.Core.Inference.Inference_Context;
          Type_Env : Leander.Core.Type_Env.Reference;
       end record;
+
+   overriding procedure Import
+     (This : in out Instance;
+      Env  : not null access Abstraction'Class);
 
    overriding procedure Bindings
      (This   : in out Instance;
@@ -88,6 +98,11 @@ package body Leander.Environment is
       Name : Leander.Names.Leander_Name)
       return Leander.Calculus.Tree;
 
+   overriding function Contains
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Boolean;
+
    overriding function Type_Env
      (This : Instance)
       return Leander.Core.Type_Env.Reference
@@ -131,6 +146,22 @@ package body Leander.Environment is
       return This.Cons.Element (Leander.Names.To_String (Name)).Defn;
    end Constructor;
 
+   --------------
+   -- Contains --
+   --------------
+
+   overriding function Contains
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Boolean
+   is
+      use type Leander.Core.Bindings.Reference;
+   begin
+      return This.Values.Contains (Name)
+        or else This.Bindings.Lookup (Name) /= null
+        or else (for some Import of This.Imports => Import.Contains (Name));
+   end Contains;
+
    ---------------
    -- Data_Type --
    ---------------
@@ -172,6 +203,7 @@ package body Leander.Environment is
       Context : Leander.Core.Inference.Inference_Context :=
                   Leander.Core.Inference.Initial_Context (This.Type_Env);
    begin
+      Leander.Logging.Log ("ELAB", Leander.Names.To_String (This.Name));
       Leander.Core.Binding_Groups.Inference.Infer
         (Context, This.Bindings);
 
@@ -228,6 +260,37 @@ package body Leander.Environment is
    end Foreign_Import;
 
    ------------
+   -- Import --
+   ------------
+
+   overriding procedure Import
+     (This : in out Instance;
+      Env  : not null access Abstraction'Class)
+   is
+      E : Instance'Class renames Instance'Class (Env.all);
+   begin
+      Leander.Logging.Log
+        ("IMPORT", Leander.Names.To_String (E.Name));
+      This.Imports.Append (Reference (Env));
+      for Position in E.Tycons.Iterate loop
+         if not This.Tycons.Contains (Tycon_Maps.Key (Position)) then
+            This.Tycons.Insert (Tycon_Maps.Key (Position),
+                                Tycon_Maps.Element (Position));
+         end if;
+      end loop;
+      for Position in E.Cons.Iterate loop
+         if not This.Cons.Contains (Con_Maps.Key (Position)) then
+            This.Cons.Insert (Con_Maps.Key (Position),
+                                Con_Maps.Element (Position));
+         end if;
+      end loop;
+
+      Leander.Logging.Log
+        ("IMPORT", E.Type_Env.Show);
+      This.Type_Env := This.Type_Env.Compose (E.Type_Env);
+   end Import;
+
+   ------------
    -- Lookup --
    ------------
 
@@ -245,7 +308,15 @@ package body Leander.Environment is
             Binding : constant Leander.Core.Bindings.Reference :=
                      This.Bindings.Lookup (Name);
          begin
-            if Binding /= null then
+            if Binding = null then
+               for Import of This.Imports loop
+                  if Import.Contains (Name) then
+                     return Import.Lookup (Name);
+                  end if;
+               end loop;
+               raise Constraint_Error with
+                 "undefined: " & Leander.Names.To_String (Name);
+            else
                declare
                   Tree : constant Leander.Calculus.Tree :=
                            Binding.To_Calculus (This.Context, This'Access);
@@ -253,9 +324,6 @@ package body Leander.Environment is
                   This.Values.Insert (Name, Tree);
                   return Tree;
                end;
-            else
-               raise Constraint_Error with
-                 "undefined: " & Leander.Names.To_String (Name);
             end if;
          end;
       end if;

@@ -34,11 +34,18 @@ package Leander.Calculus is
 
    type Calculus_Environment is interface;
 
+   function Contains
+     (This : Calculus_Environment;
+      Name : Leander.Names.Leander_Name)
+      return Boolean
+      is abstract;
+
    function Lookup
      (This : Calculus_Environment;
       Name : Leander.Names.Leander_Name)
       return Tree
-      is abstract;
+      is abstract
+     with Pre'Class => Contains (This, Name);
 
    procedure Compile
      (This     : Tree;

@@ -8,6 +8,7 @@ with Leander.Environment;
 with Leander.Parser;
 with Leander.Syntax;
 with Leander.Syntax.Expressions;
+with Leander.Tests.Self;
 with Skit.Compiler;
 with Skit.Debug;
 with Skit.Environment;
@@ -33,7 +34,7 @@ package body Leander.Tests.Evaluation is
                   Leander.Parser.Load_Module
                     ("./share/leander/modules/Prelude.hs");
       Machine : constant Skit.Machine.Reference :=
-                  Skit.Impl.Machine (8 * 1024);
+                  Skit.Impl.Machine (64 * 1024);
       Env     : constant Skit.Environment.Reference :=
                   Skit.Environment.Create
                     (Machine);
@@ -69,6 +70,10 @@ package body Leander.Tests.Evaluation is
       Test ("length ""Hello""", "Int", "5", Env, Prelude);
       Test ("runIO (putChar 'A')", "()", "I", Env, Prelude);
       Test ("runIO (putStr ""Hello, world!\n"")", "()", "I", Env, Prelude);
+
+      Leander.Tests.Self.Run_Tests
+        ("./share/leander/tests/RunTests.hs", Env);
+
       Machine.Report;
    end Run_Tests;
 

@@ -264,6 +264,10 @@ package body Leander.Core.Type_Env is
       Allocator.Prune;
    end Prune;
 
+   ----------
+   -- Save --
+   ----------
+
    function Save
      (This    : not null access constant Instance'Class;
       To      : not null access constant Instance'Class;
@@ -289,17 +293,14 @@ package body Leander.Core.Type_Env is
          Sc : constant Leander.Core.Schemes.Reference :=
                Element.Apply (Subst);
       begin
-         Result.Map.Insert (Key, Nullable_Scheme_Reference (Sc));
-         Leander.Logging.Log
-           ("ENV",
-            Leander.Names.To_String (Key)
-            & " :: "
-            & Sc.Show);
-         Leander.Logging.Log
-           ("ENV",
-            Leander.Names.To_String (Key)
-            & " :: "
-            & Sc.Show);
+         if not Result.Map.Contains (Key) then
+            Result.Map.Insert (Key, Nullable_Scheme_Reference (Sc));
+            Leander.Logging.Log
+              ("ENV",
+               Leander.Names.To_String (Key)
+               & " :: "
+               & Sc.Show);
+         end if;
       end Save;
 
    begin
