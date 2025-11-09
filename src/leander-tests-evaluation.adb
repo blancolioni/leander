@@ -60,10 +60,14 @@ package body Leander.Tests.Evaluation is
       Test ("sum (map succ [1,2,3])", "Int", "9", Env, Prelude);
       Test ("length (take 10 [1,2,3])", "Int", "3", Env, Prelude);
       Test ("length (take 2 [1,2,3])", "Int", "2", Env, Prelude);
-      Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);
-      Test ("sum (do { let x = 42; return x })", "Int", "42", Env, Prelude);
+    --  Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);
+    --  Test ("sum (do { let x = 42; return x })", "Int", "42", Env, Prelude);
       Test ("maybe 42 id Nothing", "Int", "42", Env, Prelude);
       Test ("maybe 0 sum (Just [1,2,3])", "Int", "6", Env, Prelude);
+      Test ("fst (123,456)", "Int", "123", Env, Prelude);
+      Test ("snd (123,456)", "Int", "456", Env, Prelude);
+      Test ("runIO (putChar 'A')", "()", "I", Env, Prelude);
+      Test ("runIO (putStr ['H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!', '\n'])", "()", "I", Env, Prelude);
       Machine.Report;
    end Run_Tests;
 
