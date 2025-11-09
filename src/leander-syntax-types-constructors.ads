@@ -1,4 +1,3 @@
-with Leander.Core.Tycons;
 with Leander.Core.Types;
 
 private package Leander.Syntax.Types.Constructors is
@@ -25,10 +24,7 @@ private
 
    overriding function To_Core
      (This : Instance)
-      return Leander.Core.Types.Reference
-   is (Leander.Core.Types.TCon
-       (Leander.Core.Tycons.Tycon
-          (This.Name, This.Kind)));
+      return Leander.Core.Types.Reference;
 
    function Constructor
      (Location : Leander.Source.Source_Location;
