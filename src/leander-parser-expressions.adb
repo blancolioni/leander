@@ -11,6 +11,7 @@ with Leander.Parser.Bindings;
 with Leander.Parser.Sequences;
 with Leander.Source;
 with Leander.Syntax.Bindings;
+with Leander.Syntax.Expressions;
 
 package body Leander.Parser.Expressions is
 
@@ -127,6 +128,10 @@ package body Leander.Parser.Expressions is
         return Leander.Syntax.Expressions.Reference
         with Pre => At_Expression;
 
+      function Parse_Rest_Of_Tuple
+        (First : Leander.Syntax.Expressions.Reference)
+         return Leander.Syntax.Expressions.Reference;
+
       ------------------------
       -- Parse_Rest_Of_List --
       ------------------------
@@ -174,6 +179,54 @@ package body Leander.Parser.Expressions is
             Xs);
       end Parse_Rest_Of_List;
 
+      -------------------------
+      -- Parse_Rest_Of_Tuple --
+      -------------------------
+
+      function Parse_Rest_Of_Tuple
+        (First : Leander.Syntax.Expressions.Reference)
+         return Leander.Syntax.Expressions.Reference
+      is
+
+         function Go return Leander.Syntax.Expressions.Reference_Array;
+
+         --------
+         -- Go --
+         --------
+
+         function Go return Leander.Syntax.Expressions.Reference_Array is
+         begin
+            if Tok = Tok_Comma then
+               Scan;
+               declare
+                  T : constant Reference := Parse_Expression;
+               begin
+                  return T & Go;
+               end;
+            else
+               if Tok = Tok_Right_Paren then
+                  Scan;
+               else
+                  Error ("missing ')'");
+               end if;
+               return [];
+            end if;
+         end Go;
+
+         Ts : constant Reference_Array := Go;
+         Count : constant Positive := Ts'Length;
+         Commas : constant String (1 .. Count) := [others => ','];
+         Con    : constant String := '(' & Commas & ')';
+         T      : Reference :=
+                    Application
+                      (First.Location, Constructor (First.Location, Con), First);
+      begin
+         for Item of Ts loop
+            T := Application (Item.Location, T, Item);
+         end loop;
+         return T;
+      end Parse_Rest_Of_Tuple;
+
    begin
       if At_Variable_Name then
          return Var : constant Reference :=
@@ -187,11 +240,38 @@ package body Leander.Parser.Expressions is
          do
             Scan;
          end return;
+      elsif Tok = Tok_Character_Literal then
+         return Lit : constant Reference :=
+           Character_Literal (Loc, Character'Pos (Tok_Character_Value))
+         do
+            Scan;
+         end return;
+      elsif Tok = Tok_String_Literal then
+         return Lit : constant Reference :=
+           String_Literal (Loc, Tok_Text)
+         do
+            Scan;
+         end return;
       elsif Tok = Tok_Left_Paren then
          Scan;
-         return E : constant Reference := Parse_Expression do
-            Expect (Tok_Right_Paren, []);
-         end return;
+         if Tok = Tok_Right_Paren then
+            Scan;
+            return Constructor (Loc, "()");
+         end if;
+
+         declare
+            First : constant Reference := Parse_Expression;
+         begin
+            if Tok = Tok_Right_Paren then
+               Scan;
+               return First;
+            elsif Tok = Tok_Comma then
+               return Parse_Rest_Of_Tuple (First);
+            else
+               Error ("expected ')'");
+               return First;
+            end if;
+         end;
       elsif Tok = Tok_Left_Bracket then
          Scan;
          if Tok = Tok_Right_Bracket then

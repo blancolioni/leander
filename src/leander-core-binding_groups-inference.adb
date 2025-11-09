@@ -1,3 +1,5 @@
+with Ada.Text_IO;
+
 with Leander.Core.Alts.Inference;
 with Leander.Core.Schemes;
 with Leander.Core.Substitutions;
@@ -16,7 +18,11 @@ package body Leander.Core.Binding_Groups.Inference is
      (Context       : in out Leander.Core.Inference.Inference_Context'Class;
       Binding_Group : not null access constant Instance'Class)
    is
-      procedure Infer_Bindings (Bs : Leander.Core.Bindings.Reference_Array);
+      procedure Infer_Explicit_Binding
+        (Explicit : Leander.Core.Bindings.Reference);
+
+      procedure Infer_Implicit_Bindings
+        (Bs : Leander.Core.Bindings.Reference_Array);
 
       procedure Infer_Alts
         (Alts : Leander.Core.Alts.Reference_Array;
@@ -40,11 +46,52 @@ package body Leander.Core.Binding_Groups.Inference is
          end loop;
       end Infer_Alts;
 
-      --------------------
-      -- Infer_Bindings --
-      --------------------
+      ----------------------------
+      -- Infer_Explicit_Binding --
+      ----------------------------
 
-      procedure Infer_Bindings (Bs : Leander.Core.Bindings.Reference_Array) is
+      procedure Infer_Explicit_Binding
+        (Explicit : Leander.Core.Bindings.Reference)
+      is
+         T : constant Core.Types.Reference := Explicit.Scheme.Fresh_Instance;
+         Start_Env : constant Core.Type_Env.Reference := Context.Type_Env;
+      begin
+
+         Infer_Alts (Explicit.Alts, T);
+
+         declare
+            use type Core.Tyvars.Tyvar_Array;
+            Subst : constant Substitutions.Instance :=
+                      Context.Current_Substitution;
+            T1 : constant Core.Types.Reference := T.Apply (Subst);
+            Fs : constant Core.Tyvars.Tyvar_Array :=
+                   Start_Env.Apply (Subst).Get_Tyvars;
+            Gs : constant Core.Tyvars.Tyvar_Array :=
+                   T1.Get_Tyvars / Fs;
+            Sc1 : constant Leander.Core.Schemes.Reference :=
+                    Schemes.Quantify (Gs, T1);
+         begin
+            Leander.Logging.Log
+              ("explicit: " & Explicit.Scheme.Show);
+            Leander.Logging.Log
+              ("Inferred: " & Sc1.Show);
+         end;
+      exception
+         when others =>
+            Ada.Text_IO.Put_Line
+              (Ada.Text_IO.Standard_Error,
+               "inference failed: "
+               & To_String (Explicit.Name)
+               & " :: " & Explicit.Scheme.Show);
+      end Infer_Explicit_Binding;
+
+      -----------------------------
+      -- Infer_Implicit_Bindings --
+      -----------------------------
+
+      procedure Infer_Implicit_Bindings
+        (Bs : Leander.Core.Bindings.Reference_Array)
+      is
          Ts : Core.Types.Type_Array (Bs'Range) :=
                 [others => Core.Types.New_TVar];
          Scs : Core.Schemes.Reference_Array (Ts'Range) :=
@@ -117,12 +164,31 @@ package body Leander.Core.Binding_Groups.Inference is
          end loop;
 
          Context.Update_Type_Env (Env);
-      end Infer_Bindings;
+      end Infer_Implicit_Bindings;
 
    begin
+
+      if not Binding_Group.Explicit_Bindings.Is_Empty then
+         declare
+            Env : Core.Type_Env.Reference := Context.Type_Env;
+         begin
+            for B of Binding_Group.Explicit_Bindings.First_Element loop
+               Env := Env.Compose (B.Name, B.Scheme);
+            end loop;
+            Context.Update_Type_Env (Env);
+         end;
+      end if;
+
       for Bs of Binding_Group.Implicit_Bindings loop
-         Infer_Bindings (Bs);
+         Infer_Implicit_Bindings (Bs);
       end loop;
+
+      if not Binding_Group.Explicit_Bindings.Is_Empty then
+         for B of Binding_Group.Explicit_Bindings.First_Element loop
+            Infer_Explicit_Binding (B);
+         end loop;
+      end if;
+
    end Infer;
 
 end Leander.Core.Binding_Groups.Inference;

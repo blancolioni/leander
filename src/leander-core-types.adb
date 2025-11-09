@@ -351,10 +351,15 @@ package body Leander.Core.Types is
                              & "->"
                              & This.Right.Show;
                         end if;
-                     elsif Left.Left = T_Pair then
+                     elsif Left.Left.Show = "(,)" then
                         return "("
                           & Left.Right.Show
                           & ","
+                          & This.Right.Show
+                          & ")";
+                     elsif This.Right.Tag = TApp then
+                        return This.Left.Show
+                          & " ("
                           & This.Right.Show
                           & ")";
                      else

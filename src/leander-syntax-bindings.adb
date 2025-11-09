@@ -1,5 +1,6 @@
 with Leander.Core.Alts;
 with Leander.Core.Bindings;
+with Leander.Core.Schemes;
 with Leander.Core.Types;
 with Leander.Syntax.Bindings.Transform;
 with Leander.Syntax.Expressions;
@@ -211,8 +212,8 @@ package body Leander.Syntax.Bindings is
               (Key,
                Binding_Entry'
                  (Implicit.Element (Key) with delta
-                      T    => nullable_Type_Reference
-                        (Type_Binding.Type_Expr.To_Core)));
+                      T    => Nullable_Type_Reference
+                    (Type_Binding.Type_Expr.To_Core)));
             Implicit.Delete (Key);
          end;
       end loop;
@@ -249,6 +250,10 @@ package body Leander.Syntax.Bindings is
             function To_Core_Bindings
               (G : Binding_Graphs.Sub_Graph)
                return Core.Bindings.Reference_Array;
+
+            function To_Scheme
+              (T : Nullable_Type_Reference)
+               return Leander.Core.Schemes.Reference;
 
             ----------------------
             -- To_Core_Bindings --
@@ -296,7 +301,29 @@ package body Leander.Syntax.Bindings is
                return [for Ref of List => Ref];
             end To_Core_Bindings;
 
+            ---------------
+            -- To_Scheme --
+            ---------------
+
+            function To_Scheme
+              (T : Nullable_Type_Reference)
+               return Leander.Core.Schemes.Reference
+            is
+            begin
+               return Core.Schemes.Quantify
+                 (T.Get_Tyvars,
+                  Core.Types.Reference (T));
+            end To_Scheme;
+
          begin
+            Builder.Add_Explicit_Bindings
+              ([for Binding of Explicit =>
+                    Core.Bindings.Explicit_Binding
+                  (Core.Varid (Binding.Name),
+                   [for Alt of Binding.Alts => Alt],
+                   To_Scheme (Binding.T))
+               ]);
+
             for I in 1 .. Binding_Graphs.Sub_Graph_Count (Subgraphs)  loop
                Builder.Add_Implicit_Bindings
                  (To_Core_Bindings
