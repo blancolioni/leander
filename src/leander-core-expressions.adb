@@ -196,7 +196,7 @@ package body Leander.Core.Expressions is
          when ECon =>
             return Env.Constructor (Leander.Names.Leander_Name (This.Con_Id));
          when ELit =>
-            return Number (Integer'Value (This.Literal.Show));
+            return This.Literal.To_Calculus;
          when EApp =>
             return Apply
               (This.Left.To_Calculus (Types, Env),

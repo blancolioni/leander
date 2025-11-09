@@ -66,8 +66,9 @@ package body Leander.Tests.Evaluation is
       Test ("maybe 0 sum (Just [1,2,3])", "Int", "6", Env, Prelude);
       Test ("fst (123,456)", "Int", "123", Env, Prelude);
       Test ("snd (123,456)", "Int", "456", Env, Prelude);
+      Test ("length ""Hello""", "Int", "5", Env, Prelude);
       Test ("runIO (putChar 'A')", "()", "I", Env, Prelude);
-      Test ("runIO (putStr ['H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!', '\n'])", "()", "I", Env, Prelude);
+      Test ("runIO (putStr ""Hello, world!\n"")", "()", "I", Env, Prelude);
       Machine.Report;
    end Run_Tests;
 
