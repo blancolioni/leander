@@ -106,6 +106,9 @@ small 2 = True
 small 3 = True
 small x = False
 
+fst (x,y) = x
+snd (x,y) = y
+
 -- Maybe type
 
 data  Maybe a  =  Nothing | Just a

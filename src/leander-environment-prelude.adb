@@ -15,8 +15,12 @@ package body Leander.Environment.Prelude is
       Env    : constant Reference := New_Environment ("Prelude");
       Tv_A   : constant Core.Tyvars.Instance :=
                  Core.Tyvars.Tyvar (Core.To_Varid ("a"), Core.Kinds.Star);
+      Tv_B   : constant Core.Tyvars.Instance :=
+                 Core.Tyvars.Tyvar (Core.To_Varid ("b"), Core.Kinds.Star);
       T_A    : constant Core.Types.Reference :=
                  Core.Types.TVar (Tv_A);
+      T_B    : constant Core.Types.Reference :=
+                 Core.Types.TVar (Tv_B);
       T_Bool : constant Core.Types.Reference :=
                  Core.Types.TCon
                    (Core.Tycons.Tycon
@@ -24,12 +28,27 @@ package body Leander.Environment.Prelude is
                        Core.Kinds.Star));
       T_List_A : constant Core.Types.Reference :=
                    Core.Types.List_Of (T_A);
+      T_Tuple_2 : constant Core.Types.Reference :=
+                    Core.Types.Pair (T_A, T_B);
       Builder  : Leander.Data_Types.Builder.Data_Type_Builder;
    begin
       Builder.Start
         (Core.Types.T_Unit);
       Builder.Add_Con
         (Core.To_Conid ("()"), To_Scheme (Core.Types.T_Unit));
+      Builder.Build;
+      Env.Data_Type (Builder.Data_Type);
+
+      Builder.Start (T_Tuple_2);
+      Builder.Add_Con
+        (Core.To_Conid ("(,)"),
+         Quantify
+           ([Tv_A, Tv_B],
+            Core.Types.Fn
+              (T_A,
+               Core.Types.Fn
+                 (T_B,
+                  T_Tuple_2))));
       Builder.Build;
       Env.Data_Type (Builder.Data_Type);
 

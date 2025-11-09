@@ -16,6 +16,59 @@ package body Leander.Parser.Types is
       use Leander.Syntax.Types;
       Loc    : constant Leander.Source.Source_Location :=
                  Current_Source_Location;
+
+      function Scan_Rest_Of_Tuple
+        (First : Leander.Syntax.Types.Reference)
+         return Leander.Syntax.Types.Reference;
+
+      ------------------------
+      -- Scan_Rest_Of_Tuple --
+      ------------------------
+
+      function Scan_Rest_Of_Tuple
+        (First : Leander.Syntax.Types.Reference)
+         return Leander.Syntax.Types.Reference
+      is
+
+         function Go return Leander.Syntax.Types.Reference_Array;
+
+         --------
+         -- Go --
+         --------
+
+         function Go return Leander.Syntax.Types.Reference_Array is
+         begin
+            if Tok = Tok_Comma then
+               Scan;
+               declare
+                  T : constant Reference := Parse_Type_Expression;
+               begin
+                  return T & Go;
+               end;
+            else
+               if Tok = Tok_Right_Paren then
+                  Scan;
+               else
+                  Error ("missing ')'");
+               end if;
+               return [];
+            end if;
+         end Go;
+
+         Ts : constant Reference_Array := Go;
+         Count : constant Positive := Ts'Length;
+         Commas : constant String (1 .. Count) := [others => ','];
+         Con    : constant String := '(' & Commas & ')';
+         T      : Reference :=
+                    Application
+                      (First.Location, Constructor (First.Location, Con), First);
+      begin
+         for Item of Ts loop
+            T := Application (Item.Location, T, Item);
+         end loop;
+         return T;
+      end Scan_Rest_Of_Tuple;
+
    begin
       if At_Variable then
          return T : constant Reference := Variable (Loc, Tok_Text) do
@@ -37,6 +90,27 @@ package body Leander.Parser.Types is
             begin
                Expect (Tok_Right_Bracket, [Tok_Right_Arrow, Tok_Identifier]);
                return Application (Loc, Constructor (Loc, "[]"), Inner);
+            end;
+         end if;
+      elsif Tok = Tok_Left_Paren then
+         Scan;
+         if Tok = Tok_Right_Paren then
+            Scan;
+            return Constructor (Loc, "()");
+         else
+            declare
+               Inner : constant Reference := Parse_Type_Expression;
+            begin
+               if Tok = Tok_Comma then
+                  return Scan_Rest_Of_Tuple (Inner);
+               elsif Tok = Tok_Right_Paren then
+                  Scan;
+                  return Inner;
+               else
+                  Error ("missing ')'");
+                  Skip_To ([Tok_Right_Arrow, Tok_Identifier], []);
+                  return Inner;
+               end if;
             end;
          end if;
       else
