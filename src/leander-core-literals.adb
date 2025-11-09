@@ -88,14 +88,25 @@ package body Leander.Core.Literals is
    begin
       case This.Tag is
          when LChar =>
-            return Number (Character'Pos (Image (Image'First)));
+            return Number (Integer'Value (Image));
          when LFloat =>
             return Number (Integer (Float'Value (Image)));
          when LInteger =>
             return Number (Integer'Value (Image));
          when LString =>
-            raise Constraint_Error with
-              "string literals not Supported";
+            declare
+               T : Tree := Symbol ("[]");
+            begin
+               for Ch of reverse Image loop
+                  T :=
+                    Apply
+                      (Apply
+                         (Symbol (":"),
+                          Number (Character'Pos (Ch))),
+                       T);
+               end loop;
+               return T;
+            end;
       end case;
    end To_Calculus;
 
