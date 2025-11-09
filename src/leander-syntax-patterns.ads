@@ -49,6 +49,21 @@ package Leander.Syntax.Patterns is
       Image    : String)
       return Reference;
 
+   function Character_Literal
+     (Location : Leander.Source.Source_Location;
+      Index    : Natural)
+      return Reference;
+
+   function String_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference;
+
+   function Float_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference;
+
    function To_Core (This : Instance) return Leander.Core.Patterns.Reference
                      is abstract;
 

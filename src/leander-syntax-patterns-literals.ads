@@ -10,11 +10,27 @@ private package Leander.Syntax.Patterns.Literals is
       Image    : String)
       return Reference;
 
+   function Character_Literal
+     (Location : Leander.Source.Source_Location;
+      Code     : Natural)
+      return Reference;
+
+   function String_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference;
+
+   function Float_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference;
+
 private
 
    type Instance is new Parent with
       record
          Class : Syntax.Literal_Class;
+         Code  : Natural;
          Image : Ada.Strings.Unbounded.Unbounded_String;
       end record;
 
@@ -41,7 +57,31 @@ private
      (Location : Leander.Source.Source_Location;
       Image    : String)
       return Reference
-   is (new Instance'(Location, Integer_Literal,
+   is (new Instance'
+         (Location => Location,
+          Class    => Integer_Literal,
+          Code     => 0,
+          Image    => Ada.Strings.Unbounded.To_Unbounded_String (Image)));
+
+   function Character_Literal
+     (Location : Leander.Source.Source_Location;
+      Code     : Natural)
+      return Reference
+   is (new Instance'(Location, Character_Literal, Code,
+       Ada.Strings.Unbounded.Null_Unbounded_String));
+
+   function String_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference
+   is (new Instance'(Location, String_Literal, 0,
+       Ada.Strings.Unbounded.To_Unbounded_String (Image)));
+
+   function Float_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference
+   is (new Instance'(Location, Float_Literal, 0,
        Ada.Strings.Unbounded.To_Unbounded_String (Image)));
 
 end Leander.Syntax.Patterns.Literals;
