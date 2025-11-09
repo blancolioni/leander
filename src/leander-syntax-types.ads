@@ -6,6 +6,7 @@ package Leander.Syntax.Types is
    subtype Parent is Leander.Syntax.Instance;
    type Instance is abstract new Parent with private;
    type Reference is access constant Instance'Class;
+   type Reference_Array is array (Positive range <>) of Reference;
 
    function Kind (This : Instance) return Leander.Core.Kinds.Kind;
 

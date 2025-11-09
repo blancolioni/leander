@@ -1,4 +1,5 @@
 with Ada.Containers.Doubly_Linked_Lists;
+
 with Leander.Allocator;
 
 package body Leander.Core.Binding_Groups is

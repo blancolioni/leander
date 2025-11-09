@@ -15,6 +15,22 @@ package body Leander.Core.Bindings is
       return Reference
    is (Reference (Allocator.Allocate (Instance (This))));
 
+   ----------------------
+   -- Explicit_Binding --
+   ----------------------
+
+   function Explicit_Binding
+     (Name   : Varid;
+      Alts   : Leander.Core.Alts.Reference_Array;
+      Scheme : Leander.Core.Schemes.Reference)
+      return Reference
+   is
+   begin
+      return Allocate
+        (Instance'
+           (Alts'Length, Name, Alts, Nullable_Scheme_Reference (Scheme)));
+   end Explicit_Binding;
+
    -------------------
    -- Has_Reference --
    -------------------

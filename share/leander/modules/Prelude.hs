@@ -1,7 +1,7 @@
 module Prelude where
 
-foreign import skit "#eq" #primIntEq :: Int -> Int -> Int
-foreign import skit "#eq" #primCharEq :: Char -> Char -> Char
+foreign import skit "#eq" #primIntEq :: Int -> Int -> Bool
+foreign import skit "#eq" #primCharEq :: Char -> Char -> Bool
 
 foreign import skit "#add" #primIntAdd :: Int -> Int -> Int
 foreign import skit "#mul" #primIntMul :: Int -> Int -> Int
@@ -26,37 +26,51 @@ infixl 1  >>, >>=
 infixr 1  =<<
 infixr 0  $, $!, `seq`
 
+id :: a -> a
 id x = x
 
-const x = \y -> x
+const :: a -> b -> a
+const x y = x
 
-(.) f g x = f (g x)
+(.) :: (b -> c) -> (a -> b) -> (a -> c)
+(.) f g = \x -> f (g x)
 
+flip :: (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
 
+seq :: a -> b -> a
 seq = #primSeq
 
+($) :: (a -> b) -> a -> b
 ($) f x = f x
+
+($!) :: (a -> b) -> a -> b
 ($!) f x = seq x (f x)
 
+not :: Bool -> Bool
 not True = False
 not False = True
 
+(&&), (||) :: Bool -> Bool -> Bool
 (&&) True b = b
 (&&) False _ = False
 
 (||) True _ = True
 (||) False b = b
 
+(==), (/=) :: Int -> Int -> Bool
 (==) = #primIntEq
 
 (/=) x y = not (x == y)
 
+null :: [a] -> Bool
 null [] = True
 null (x:xs) = False
 
+length :: [a] -> Int
 length [] = 0
 length (x:xs) = #primIntAdd 1 (length xs)
+
 
 (+) = #primIntAdd
 (*) = #primIntMul
