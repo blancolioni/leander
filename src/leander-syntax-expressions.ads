@@ -7,6 +7,7 @@ package Leander.Syntax.Expressions is
    subtype Parent is Leander.Syntax.Instance;
    type Instance is abstract new Parent with private;
    type Reference is access constant Instance'Class;
+   type Reference_Array is array (Positive range <>) of Reference;
 
    function To_Core
      (This : Instance)
@@ -28,6 +29,16 @@ package Leander.Syntax.Expressions is
       return Reference;
 
    function Integer_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference;
+
+   function Character_Literal
+     (Location : Leander.Source.Source_Location;
+      Index    : Natural)
+      return Reference;
+
+   function String_Literal
      (Location : Leander.Source.Source_Location;
       Image    : String)
       return Reference;

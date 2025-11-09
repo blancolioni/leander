@@ -16,7 +16,8 @@ package Leander.Syntax is
    is null;
 
    type Literal_Class is
-     (Integer_Literal);
+     (Integer_Literal, Character_Literal,
+      Float_Literal, String_Literal);
 
 private
 
