@@ -75,6 +75,11 @@ package Leander.Environment is
       DT     : Leander.Data_Types.Reference)
    is abstract;
 
+   procedure Import
+     (This : in out Abstraction;
+      Env  : not null access Abstraction'Class)
+   is abstract;
+
    procedure Foreign_Import
      (This         : in out Abstraction;
       Name         : String;

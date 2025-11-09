@@ -1,3 +1,4 @@
+with Ada.Exceptions;
 with Leander.Allocator;
 with Leander.Core.Binding_Groups;
 with Leander.Environment;
@@ -224,6 +225,10 @@ package body Leander.Core.Expressions is
                return E;
             end;
       end case;
+   exception
+      when E : others =>
+         This.Error (Ada.Exceptions.Exception_Message (E));
+         raise;
    end To_Calculus;
 
    --------------
