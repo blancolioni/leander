@@ -23,7 +23,8 @@ tests = [
     ("small 5 == False", not (small 5)),
     ("fst (3,4) == 3", fst (3,4) == 3),
     ("snd (3,4) == 4", snd (3,4) == 4),
-    ("foldr (+) 0 [1,2,3] == 6", foldr (+) 0 [1,2,3] == 6)
+    ("foldr (+) 0 [1,2,3] == 6", foldr (+) 0 [1,2,3] == 6),
+    ("let x = 3 in x + 1 == 4", (let x = 3 in x + 1) == 4)
 ]
 
 main :: IO ()
