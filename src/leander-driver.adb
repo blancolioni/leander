@@ -47,6 +47,10 @@ begin
             end if;
          end;
 
+         if Command_Line.Report then
+            H.Report;
+         end if;
+
          H.Close;
       end;
    end if;

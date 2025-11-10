@@ -18,6 +18,9 @@ package Leander.Handles is
      (This : in out Handle;
       Path : String);
 
+   procedure Report
+     (This : in out Handle);
+
    procedure Close (This : in out Handle);
 
 private

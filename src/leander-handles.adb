@@ -20,7 +20,7 @@ package body Leander.Handles is
 
    procedure Close (This : in out Handle) is
    begin
-      This.Skit_Env.Machine.Report;
+      null;
    end Close;
 
    ------------
@@ -109,5 +109,16 @@ package body Leander.Handles is
          end if;
       end;
    end Load_Module;
+
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report
+     (This : in out Handle)
+   is
+   begin
+      This.Skit_Env.Machine.Report;
+   end Report;
 
 end Leander.Handles;
