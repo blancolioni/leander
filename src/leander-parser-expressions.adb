@@ -4,6 +4,7 @@ with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Strings.Fixed.Hash;
 with Ada.Text_IO;
 
+with Leander.Names;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
@@ -64,6 +65,21 @@ package body Leander.Parser.Expressions is
         At_Element   => At_Expression,
         Parse      => Parse_Statement);
 
+   type Case_Alt_Record is
+      record
+         Pat : Leander.Syntax.Patterns.Reference;
+         Exp : Leander.Syntax.Expressions.Reference;
+      end record;
+
+   function Parse_Case_Alt return Case_Alt_Record;
+
+   package Case_Alt_Parser is
+     new Leander.Parser.Sequences
+       (Element_Name => "alt",
+        Element_Type => Case_Alt_Record,
+        At_Element   => At_Atomic_Expression,
+        Parse        => Parse_Case_Alt);
+
    ----------------
    -- Add_Fixity --
    ----------------
@@ -102,7 +118,7 @@ package body Leander.Parser.Expressions is
    begin
       return At_Atomic_Expression
         or else (At_Operator and then Tok_Text = "-")
-        or else Tok <= [Tok_Lambda, Tok_Let, Tok_Do];
+        or else Tok <= [Tok_Lambda, Tok_Let, Tok_Do, Tok_Case];
    end At_Expression;
 
    ----------------
@@ -288,6 +304,24 @@ package body Leander.Parser.Expressions is
          raise Parse_Error;
       end if;
    end Parse_Atomic_Expression;
+
+   --------------------
+   -- Parse_Case_Alt --
+   --------------------
+
+   function Parse_Case_Alt return Case_Alt_Record is
+      Pat : constant Leander.Syntax.Patterns.Reference :=
+              Parse_Expression.To_Pattern;
+   begin
+      Expect (Tok_Right_Arrow, [Tok_Identifier]);
+
+      declare
+         Expr : constant Leander.Syntax.Expressions.Reference :=
+                  Parse_Expression;
+      begin
+         return (Pat, Expr);
+      end;
+   end Parse_Case_Alt;
 
    ----------------------
    -- Parse_Expression --
@@ -517,6 +551,53 @@ package body Leander.Parser.Expressions is
                  (Loc, Bs, Expr);
             end;
          end;
+      elsif Tok = Tok_Case then
+         Scan;
+         declare
+            Loc  : constant Source.Source_Location := Current_Source_Location;
+            F_Id : constant Leander.Names.Leander_Name :=
+                     Leander.Names.New_Name;
+            E    : constant Syntax.Expressions.Reference :=
+                     Parse_Expression;
+            Bs   : constant Leander.Syntax.Bindings.Reference :=
+                     Leander.Syntax.Bindings.Empty;
+
+            procedure On_Alt
+              (Alt : Case_Alt_Record);
+
+            ------------
+            -- On_Alt --
+            ------------
+
+            procedure On_Alt
+              (Alt : Case_Alt_Record)
+            is
+            begin
+               Bs.Add_Binding
+                 (Alt.Pat.Location,
+                  Leander.Names.To_String (F_Id),
+                  [Alt.Pat],
+                  Alt.Exp);
+            end On_Alt;
+         begin
+            if Tok = Tok_Of then
+               Scan;
+            else
+               Error ("missing 'of'");
+            end if;
+
+            Case_Alt_Parser.Parse_Sequence (On_Alt'Access);
+
+            return Syntax.Expressions.Let
+              (Loc, Bs,
+               Leander.Syntax.Expressions.Application
+                 (E.Location,
+                  Leander.Syntax.Expressions.Variable
+                    (E.Location,
+                     Leander.Names.To_String (F_Id)),
+                  E));
+         end;
+
       elsif Tok = Tok_Do then
          Scan;
          declare
