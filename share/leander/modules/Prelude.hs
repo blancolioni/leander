@@ -153,9 +153,9 @@ data IO a = IO (Int -> (a,Int))
 
 returnIO x = IO (\ w -> (x, w))
 bindIO (IO f) g = IO (\w -> let xw' = f w
-                            in let ioh = g (fst xw')
-                               in let geth (IO h) = h
-                                  in geth ioh (snd xw'))
+                                ioh = g (fst xw')
+                                geth (IO h) = h
+                            in geth ioh (snd xw'))
 
 return = returnIO
 (>>=) = bindIO
@@ -185,5 +185,5 @@ putStrLn str = putStr str >> putChar '\n'
 
 runIO :: IO a -> a
 runIO a = let getf (IO f) = f
-          in let xw' = getf a 1
-             in seq (snd xw') (fst xw')
+              xw' = getf a 1
+          in seq (snd xw') (fst xw')

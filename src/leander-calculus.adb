@@ -98,14 +98,15 @@ package body Leander.Calculus is
                                 (Leander.Names.To_String (This.Ref));
                begin
                   if Binding = Skit.Undefined then
+                     if not Env.Contains (This.Ref) then
+                        raise Program_Error with
+                          "undefined: "
+                          & Leander.Names.To_String (This.Ref);
+                     end if;
+
                      declare
                         T : constant Tree := Env.Lookup (This.Ref);
                      begin
-                        if T = null then
-                           raise Program_Error with
-                             "undefined: "
-                             & Leander.Names.To_String (This.Ref);
-                        end if;
                         Compile (T, Env, Skit_Env);
                         Skit_Env.Bind (Leander.Names.To_String (This.Ref),
                                        Skit_Env.Machine.Top);
