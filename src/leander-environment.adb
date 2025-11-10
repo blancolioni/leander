@@ -49,6 +49,9 @@ package body Leander.Environment is
          Classes  : Type_Class_Maps.Map;
       end record;
 
+   overriding function Name (This : Instance) return String
+   is (Leander.Names.To_String (This.Name));
+
    overriding procedure Import
      (This : in out Instance;
       Env  : not null access Abstraction'Class);

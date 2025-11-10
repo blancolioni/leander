@@ -1,4 +1,5 @@
 with Ada.Exceptions;
+
 with Leander.Allocator;
 with Leander.Core.Binding_Groups;
 with Leander.Environment;
@@ -212,10 +213,8 @@ package body Leander.Core.Expressions is
                Ids : constant Varid_Array :=
                        This.Let_Bindings.Varids;
             begin
-               for Id of reverse Ids loop
-                  E := Lambda (Leander.Names.Leander_Name (Id), E);
-               end loop;
                for Id of Ids loop
+                  E := Lambda (Leander.Names.Leander_Name (Id), E);
                   E := Apply
                     (E,
                      This.Let_Bindings.Lookup
