@@ -118,7 +118,7 @@ package body Leander.Parser.Expressions is
    begin
       return At_Atomic_Expression
         or else (At_Operator and then Tok_Text = "-")
-        or else Tok <= [Tok_Lambda, Tok_Let, Tok_Do, Tok_Case];
+        or else Tok <= [Tok_Lambda, Tok_Let, Tok_Do, Tok_Case, Tok_If];
    end At_Expression;
 
    ----------------
@@ -597,6 +597,49 @@ package body Leander.Parser.Expressions is
                      Leander.Names.To_String (F_Id)),
                   E));
          end;
+      elsif Tok = Tok_If then
+         declare
+            Loc : constant Source.Source_Location := Current_Source_Location;
+            Cond, T, F : Syntax.Expressions.Reference;
+            Fn         : constant String :=
+                           Leander.Names.To_String (Leander.Names.New_Name);
+            Bs         : constant Leander.Syntax.Bindings.Reference :=
+                           Leander.Syntax.Bindings.Empty;
+         begin
+            Scan;
+            Cond := Parse_Expression;
+            if Tok = Tok_Then then
+               Scan;
+               T := Parse_Expression;
+               if Tok = Tok_Else then
+                  Scan;
+                  F := Parse_Expression;
+               else
+                  Error ("missing 'else'");
+                  F := Syntax.Expressions.Constructor (Loc, "False");
+               end if;
+            else
+               Error ("missing 'then'");
+               T := Syntax.Expressions.Constructor (Loc, "True");
+               F := Syntax.Expressions.Constructor (Loc, "False");
+            end if;
+
+            Bs.Add_Binding
+              (Loc, Fn,
+               [Syntax.Patterns.Constructor (Loc, "True", [])],
+               T);
+            Bs.Add_Binding
+              (Loc, Fn,
+               [Syntax.Patterns.Constructor (Loc, "False", [])],
+               F);
+            return Syntax.Expressions.Let
+              (Loc, Bs,
+               Leander.Syntax.Expressions.Application
+                 (Loc,
+                  Leander.Syntax.Expressions.Variable
+                    (Loc, Fn),
+                  Cond));
+         end;
 
       elsif Tok = Tok_Do then
          Scan;
@@ -702,7 +745,7 @@ package body Leander.Parser.Expressions is
             return To_Expression (Stmts.First);
          end;
       else
-         Error ("expected to be at an expression");
+         Error ("expected to be at an expression near " & Tok'Image);
          raise Parse_Error;
       end if;
    end Parse_Left_Expression;
