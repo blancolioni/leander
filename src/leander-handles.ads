@@ -30,6 +30,10 @@ package Leander.Handles is
    procedure Report
      (This : in out Handle);
 
+   procedure Trace
+     (This    : in out Handle;
+      Enabled : Boolean);
+
    procedure Close (This : in out Handle);
 
 private

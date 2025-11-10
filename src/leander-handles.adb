@@ -159,4 +159,18 @@ package body Leander.Handles is
       This.Skit_Env.Machine.Report;
    end Report;
 
+   -----------
+   -- Trace --
+   -----------
+
+   procedure Trace
+     (This    : in out Handle;
+      Enabled : Boolean)
+   is
+   begin
+      This.Skit_Env.Machine.Set
+        ("trace-eval",
+         (if Enabled then "true" else "false"));
+   end Trace;
+
 end Leander.Handles;
