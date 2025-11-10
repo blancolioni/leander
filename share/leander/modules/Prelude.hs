@@ -185,5 +185,5 @@ putStrLn str = putStr str >> putChar '\n'
 
 runIO :: IO a -> a
 runIO a = let getf (IO f) = f
-          in let xw' = getf a 1
-             in seq (snd xw') (fst xw')
+              xw' = getf a 1
+          in seq (snd xw') (fst xw')
