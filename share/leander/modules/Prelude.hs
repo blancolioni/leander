@@ -12,6 +12,9 @@ foreign import skit "#trace" #trace :: a -> a
 
 foreign import skit "#putChar" #primPutChar :: Int -> Int -> Char -> Int
 
+foreign import skit "#minInt" #minInt :: Int
+foreign import skit "#maxInt" #maxInt :: Int
+
 infixr 9  .
 infixr 8  ^, ^^, **
 infixl 7  *, /, `quot`, `rem`, `div`, `mod`
