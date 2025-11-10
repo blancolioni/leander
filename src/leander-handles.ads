@@ -9,7 +9,16 @@ package Leander.Handles is
      (Size : Natural)
       return Handle;
 
+   function Current_Environment
+     (This : Handle)
+      return String;
+
    function Evaluate
+     (This       : in out Handle;
+      Expression : String)
+      return String;
+
+   function Infer_Type
      (This       : in out Handle;
       Expression : String)
       return String;

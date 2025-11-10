@@ -44,6 +44,9 @@ package body Leander.Environment is
          Type_Env : Leander.Core.Type_Env.Reference;
       end record;
 
+   overriding function Name (This : Instance) return String
+   is (Leander.Names.To_String (This.Name));
+
    overriding procedure Import
      (This : in out Instance;
       Env  : not null access Abstraction'Class);

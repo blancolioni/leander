@@ -3,10 +3,12 @@ with Ada.Text_IO;
 with Leander.Command_Line;
 with Leander.Handles;
 with Leander.Logging;
+with Leander.Repl;
 with Leander.Tests;
 with Leander.Version;
 
 procedure Leander.Driver is
+   Core_Size : constant Natural := Command_Line.Core_Size * 1024 / 8;
 begin
 
    if Command_Line.Version then
@@ -21,7 +23,7 @@ begin
    if Command_Line.Evaluate /= "" then
       declare
          H : Leander.Handles.Handle :=
-               Leander.Handles.Create (Command_Line.Core_Size * 1024 / 8);
+               Leander.Handles.Create (Core_Size);
          Result : constant String :=
                     H.Evaluate (Command_Line.Evaluate);
       begin
@@ -35,7 +37,7 @@ begin
    elsif Command_Line.Main /= "" then
       declare
          H      : Leander.Handles.Handle :=
-                    Leander.Handles.Create (Command_Line.Core_Size * 1024 / 8);
+                    Leander.Handles.Create (Core_Size);
       begin
          H.Load_Module (Command_Line.Main);
 
@@ -53,6 +55,8 @@ begin
 
          H.Close;
       end;
+   else
+      Leander.Repl.Start (Core_Size);
    end if;
 
    if Command_Line.Enable_Log then
