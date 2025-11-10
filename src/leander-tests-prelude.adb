@@ -34,7 +34,7 @@ package body Leander.Tests.Prelude is
       Test ("let {x=1;y=x} in x", "Int", Prelude);
       Test ("let {x=1;y=x} in y", "Int", Prelude);
       Test ("let {x=y;y=1} in x", "Int", Prelude);
-      Test ("null", "[a]->Bool", Prelude);
+      Test ("null", "[a] -> Bool", Prelude);
       Test ("null []", "Bool", Prelude);
    end Run_Tests;
 

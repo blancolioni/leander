@@ -28,13 +28,13 @@ package body Leander.Tests.Inference is
       Test (Lambda
             (Loc, To_Varid ("x"),
                Variable (Loc, To_Varid ("x"))),
-            "a->a");
+            "a -> a");
       Test (Lambda
             (Loc, To_Varid ("x"),
                Lambda
                  (Loc, To_Varid ("y"),
                   Variable (Loc, To_Varid ("x")))),
-            "a->b->a");
+            "a -> b -> a");
    end Run_Tests;
 
    ----------

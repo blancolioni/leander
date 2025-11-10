@@ -344,11 +344,11 @@ package body Leander.Core.Types is
                           and then Left.Right.Left.Left = T_Arrow
                         then
                            return "(" & Left.Right.Show & ")"
-                             & "->"
+                             & " -> "
                              & This.Right.Show;
                         else
                            return Left.Right.Show
-                             & "->"
+                             & " -> "
                              & This.Right.Show;
                         end if;
                      elsif Left.Left.Show = "(,)" then
