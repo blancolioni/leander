@@ -54,7 +54,7 @@ private
    type Nullable_Scheme_Reference is
      access constant Leander.Core.schemes.Instance'Class;
 
-   type Instance (Alt_Count : Positive) is
+   type Instance (Alt_Count : Natural) is
      new Leander.Showable.Abstraction with
       record
          Name   : Varid;

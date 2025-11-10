@@ -1,22 +1,23 @@
-with Leander.Core.Types;
-with Leander.Core.Tyvars;
 with Leander.Showable;
 
 package Leander.Core.Constraints is
 
-   type Instance is
-     new Leander.Core.Tyvars.Container_Abstraction
-     and Leander.Showable.Abstraction
+   type Instance is new Leander.Showable.Abstraction
    with private;
+
+   type Instance_Array is array (Positive range <>) of Instance;
+
+   function Constraint
+     (Class_Name    : String;
+      Variable_Name : String)
+      return Instance;
 
 private
 
-   type Instance is
-     new Leander.Core.Tyvars.Container_Abstraction
-     and Leander.Showable.Abstraction with
+   type Instance is new Leander.Showable.Abstraction with
       record
-         Ty         : Leander.Core.Types.Reference;
-         Constraint : Leander.Core.Types.Reference;
+         Class_Name : Conid;
+         Var_Name   : Varid;
       end record;
 
    overriding function Show (This : Instance) return String;

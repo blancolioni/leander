@@ -25,8 +25,9 @@ package body Leander.Syntax.Bindings is
      new WL.String_Maps (Binding_Entry);
 
    function To_Binding_Group
-     (Bindings : Name_Binding_Lists.List;
-      Types    : Type_Binding_Lists.List)
+     (Bindings      : Name_Binding_Lists.List;
+      Types         : Type_Binding_Lists.List;
+      Class_Context : Boolean)
       return Leander.Core.Binding_Groups.Reference;
 
    type Graph_Vertex is
@@ -110,8 +111,9 @@ package body Leander.Syntax.Bindings is
    ----------------------
 
    function To_Binding_Group
-     (Bindings : Name_Binding_Lists.List;
-      Types    : Type_Binding_Lists.List)
+     (Bindings      : Name_Binding_Lists.List;
+      Types         : Type_Binding_Lists.List;
+      Class_Context : Boolean)
       return Leander.Core.Binding_Groups.Reference
    is
       Implicit : Binding_Maps.Map;
@@ -204,17 +206,30 @@ package body Leander.Syntax.Bindings is
                     Leander.Names.To_String (Type_Binding.Name);
          begin
             if not Implicit.Contains (Key) then
-               raise Constraint_Error with
-               Source.Show (Type_Binding.Type_Expr.Location)
-                 & ": no value for type binding";
+               if Class_Context then
+                  Explicit.Insert
+                    (Key,
+                     Binding_Entry'
+                       (Alt_Count => 0,
+                        Name      => Type_Binding.Name,
+                        Alts      => [],
+                        Index     => 1,
+                        T         => Nullable_Type_Reference
+                          (Type_Binding.Type_Expr.To_Core)));
+               else
+                  raise Constraint_Error with
+                  Source.Show (Type_Binding.Type_Expr.Location)
+                    & ": no value for type binding";
+               end if;
+            else
+               Explicit.Insert
+                 (Key,
+                  Binding_Entry'
+                    (Implicit.Element (Key) with delta
+                         T    => Nullable_Type_Reference
+                       (Type_Binding.Type_Expr.To_Core)));
+               Implicit.Delete (Key);
             end if;
-            Explicit.Insert
-              (Key,
-               Binding_Entry'
-                 (Implicit.Element (Key) with delta
-                      T    => Nullable_Type_Reference
-                    (Type_Binding.Type_Expr.To_Core)));
-            Implicit.Delete (Key);
          end;
       end loop;
 
@@ -340,11 +355,12 @@ package body Leander.Syntax.Bindings is
    -------------
 
    function To_Core
-     (This : Instance)
+     (This          : Instance;
+      Class_Context : Boolean := False)
       return Leander.Core.Binding_Groups.Reference
    is
    begin
-      return To_Binding_Group (This.Bindings, This.Types);
+      return To_Binding_Group (This.Bindings, This.Types, Class_Context);
    end To_Core;
 
 end Leander.Syntax.Bindings;

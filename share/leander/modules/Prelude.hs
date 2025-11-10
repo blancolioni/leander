@@ -28,6 +28,10 @@ infixl 1  >>, >>=
 infixr 1  =<<
 infixr 0  $, $!, `seq`
 
+class Bounded a where
+    minBound :: a
+    maxBound :: a
+    
 id :: a -> a
 id x = x
 

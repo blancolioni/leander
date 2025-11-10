@@ -27,7 +27,8 @@ package Leander.Syntax.Bindings is
       Type_Expr : Leander.Syntax.Types.Reference);
 
    function To_Core
-     (This : Instance)
+     (This          : Instance;
+      Class_Context : Boolean := False)
       return Leander.Core.Binding_Groups.Reference;
 
    function Empty return Reference;

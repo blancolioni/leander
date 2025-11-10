@@ -1,6 +1,7 @@
 with Leander.Calculus;
 with Leander.Core.Binding_Groups;
 with Leander.Core.Schemes;
+with Leander.Core.Type_Classes;
 with Leander.Core.Type_Env;
 with Leander.Core.Types;
 with Leander.Data_Types;
@@ -15,7 +16,8 @@ package Leander.Environment is
    type Reference is access all Abstraction'Class;
 
    type Element_Class is
-     (Type_Constructor, Constructor, Variable_Binding);
+     (Type_Constructor, Constructor, Variable_Binding,
+      Class_Binding);
 
    function Exists
      (This  : Abstraction;
@@ -73,6 +75,11 @@ package Leander.Environment is
    procedure Data_Type
      (This   : in out Abstraction;
       DT     : Leander.Data_Types.Reference)
+   is abstract;
+
+   procedure Type_Class
+     (This : in out Abstraction;
+      Class : Leander.Core.Type_Classes.Reference)
    is abstract;
 
    procedure Import

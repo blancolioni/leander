@@ -2,21 +2,32 @@ with Leander.Core.Schemes;
 with Leander.Core.Types;
 with Leander.Data_Types;
 with Leander.Data_Types.Builder;
+with Leander.Names;
 with Leander.Parser.Bindings;
 with Leander.Parser.Expressions;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 with Leander.Parser.Types;
 with Leander.Syntax.Bindings;
+with Leander.Syntax.Classes;
 with Leander.Syntax.Types;
 
 package body Leander.Parser.Declarations is
+
+   procedure Parse_Class_Declaration
+     (Env : Leander.Environment.Reference);
 
    procedure Parse_Data_Declaration
      (Env : Leander.Environment.Reference);
 
    procedure Parse_Foreign_Import
      (Env : Leander.Environment.Reference);
+
+   procedure Parse_Constraints
+     (Env : Leander.Environment.Reference;
+      Add_Constraint : not null access
+        procedure (Constraint_Name : String;
+                   Variable_Name   : String));
 
    procedure Skip_Declaration;
 
@@ -31,6 +42,172 @@ package body Leander.Parser.Declarations is
                 Tok_Infix, Tok_Infixl, Tok_Infixr,
                 Tok_Instance];
    end At_Declaration;
+
+   -----------------------------
+   -- Parse_Class_Declaration --
+   -----------------------------
+
+   procedure Parse_Class_Declaration
+     (Env : Leander.Environment.Reference)
+   is
+
+      Builder : Leander.Syntax.Classes.Builder_Instance;
+
+      procedure Add_Constraint
+        (Constraint_Name : String;
+         Variable_Name   : String);
+
+      --------------------
+      -- Add_Constraint --
+      --------------------
+
+      procedure Add_Constraint
+        (Constraint_Name : String;
+         Variable_Name   : String)
+      is
+         Name : constant Leander.Names.Leander_Name :=
+                  Leander.Names.To_Leander_Name (Constraint_Name);
+      begin
+         if Env.Exists
+           (Name, Leander.Environment.Class_Binding)
+         then
+            Builder.Add_Constraint (Constraint_Name, Variable_Name);
+         else
+            Error ("no such class: " & Constraint_Name);
+         end if;
+
+         Builder.Add_Constraint (Constraint_Name, Variable_Name);
+      end Add_Constraint;
+
+      Indent : constant Positive := Tok_Indent;
+
+   begin
+      pragma Assert (Tok = Tok_Class);
+      Scan;
+
+      Parse_Constraints (Env, Add_Constraint'Access);
+
+      if not At_Constructor_Name then
+         Error ("missing class constructor");
+         Skip_Declaration;
+         return;
+      end if;
+
+      declare
+         Name : constant String := Scan_Identifier;
+         Tyvar : constant String :=
+                   (if At_Variable_Name
+                    then Scan_Identifier
+                    else "*");
+      begin
+         if Tyvar = "*" then
+            Error ("missing type variable");
+         end if;
+
+         Builder.Start_Class (Name, Tyvar);
+
+         if Tok = Tok_Where then
+            Scan;
+         else
+            Error ("missing 'where'");
+            while Tok_Indent > 1 loop
+               Scan;
+            end loop;
+            return;
+         end if;
+
+         declare
+            Bindings : constant Leander.Syntax.Bindings.Reference :=
+                         Leander.Syntax.Bindings.Empty;
+         begin
+            while Tok_Indent > Indent loop
+               Leander.Parser.Bindings.Parse_Binding (Bindings);
+            end loop;
+
+            Builder.Add_Bindings (Bindings.To_Core (Class_Context => True));
+
+            Env.Type_Class (Builder.Get_Class);
+         end;
+      end;
+   end Parse_Class_Declaration;
+
+   -----------------------
+   -- Parse_Constraints --
+   -----------------------
+
+   procedure Parse_Constraints
+     (Env : Leander.Environment.Reference;
+      Add_Constraint : not null access
+        procedure (Constraint_Name : String;
+                   Variable_Name   : String))
+   is
+      function Is_Type_Class (Name : String) return Boolean
+      is (Env.Exists
+          (Leander.Names.To_Leander_Name (Name),
+             Leander.Environment.Class_Binding));
+
+   begin
+      if At_Constructor_Name
+        and then Next_Tok = Tok_Identifier
+        and then Next_Tok (2) = Tok_Double_Right_Arrow
+      then
+         if Is_Type_Class (Tok_Text) then
+            Add_Constraint (Tok_Text, Tok_Text (1));
+         else
+            Error ("no such class: " & Tok_Text);
+         end if;
+
+         Scan;
+         if not At_Variable_Name then
+            Error ("expected a type variable");
+         end if;
+         Scan;
+         Scan;
+      elsif Tok = Tok_Left_Paren then
+         Scan;
+         while At_Constructor_Name loop
+            if not Is_Type_Class (Tok_Text) then
+               Error ("no such class: " & Tok_Text);
+            end if;
+            declare
+               Class_Name : constant String := Tok_Text;
+            begin
+               Scan;
+               if At_Variable_Name then
+                  declare
+                     Var_Name : constant String := Tok_Text;
+                  begin
+                     Scan;
+                     Add_Constraint (Class_Name, Var_Name);
+                  end;
+               else
+                  Error ("expected a type variable");
+               end if;
+            end;
+
+            if Tok = Tok_Comma then
+               Scan;
+               if not At_Constructor_Name then
+                  Error ("missing class context");
+               end if;
+            elsif At_Constructor_Name then
+               Error ("missing ','");
+            end if;
+         end loop;
+
+         if Tok = Tok_Right_Paren then
+            Scan;
+         else
+            Error ("missing ')' at " & Tok_Text);
+         end if;
+
+         if Tok = Tok_Double_Right_Arrow then
+            Scan;
+         else
+            Error ("missing '=>'");
+         end if;
+      end if;
+   end Parse_Constraints;
 
    ----------------------------
    -- Parse_Data_Declaration --
@@ -187,6 +364,8 @@ package body Leander.Parser.Declarations is
             end;
          elsif Tok = Tok_Data then
             Parse_Data_Declaration (Env);
+         elsif Tok = Tok_Class then
+            Parse_Class_Declaration (Env);
          else
             Error ("only bindings are supported");
             Scan;

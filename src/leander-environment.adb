@@ -13,6 +13,10 @@ package body Leander.Environment is
      new WL.String_Maps (Leander.Data_Types.Reference,
                          Leander.Data_Types."=");
 
+   package Type_Class_Maps is
+     new WL.String_Maps (Leander.Core.Type_Classes.Reference,
+                         Leander.Core.Type_Classes."=");
+
    type Con_Record is
       record
          Scheme : Leander.Core.Schemes.Reference;
@@ -42,6 +46,7 @@ package body Leander.Environment is
          Values   : Value_Map_Reference;
          Context  : Leander.Core.Inference.Inference_Context;
          Type_Env : Leander.Core.Type_Env.Reference;
+         Classes  : Type_Class_Maps.Map;
       end record;
 
    overriding procedure Import
@@ -77,6 +82,10 @@ package body Leander.Environment is
    overriding procedure Data_Type
      (This   : in out Instance;
       DT     : Leander.Data_Types.Reference);
+
+   overriding procedure Type_Class
+     (This : in out Instance;
+      Class : Leander.Core.Type_Classes.Reference);
 
    overriding function Exists
      (This  : Instance;
@@ -236,6 +245,8 @@ package body Leander.Environment is
             return This.Tycons.Contains (N);
          when Variable_Binding =>
             return False;
+         when Class_Binding =>
+            return This.Classes.Contains (N);
       end case;
    end Exists;
 
@@ -341,5 +352,17 @@ package body Leander.Environment is
          Values   => new Value_Maps.Map,
          others   => <>);
    end New_Environment;
+
+   ----------------
+   -- Type_Class --
+   ----------------
+
+   overriding procedure Type_Class
+     (This : in out Instance;
+      Class : Leander.Core.Type_Classes.Reference)
+   is
+   begin
+      This.Classes.Insert (Core.To_String (Class.Id), Class);
+   end Type_Class;
 
 end Leander.Environment;
