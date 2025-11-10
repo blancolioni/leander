@@ -45,6 +45,18 @@ package body Leander.Handles is
         (Skit_Env, Env);
    end Create;
 
+   -------------------------
+   -- Current_Environment --
+   -------------------------
+
+   function Current_Environment
+     (This : Handle)
+      return String
+   is
+   begin
+      return This.Env.Name;
+   end Current_Environment;
+
    --------------
    -- Evaluate --
    --------------
@@ -88,6 +100,32 @@ package body Leander.Handles is
          end;
       end if;
    end Evaluate;
+
+   ----------------
+   -- Infer_Type --
+   ----------------
+
+   function Infer_Type
+     (This       : in out Handle;
+      Expression : String)
+      return String
+   is
+      use Leander.Core.Inference;
+      use Leander.Core.Expressions.Inference;
+      Syntax : constant Leander.Syntax.Expressions.Reference :=
+                 Leander.Parser.Parse_Expression (Expression);
+      Core   : constant Leander.Core.Expressions.Reference :=
+                 Syntax.To_Core;
+      Result : Inference_Context :=
+                 Initial_Context (This.Env.Type_Env);
+   begin
+      Infer (Result, Core);
+      if not Result.OK then
+         return Result.Error_Message;
+      else
+         return Result.Get_Type (Core).Generate.Show;
+      end if;
+   end Infer_Type;
 
    -----------------
    -- Load_Module --

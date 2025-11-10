@@ -17,6 +17,8 @@ package Leander.Environment is
    type Element_Class is
      (Type_Constructor, Constructor, Variable_Binding);
 
+   function Name (This : Abstraction) return String is abstract;
+
    function Exists
      (This  : Abstraction;
       Name  : Leander.Names.Leander_Name;
