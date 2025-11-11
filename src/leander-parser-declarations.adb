@@ -1,3 +1,4 @@
+with Leander.Core.Constraints;
 with Leander.Core.Schemes;
 with Leander.Core.Types;
 with Leander.Data_Types;
@@ -117,14 +118,18 @@ package body Leander.Parser.Declarations is
          end if;
 
          declare
-            Bindings : constant Leander.Syntax.Bindings.Reference :=
-                         Leander.Syntax.Bindings.Empty;
+            Constraints : constant Leander.Core.Constraints.Constraint_Set :=
+                            Leander.Core.Constraints.Empty.Constrain
+                              (Name, Tyvar);
+            Bindings    : constant Leander.Syntax.Bindings.Reference :=
+                         Leander.Syntax.Bindings.Empty
+                           (Leander.Core.Class_Context, Constraints);
          begin
             while Tok_Indent > Indent loop
                Leander.Parser.Bindings.Parse_Binding (Bindings);
             end loop;
 
-            Builder.Add_Bindings (Bindings.To_Core (Class_Context => True));
+            Builder.Add_Bindings (Bindings.To_Core);
 
             Env.Type_Class (Builder.Get_Class);
          end;

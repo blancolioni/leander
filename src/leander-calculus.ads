@@ -16,6 +16,11 @@ package Leander.Calculus is
       Expr : Tree)
       return Tree;
 
+   function Lambda
+     (Index : Natural;
+      Expr  : Tree)
+      return Tree;
+
    function Apply
      (Left, Right : Tree)
       return Tree;
@@ -30,6 +35,10 @@ package Leander.Calculus is
 
    function Symbol
      (Name : Leander.Names.Leander_Name)
+      return Tree;
+
+   function Symbol
+     (Index : Natural)
       return Tree;
 
    type Calculus_Environment is interface;

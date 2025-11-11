@@ -27,7 +27,8 @@ package body Leander.Syntax.Bindings is
    function To_Binding_Group
      (Bindings      : Name_Binding_Lists.List;
       Types         : Type_Binding_Lists.List;
-      Class_Context : Boolean)
+      Context       : Core.Declaration_Context;
+      Constraints   : Leander.Core.Constraints.Constraint_Set)
       return Leander.Core.Binding_Groups.Reference;
 
    type Graph_Vertex is
@@ -101,9 +102,17 @@ package body Leander.Syntax.Bindings is
    -- Empty --
    -----------
 
-   function Empty return Reference is
+   function Empty
+     (Context     : Core.Declaration_Context := Core.Binding_Context;
+      Constraints : Leander.Core.Constraints.Constraint_Set :=
+        Leander.Core.Constraints.Empty)
+      return Reference
+   is
    begin
-      return new Instance;
+      return new Instance'
+        (Context     => Context,
+         Constraints => Constraints,
+         others      => <>);
    end Empty;
 
    ----------------------
@@ -113,9 +122,12 @@ package body Leander.Syntax.Bindings is
    function To_Binding_Group
      (Bindings      : Name_Binding_Lists.List;
       Types         : Type_Binding_Lists.List;
-      Class_Context : Boolean)
+      Context       : Core.Declaration_Context;
+      Constraints   : Leander.Core.Constraints.Constraint_Set)
       return Leander.Core.Binding_Groups.Reference
    is
+      pragma Unreferenced (Constraints);
+      use Leander.Core;
       Implicit : Binding_Maps.Map;
       Explicit : Binding_Maps.Map;
       Next     : Natural := 0;
@@ -147,38 +159,6 @@ package body Leander.Syntax.Bindings is
          return False;
       end References;
 
-      -------------
-      -- To_Alts --
-      -------------
-
-      --  function To_Alts (Equations : Binding_Record_Lists.List)
-      --                    return Alt_Lists.List
-      --  is
-      --  begin
-      --     return List : Alt_Lists.List do
-      --        for Equation of Equations loop
-      --           declare
-      --              Pats : constant Core.Patterns.Reference_Array :=
-      --                       [for Pat of Equation.Pats =>
-      --                                 Pat.To_Core];
-      --           begin
-      --              if Pats'Length = 0 then
-      --                 List.Append
-      --                   (Leander.Core.Alts.Alt
-      --                      (Equation.Expr.To_Core));
-      --              elsif Pats'Length = 1 then
-      --                 List.Append
-      --                   (Leander.Core.Alts.Alt
-      --                      (Pats (Pats'First), Equation.Expr.To_Core));
-      --              else
-      --                 raise Constraint_Error with
-      --                   "only single patterns supported";
-      --              end if;
-      --           end;
-      --        end loop;
-      --     end return;
-      --  end To_Alts;
-
    begin
       for Binding of Bindings loop
          declare
@@ -206,7 +186,7 @@ package body Leander.Syntax.Bindings is
                     Leander.Names.To_String (Type_Binding.Name);
          begin
             if not Implicit.Contains (Key) then
-               if Class_Context then
+               if Context = Class_Context then
                   Explicit.Insert
                     (Key,
                      Binding_Entry'
@@ -355,12 +335,12 @@ package body Leander.Syntax.Bindings is
    -------------
 
    function To_Core
-     (This          : Instance;
-      Class_Context : Boolean := False)
+     (This          : Instance)
       return Leander.Core.Binding_Groups.Reference
    is
    begin
-      return To_Binding_Group (This.Bindings, This.Types, Class_Context);
+      return To_Binding_Group
+        (This.Bindings, This.Types, This.Context, This.Constraints);
    end To_Core;
 
 end Leander.Syntax.Bindings;

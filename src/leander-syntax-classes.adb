@@ -22,8 +22,8 @@ package body Leander.Syntax.Classes is
       Variable_Name : String)
    is
    begin
-      This.Constraints.Append
-        (Leander.Core.Constraints.Constraint (Class_Name, Variable_Name));
+      This.Constraints :=
+        This.Constraints.Constrain (Class_Name, Variable_Name);
    end Add_Constraint;
 
    ---------------
@@ -38,7 +38,7 @@ package body Leander.Syntax.Classes is
       return Leander.Core.Type_Classes.Type_Class
         (Class_Name    => This.Class_Name,
          Variable_Name => This.Variable_Name,
-         Constraints   => [for C of This.Constraints => C],
+         Constraints   => This.Constraints,
          Bindings      => This.Bindings);
    end Get_Class;
 

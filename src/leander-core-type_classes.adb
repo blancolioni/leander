@@ -5,16 +5,15 @@ package body Leander.Core.Type_Classes is
    ----------------
 
    function Type_Class
-     (Class_Name    : Conid;
+     (Class_Name : Conid;
       Variable_Name : Varid;
-      Constraints   : Leander.Core.Constraints.Instance_Array;
+      Constraints   : Leander.Core.Constraints.Constraint_Set;
       Bindings      : Leander.Core.Binding_Groups.Reference)
       return Reference
    is
    begin
       return new Instance'
-        (Constraint_Count => Constraints'Length,
-         Class_Id         => Class_Name,
+        (Class_Id         => Class_Name,
          Var_Id           => Variable_Name,
          Constraints      => Constraints,
          Bindings         => Bindings);

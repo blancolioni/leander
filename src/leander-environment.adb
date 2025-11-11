@@ -364,8 +364,33 @@ package body Leander.Environment is
      (This : in out Instance;
       Class : Leander.Core.Type_Classes.Reference)
    is
+      Methods : constant Core.Varid_Array :=
+                  Class.Methods;
    begin
       This.Classes.Insert (Core.To_String (Class.Id), Class);
+      for I in Methods'Range loop
+         This.Type_Env :=
+           This.Type_Env.Compose
+             (Methods (I),
+              Class.Method_Scheme (Methods (I)));
+         declare
+            E : Leander.Calculus.Tree :=
+                  Leander.Calculus.Symbol (I);
+         begin
+            for J in reverse Methods'Range loop
+               E := Leander.Calculus.Lambda (J, E);
+            end loop;
+            This.Values.Insert
+              (Leander.Names.Leander_Name (Methods (I)), E);
+            Leander.Logging.Log
+              ("CLASS",
+               Core.To_String (Methods (I))
+               & " :: "
+               & Class.Method_Scheme (Methods (I)).Show
+               & " = "
+               & Leander.Calculus.To_String (E));
+         end;
+      end loop;
    end Type_Class;
 
 end Leander.Environment;

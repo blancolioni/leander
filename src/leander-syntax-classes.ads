@@ -1,4 +1,3 @@
-with Ada.Containers.Doubly_Linked_Lists;
 with Leander.Core.Binding_Groups;
 with Leander.Core.Constraints;
 with Leander.Core.Type_Classes;
@@ -27,16 +26,11 @@ package Leander.Syntax.Classes is
 
 private
 
-   package Constraint_Lists is
-     new Ada.Containers.Doubly_Linked_Lists
-       (Leander.Core.Constraints.Instance,
-        Leander.Core.Constraints."=");
-
    type Builder_Instance is tagged
       record
          Class_Name    : Leander.Core.Conid;
          Variable_Name : Leander.Core.Varid;
-         Constraints   : Constraint_Lists.List;
+         Constraints   : Leander.Core.Constraints.Constraint_Set;
          Bindings      : Leander.Core.Binding_Groups.Reference;
       end record;
 

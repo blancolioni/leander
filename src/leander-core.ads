@@ -15,4 +15,10 @@ package Leander.Core is
 
    procedure Prune;
 
+   type Declaration_Context is
+     (Binding_Context,
+      Class_Context,
+      Instance_Context,
+      Data_Context);
+
 end Leander.Core;

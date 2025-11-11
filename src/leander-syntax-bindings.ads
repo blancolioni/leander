@@ -2,6 +2,7 @@ private with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 private with Ada.Containers.Doubly_Linked_Lists;
 
 with Leander.Core.Binding_Groups;
+with Leander.Core.Constraints;
 with Leander.Names;
 limited with Leander.Syntax.Expressions;
 with Leander.Syntax.Patterns;
@@ -27,11 +28,14 @@ package Leander.Syntax.Bindings is
       Type_Expr : Leander.Syntax.Types.Reference);
 
    function To_Core
-     (This          : Instance;
-      Class_Context : Boolean := False)
+     (This          : Instance)
       return Leander.Core.Binding_Groups.Reference;
 
-   function Empty return Reference;
+   function Empty
+     (Context     : Core.Declaration_Context := Core.Binding_Context;
+      Constraints : Leander.Core.Constraints.Constraint_Set :=
+        Leander.Core.Constraints.Empty)
+      return Reference;
 
 private
 
@@ -67,8 +71,10 @@ private
 
    type Instance is new Parent with
       record
-         Bindings : Name_Binding_Lists.List;
-         Types    : Type_Binding_Lists.List;
+         Context     : Core.Declaration_Context;
+         Constraints : Leander.Core.Constraints.Constraint_Set;
+         Bindings    : Name_Binding_Lists.List;
+         Types       : Type_Binding_Lists.List;
       end record;
 
 end Leander.Syntax.Bindings;
