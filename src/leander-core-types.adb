@@ -160,41 +160,41 @@ package body Leander.Core.Types is
    -- Generate --
    --------------
 
-   function Generate
-     (This : not null access constant Instance'Class)
-      return Reference
-   is
-      Tvs : constant Core.Tyvars.Tyvar_Array := This.Get_Tyvars;
-      Gens : constant Type_Array :=
-               [for I in Tvs'Range => Core.Types.TGen (I)];
-
-      function Create_Subst
-        (Index : Positive)
-         return Leander.Core.Substitutions.Instance;
-
-      ------------------
-      -- Create_Subst --
-      ------------------
-
-      function Create_Subst
-        (Index : Positive)
-         return Leander.Core.Substitutions.Instance
-      is
-      begin
-         if Index <= Tvs'Length then
-            return Leander.Core.Substitutions.Compose
-              (Leander.Names.Leander_Name (Tvs (Index).Name),
-               Gens (Index),
-               Create_Subst (Index + 1));
-         else
-            return Leander.Core.Substitutions.Empty;
-         end if;
-      end Create_Subst;
-
-   begin
-      return This.Apply (Create_Subst (1));
-   end Generate;
-
+   --  function Generate
+   --    (This : not null access constant Instance'Class)
+   --     return Reference
+   --  is
+   --     Tvs : constant Core.Tyvars.Tyvar_Array := This.Get_Tyvars;
+   --     Gens : constant Type_Array :=
+   --              [for I in Tvs'Range => Core.Types.TGen (I)];
+   --
+   --     function Create_Subst
+   --       (Index : Positive)
+   --        return Leander.Core.Substitutions.Instance;
+   --
+   --     ------------------
+   --     -- Create_Subst --
+   --     ------------------
+   --
+   --     function Create_Subst
+   --       (Index : Positive)
+   --        return Leander.Core.Substitutions.Instance
+   --     is
+   --     begin
+   --        if Index <= Tvs'Length then
+   --           return Leander.Core.Substitutions.Compose
+   --             (Leander.Names.Leander_Name (Tvs (Index).Name),
+   --              Gens (Index),
+   --              Create_Subst (Index + 1));
+   --        else
+   --           return Leander.Core.Substitutions.Empty;
+   --        end if;
+   --     end Create_Subst;
+   --
+   --  begin
+   --     return This.Apply (Create_Subst (1));
+   --  end Generate;
+   --
    --------------
    -- Get_Kind --
    --------------

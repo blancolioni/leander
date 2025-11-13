@@ -32,10 +32,14 @@ package body Leander.Parser.Expressions is
    Fixities : Fixity_Maps.Map;
 
    function At_Atomic_Expression return Boolean;
+
    function Parse_Atomic_Expression
-     return Leander.Syntax.Expressions.Reference;
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Expressions.Reference;
+
    function Parse_Left_Expression
-     return Leander.Syntax.Expressions.Reference;
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Expressions.Reference;
 
    type Statement_Type is
      (Expression_Statement,
@@ -56,7 +60,9 @@ package body Leander.Parser.Expressions is
          end case;
       end record;
 
-   function Parse_Statement return Statement_Record;
+   function Parse_Statement
+     (Context : Parse_Context'Class)
+     return Statement_Record;
 
    package Statement_Sequence_Parser is
      new Leander.Parser.Sequences
@@ -71,7 +77,8 @@ package body Leander.Parser.Expressions is
          Exp : Leander.Syntax.Expressions.Reference;
       end record;
 
-   function Parse_Case_Alt return Case_Alt_Record;
+   function Parse_Case_Alt (Context : Parse_Context'Class)
+                            return Case_Alt_Record;
 
    package Case_Alt_Parser is
      new Leander.Parser.Sequences
@@ -135,7 +142,8 @@ package body Leander.Parser.Expressions is
    -----------------------------
 
    function Parse_Atomic_Expression
-     return Leander.Syntax.Expressions.Reference
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Expressions.Reference
    is
       use Leander.Syntax.Expressions;
       Loc : constant Source.Source_Location := Current_Source_Location;
@@ -156,7 +164,7 @@ package body Leander.Parser.Expressions is
         return Leander.Syntax.Expressions.Reference
       is
          Loc : constant Source.Source_Location := Current_Source_Location;
-         X   : constant Reference := Parse_Expression;
+         X   : constant Reference := Parse_Expression (Context);
          XS  : Reference;
       begin
          if Tok = Tok_Comma then
@@ -215,7 +223,7 @@ package body Leander.Parser.Expressions is
             if Tok = Tok_Comma then
                Scan;
                declare
-                  T : constant Reference := Parse_Expression;
+                  T : constant Reference := Parse_Expression (Context);
                begin
                   return T & Go;
                end;
@@ -276,7 +284,7 @@ package body Leander.Parser.Expressions is
          end if;
 
          declare
-            First : constant Reference := Parse_Expression;
+            First : constant Reference := Parse_Expression (Context);
          begin
             if Tok = Tok_Right_Paren then
                Scan;
@@ -309,15 +317,18 @@ package body Leander.Parser.Expressions is
    -- Parse_Case_Alt --
    --------------------
 
-   function Parse_Case_Alt return Case_Alt_Record is
+   function Parse_Case_Alt
+     (Context : Parse_Context'Class)
+      return Case_Alt_Record
+   is
       Pat : constant Leander.Syntax.Patterns.Reference :=
-              Parse_Expression.To_Pattern;
+              Parse_Expression (Context).To_Pattern;
    begin
       Expect (Tok_Right_Arrow, [Tok_Identifier]);
 
       declare
          Expr : constant Leander.Syntax.Expressions.Reference :=
-                  Parse_Expression;
+                  Parse_Expression (Context);
       begin
          return (Pat, Expr);
       end;
@@ -327,7 +338,10 @@ package body Leander.Parser.Expressions is
    -- Parse_Expression --
    ----------------------
 
-   function Parse_Expression return Leander.Syntax.Expressions.Reference is
+   function Parse_Expression
+     (Context : Parse_Context'Class)
+     return Leander.Syntax.Expressions.Reference
+   is
       use Leander.Syntax.Expressions;
 
       package Expression_Stacks is
@@ -433,14 +447,14 @@ package body Leander.Parser.Expressions is
 
    begin
 
-      Push_Value (Parse_Left_Expression);
+      Push_Value (Parse_Left_Expression (Context));
 
       while At_Operator loop
          declare
             Name     : constant String := Scan_Identifier;
          begin
             Push_Operator (Name);
-            Push_Value (Parse_Left_Expression);
+            Push_Value (Parse_Left_Expression (Context));
          end;
       end loop;
 
@@ -456,6 +470,7 @@ package body Leander.Parser.Expressions is
    ---------------------------
 
    function Parse_Left_Expression
+     (Context : Parse_Context'Class)
      return Leander.Syntax.Expressions.Reference
    is
    begin
@@ -463,7 +478,7 @@ package body Leander.Parser.Expressions is
          declare
             Indent  : constant Positive := Tok_Indent;
             Expr    : Leander.Syntax.Expressions.Reference :=
-                        Parse_Atomic_Expression;
+                        Parse_Atomic_Expression (Context);
          begin
             while At_Atomic_Expression
               and then Tok_Indent > Indent
@@ -476,7 +491,7 @@ package body Leander.Parser.Expressions is
                     Syntax.Expressions.Application
                       (Loc,
                        Expr,
-                       Parse_Atomic_Expression);
+                       Parse_Atomic_Expression (Context));
                end;
             end loop;
             return Expr;
@@ -503,7 +518,7 @@ package body Leander.Parser.Expressions is
 
             declare
                Expr : constant Leander.Syntax.Expressions.Reference :=
-                        Parse_Expression;
+                        Parse_Expression (Context);
             begin
                return Leander.Syntax.Expressions.Lambda
                  (Loc,
@@ -520,7 +535,7 @@ package body Leander.Parser.Expressions is
             if Tok = Tok_Left_Brace then
                Scan;
                loop
-                  Bindings.Parse_Binding (Bs);
+                  Bindings.Parse_Binding (Context, Bs);
                   if Tok = Tok_Semi then
                      Scan;
                   else
@@ -534,7 +549,7 @@ package body Leander.Parser.Expressions is
                end if;
             else
                while Bindings.At_Binding loop
-                  Bindings.Parse_Binding (Bs);
+                  Bindings.Parse_Binding (Context, Bs);
                end loop;
             end if;
             if Tok /= Tok_In then
@@ -545,7 +560,7 @@ package body Leander.Parser.Expressions is
 
             declare
                Expr : constant Syntax.Expressions.Reference :=
-                        Parse_Expression;
+                        Parse_Expression (Context);
             begin
                return Syntax.Expressions.Let
                  (Loc, Bs, Expr);
@@ -558,7 +573,7 @@ package body Leander.Parser.Expressions is
             F_Id : constant Leander.Names.Leander_Name :=
                      Leander.Names.New_Name;
             E    : constant Syntax.Expressions.Reference :=
-                     Parse_Expression;
+                     Parse_Expression (Context);
             Bs   : constant Leander.Syntax.Bindings.Reference :=
                      Leander.Syntax.Bindings.Empty;
 
@@ -586,7 +601,7 @@ package body Leander.Parser.Expressions is
                Error ("missing 'of'");
             end if;
 
-            Case_Alt_Parser.Parse_Sequence (On_Alt'Access);
+            Case_Alt_Parser.Parse_Sequence (Context, On_Alt'Access);
 
             return Syntax.Expressions.Let
               (Loc, Bs,
@@ -607,13 +622,13 @@ package body Leander.Parser.Expressions is
                            Leander.Syntax.Bindings.Empty;
          begin
             Scan;
-            Cond := Parse_Expression;
+            Cond := Parse_Expression (Context);
             if Tok = Tok_Then then
                Scan;
-               T := Parse_Expression;
+               T := Parse_Expression (Context);
                if Tok = Tok_Else then
                   Scan;
-                  F := Parse_Expression;
+                  F := Parse_Expression (Context);
                else
                   Error ("missing 'else'");
                   F := Syntax.Expressions.Constructor (Loc, "False");
@@ -741,7 +756,8 @@ package body Leander.Parser.Expressions is
             end To_Expression;
 
          begin
-            Statement_Sequence_Parser.Parse_Sequence (On_Statement'Access);
+            Statement_Sequence_Parser.Parse_Sequence
+              (Context, On_Statement'Access);
             return To_Expression (Stmts.First);
          end;
       else
@@ -754,7 +770,10 @@ package body Leander.Parser.Expressions is
    -- Parse_Patterns --
    --------------------
 
-   function Parse_Patterns return Leander.Syntax.Patterns.Reference_Array is
+   function Parse_Patterns
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Patterns.Reference_Array
+   is
       use type Leander.Syntax.Expressions.Reference;
       use type Leander.Syntax.Patterns.Reference_Array;
    begin
@@ -763,7 +782,8 @@ package body Leander.Parser.Expressions is
       end if;
 
       declare
-         Expr : constant Syntax.Expressions.Reference := Parse_Atomic_Expression;
+         Expr : constant Syntax.Expressions.Reference :=
+                  Parse_Atomic_Expression (Context);
          Pat  : constant Syntax.Patterns.Reference :=
                   (if Expr = null then null else Expr.To_Pattern);
       begin
@@ -771,7 +791,7 @@ package body Leander.Parser.Expressions is
             return [];
          end if;
          if At_Atomic_Expression then
-            return Pat & Parse_Patterns;
+            return Pat & Parse_Patterns (Context);
          else
             return [Pat];
          end if;
@@ -782,7 +802,10 @@ package body Leander.Parser.Expressions is
    -- Parse_Statement --
    ---------------------
 
-   function Parse_Statement return Statement_Record is
+   function Parse_Statement
+     (Context : Parse_Context'Class)
+      return Statement_Record
+   is
       Loc : constant Source.Source_Location := Current_Source_Location;
    begin
       if Tok = Tok_Let then
@@ -794,7 +817,7 @@ package body Leander.Parser.Expressions is
             if Tok = Tok_Left_Brace then
                Scan;
                loop
-                  Bindings.Parse_Binding (Bs);
+                  Bindings.Parse_Binding (Context, Bs);
                   if Tok = Tok_Semi then
                      Scan;
                   else
@@ -808,7 +831,7 @@ package body Leander.Parser.Expressions is
                end if;
             else
                while Bindings.At_Binding loop
-                  Bindings.Parse_Binding (Bs);
+                  Bindings.Parse_Binding (Context, Bs);
                end loop;
             end if;
 
@@ -820,7 +843,7 @@ package body Leander.Parser.Expressions is
       else
          declare
             E : Syntax.Expressions.Reference :=
-                  Parse_Expression;
+                  Parse_Expression (Context);
          begin
             if Tok = Tok_Left_Arrow then
                declare
@@ -828,7 +851,7 @@ package body Leander.Parser.Expressions is
                         E.To_Pattern;
                begin
                   Scan;
-                  E := Parse_Expression;
+                  E := Parse_Expression (Context);
                   return Statement_Record'
                     (Class    => Binding_Statement,
                      Location => Loc,

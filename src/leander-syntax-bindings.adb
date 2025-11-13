@@ -1,7 +1,7 @@
 with Leander.Core.Alts;
 with Leander.Core.Bindings;
+with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
-with Leander.Core.Types;
 with Leander.Syntax.Bindings.Transform;
 with Leander.Syntax.Expressions;
 
@@ -11,7 +11,7 @@ with WL.String_Maps;
 package body Leander.Syntax.Bindings is
 
    type Nullable_Type_Reference is
-     access constant Leander.Core.Types.Instance'Class;
+     access constant Leander.Core.Qualified_Types.Instance'Class;
 
    type Binding_Entry (Alt_Count : Natural) is
       record
@@ -28,7 +28,7 @@ package body Leander.Syntax.Bindings is
      (Bindings      : Name_Binding_Lists.List;
       Types         : Type_Binding_Lists.List;
       Context       : Core.Declaration_Context;
-      Constraints   : Leander.Core.Constraints.Constraint_Set)
+      Predicates    : Core.Predicates.Predicate_Array)
       return Leander.Core.Binding_Groups.Reference;
 
    type Graph_Vertex is
@@ -90,7 +90,7 @@ package body Leander.Syntax.Bindings is
      (This      : in out Instance;
       Loc       : Source.Source_Location;
       Name      : String;
-      Type_Expr : Leander.Syntax.Types.Reference)
+      Type_Expr : Leander.Syntax.Qualified_Types.Reference)
    is
    begin
       This.Types.Append
@@ -103,15 +103,14 @@ package body Leander.Syntax.Bindings is
    -----------
 
    function Empty
-     (Context     : Core.Declaration_Context := Core.Binding_Context;
-      Constraints : Leander.Core.Constraints.Constraint_Set :=
-        Leander.Core.Constraints.Empty)
+     (Context    : Core.Declaration_Context := Core.Binding_Context;
+      Predicates : Leander.Core.Predicates.Predicate_Array := [])
       return Reference
    is
    begin
       return new Instance'
         (Context     => Context,
-         Constraints => Constraints,
+         Predicates  => [for P of Predicates => P],
          others      => <>);
    end Empty;
 
@@ -123,10 +122,10 @@ package body Leander.Syntax.Bindings is
      (Bindings      : Name_Binding_Lists.List;
       Types         : Type_Binding_Lists.List;
       Context       : Core.Declaration_Context;
-      Constraints   : Leander.Core.Constraints.Constraint_Set)
+      Predicates    : Core.Predicates.Predicate_Array)
       return Leander.Core.Binding_Groups.Reference
    is
-      pragma Unreferenced (Constraints);
+      pragma Unreferenced (Predicates);
       use Leander.Core;
       Implicit : Binding_Maps.Map;
       Explicit : Binding_Maps.Map;
@@ -306,8 +305,7 @@ package body Leander.Syntax.Bindings is
             is
             begin
                return Core.Schemes.Quantify
-                 (T.Get_Tyvars,
-                  Core.Types.Reference (T));
+                 (T.Get_Tyvars, T);
             end To_Scheme;
 
          begin
@@ -335,12 +333,15 @@ package body Leander.Syntax.Bindings is
    -------------
 
    function To_Core
-     (This          : Instance)
+     (This : Instance)
       return Leander.Core.Binding_Groups.Reference
    is
    begin
       return To_Binding_Group
-        (This.Bindings, This.Types, This.Context, This.Constraints);
+        (This.Bindings, This.Types, This.Context,
+         (if This.Predicates.Is_Empty
+          then []
+          else [for P of This.Predicates => P]));
    end To_Core;
 
 end Leander.Syntax.Bindings;

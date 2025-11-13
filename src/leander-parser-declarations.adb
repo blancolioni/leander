@@ -1,6 +1,8 @@
-with Leander.Core.Constraints;
+with Leander.Core.Kinds;
+with Leander.Core.Predicates;
 with Leander.Core.Schemes;
 with Leander.Core.Types;
+with Leander.Core.Tyvars;
 with Leander.Data_Types;
 with Leander.Data_Types.Builder;
 with Leander.Names;
@@ -16,16 +18,16 @@ with Leander.Syntax.Types;
 package body Leander.Parser.Declarations is
 
    procedure Parse_Class_Declaration
-     (Env : Leander.Environment.Reference);
+     (Context : in out Parse_Context'Class);
 
    procedure Parse_Data_Declaration
-     (Env : Leander.Environment.Reference);
+     (Context : Parse_Context'Class);
 
    procedure Parse_Foreign_Import
-     (Env : Leander.Environment.Reference);
+     (Context : Parse_Context'Class);
 
    procedure Parse_Constraints
-     (Env : Leander.Environment.Reference;
+     (Context : Parse_Context'Class;
       Add_Constraint : not null access
         procedure (Constraint_Name : String;
                    Variable_Name   : String));
@@ -49,7 +51,7 @@ package body Leander.Parser.Declarations is
    -----------------------------
 
    procedure Parse_Class_Declaration
-     (Env : Leander.Environment.Reference)
+     (Context : in out Parse_Context'Class)
    is
 
       Builder : Leander.Syntax.Classes.Builder_Instance;
@@ -69,15 +71,13 @@ package body Leander.Parser.Declarations is
          Name : constant Leander.Names.Leander_Name :=
                   Leander.Names.To_Leander_Name (Constraint_Name);
       begin
-         if Env.Exists
+         if Context.Environment.Exists
            (Name, Leander.Environment.Class_Binding)
          then
             Builder.Add_Constraint (Constraint_Name, Variable_Name);
          else
             Error ("no such class: " & Constraint_Name);
          end if;
-
-         Builder.Add_Constraint (Constraint_Name, Variable_Name);
       end Add_Constraint;
 
       Indent : constant Positive := Tok_Indent;
@@ -86,7 +86,7 @@ package body Leander.Parser.Declarations is
       pragma Assert (Tok = Tok_Class);
       Scan;
 
-      Parse_Constraints (Env, Add_Constraint'Access);
+      Parse_Constraints (Context, Add_Constraint'Access);
 
       if not At_Constructor_Name then
          Error ("missing class constructor");
@@ -96,16 +96,21 @@ package body Leander.Parser.Declarations is
 
       declare
          Name : constant String := Scan_Identifier;
-         Tyvar : constant String :=
+         Varid : constant String :=
                    (if At_Variable_Name
                     then Scan_Identifier
                     else "*");
+         Tyvar : constant Leander.Core.Types.Reference :=
+                   Leander.Core.Types.TVar
+                     (Leander.Core.Tyvars.Tyvar
+                        (Core.To_Varid (Varid), Leander.Core.Kinds.Star));
+
       begin
-         if Tyvar = "*" then
+         if Varid = "*" then
             Error ("missing type variable");
          end if;
 
-         Builder.Start_Class (Name, Tyvar);
+         Builder.Start_Class (Name, Varid);
 
          if Tok = Tok_Where then
             Scan;
@@ -118,20 +123,20 @@ package body Leander.Parser.Declarations is
          end if;
 
          declare
-            Constraints : constant Leander.Core.Constraints.Constraint_Set :=
-                            Leander.Core.Constraints.Empty.Constrain
-                              (Name, Tyvar);
+            Constraints : constant Leander.Core.Predicates.Predicate_Array :=
+                            [Leander.Core.Predicates.Predicate
+                               (Name, Tyvar)];
             Bindings    : constant Leander.Syntax.Bindings.Reference :=
                          Leander.Syntax.Bindings.Empty
                            (Leander.Core.Class_Context, Constraints);
          begin
             while Tok_Indent > Indent loop
-               Leander.Parser.Bindings.Parse_Binding (Bindings);
+               Leander.Parser.Bindings.Parse_Binding (Context, Bindings);
             end loop;
 
             Builder.Add_Bindings (Bindings.To_Core);
-
-            Env.Type_Class (Builder.Get_Class);
+            Context.Add_Class (Name);
+            Context.Environment.Type_Class (Builder.Get_Class);
          end;
       end;
    end Parse_Class_Declaration;
@@ -141,13 +146,13 @@ package body Leander.Parser.Declarations is
    -----------------------
 
    procedure Parse_Constraints
-     (Env : Leander.Environment.Reference;
+     (Context : Parse_Context'Class;
       Add_Constraint : not null access
         procedure (Constraint_Name : String;
                    Variable_Name   : String))
    is
       function Is_Type_Class (Name : String) return Boolean
-      is (Env.Exists
+      is (Context.Environment.Exists
           (Leander.Names.To_Leander_Name (Name),
              Leander.Environment.Class_Binding));
 
@@ -219,7 +224,7 @@ package body Leander.Parser.Declarations is
    ----------------------------
 
    procedure Parse_Data_Declaration
-     (Env : Leander.Environment.Reference)
+     (Context : Parse_Context'Class)
    is
       Builder : Leander.Data_Types.Builder.Data_Type_Builder;
    begin
@@ -233,7 +238,7 @@ package body Leander.Parser.Declarations is
 
       declare
          TExpr : constant Leander.Syntax.Types.Reference :=
-                   Leander.Parser.Types.Parse_Type_Expression;
+                   Leander.Parser.Types.Parse_Type_Expression (Context);
          Data : constant Leander.Core.Types.Reference :=
                    TExpr.To_Core;
       begin
@@ -268,7 +273,7 @@ package body Leander.Parser.Declarations is
                     and then Parser.Types.At_Atomic_Type loop
                      Count := Count + 1;
                      Con_Args (Count) :=
-                       Parser.Types.Parse_Atomic_Type;
+                       Parser.Types.Parse_Atomic_Type (Context);
                   end loop;
 
                   declare
@@ -283,7 +288,7 @@ package body Leander.Parser.Declarations is
                      Builder.Add_Con
                        (Leander.Core.To_Conid (Con_Name),
                         Leander.Core.Schemes.Quantify
-                          (Con_Type.Get_Tyvars, Con_Type));
+                          (Con_Type.Get_Tyvars, [], Con_Type));
                   end;
                end;
             end if;
@@ -296,7 +301,7 @@ package body Leander.Parser.Declarations is
 
          Builder.Build;
 
-         Env.Data_Type (Builder.Data_Type);
+         Context.Environment.Data_Type (Builder.Data_Type);
       end;
 
    end Parse_Data_Declaration;
@@ -306,19 +311,19 @@ package body Leander.Parser.Declarations is
    ------------------------
 
    procedure Parse_Declarations
-     (Env : Leander.Environment.Reference)
+     (Context : in out Parse_Context'Class)
    is
       Bindings : constant Leander.Syntax.Bindings.Reference :=
                    Leander.Syntax.Bindings.Empty;
    begin
       while At_Declaration loop
          if Leander.Parser.Bindings.At_Binding then
-            Leander.Parser.Bindings.Parse_Binding (Bindings);
+            Leander.Parser.Bindings.Parse_Binding (Context, Bindings);
          elsif Tok = Tok_Foreign then
             Scan;
             if Tok = Tok_Import then
                Scan;
-               Parse_Foreign_Import (Env);
+               Parse_Foreign_Import (Context);
             else
                Error ("only foreign imports Supported");
                while Tok_Indent > 1 loop
@@ -368,16 +373,16 @@ package body Leander.Parser.Declarations is
                end loop;
             end;
          elsif Tok = Tok_Data then
-            Parse_Data_Declaration (Env);
+            Parse_Data_Declaration (Context);
          elsif Tok = Tok_Class then
-            Parse_Class_Declaration (Env);
+            Parse_Class_Declaration (Context);
          else
             Error ("only bindings are supported");
             Scan;
             Skip_Declaration;
          end if;
       end loop;
-      Env.Bindings (Bindings.To_Core);
+      Context.Environment.Bindings (Bindings.To_Core);
    end Parse_Declarations;
 
    --------------------------
@@ -385,7 +390,7 @@ package body Leander.Parser.Declarations is
    --------------------------
 
    procedure Parse_Foreign_Import
-     (Env : Leander.Environment.Reference)
+     (Context : Parse_Context'Class)
    is
       Import_Type  : constant String := Tok_Text;
    begin
@@ -411,10 +416,12 @@ package body Leander.Parser.Declarations is
                      Scan;
                      declare
                         Local_Type : constant Syntax.Types.Reference :=
-                                       Parser.Types.Parse_Type_Expression;
+                                       Parser.Types.Parse_Type_Expression
+                                         (Context);
                      begin
-                        Env.Foreign_Import
-                          (Local_Name, Foreign_Name, Local_Type.To_Core);
+                        Context.Environment.Foreign_Import
+                          (Local_Name, Foreign_Name,
+                           Local_Type.To_Core);
                      end;
                   else
                      Error ("missing import type");

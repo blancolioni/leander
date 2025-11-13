@@ -22,6 +22,7 @@ package body Leander.Tests.Evaluation is
      (Expression     : String;
       Expected_Type  : String;
       Expected_Value : String;
+      Context        : Leander.Parser.Parse_Context;
       Skit_Env       : Skit.Environment.Reference;
       Prelude        : Leander.Environment.Reference);
 
@@ -30,8 +31,9 @@ package body Leander.Tests.Evaluation is
    ---------------
 
    procedure Run_Tests is
+      Context : Leander.Parser.Parse_Context;
       Prelude : constant Leander.Environment.Reference :=
-                  Leander.Parser.Load_Module
+                  Context.Load_Module
                     ("./share/leander/modules/Prelude.hs");
       Machine : constant Skit.Machine.Reference :=
                   Skit.Impl.Machine (64 * 1024);
@@ -40,39 +42,39 @@ package body Leander.Tests.Evaluation is
                     (Machine);
    begin
       Skit.Library.Load_Primitives (Env);
-      Test ("1", "Int", "1", Env, Prelude);
-      Test ("null []", "Bool", "K", Env, Prelude);
-      Test ("null [1]", "Bool", "K I", Env, Prelude);
-      Test ("length []", "Int", "0", Env, Prelude);
-      Test ("length [1]", "Int", "1", Env, Prelude);
-      Test ("length [1,2,3,4]", "Int", "4", Env, Prelude);
-      Test ("zero 0", "Bool", "K", Env, Prelude);
-      Test ("zero 1", "Bool", "K I", Env, Prelude);
-      Test ("zero 100", "Bool", "K I", Env, Prelude);
-      Test ("small 3", "Bool", "K", Env, Prelude);
-      Test ("small 5", "Bool", "K I", Env, Prelude);
-      Test ("id 123", "Int", "123", Env, Prelude);
-      Test ("const 3 []", "Int", "3", Env, Prelude);
-      Test ("2 * 3 + 4", "Int", "10", Env, Prelude);
-      Test ("2 + 3 * 4", "Int", "14", Env, Prelude);
-      Test ("2 - 3 * 4", "Int", "-10", Env, Prelude);
-      Test ("seq (#trace 42) 4", "Int", "4", Env, Prelude);
-      Test ("sum [1,2,3,4]", "Int", "10", Env, Prelude);
-      Test ("sum (map succ [1,2,3])", "Int", "9", Env, Prelude);
-      Test ("length (take 10 [1,2,3])", "Int", "3", Env, Prelude);
-      Test ("length (take 2 [1,2,3])", "Int", "2", Env, Prelude);
+      Test ("1", "Int", "1", Context, Env, Prelude);
+      Test ("null []", "Bool", "K", Context, Env, Prelude);
+      Test ("null [1]", "Bool", "K I", Context, Env, Prelude);
+      Test ("length []", "Int", "0", Context, Env, Prelude);
+      Test ("length [1]", "Int", "1", Context, Env, Prelude);
+      Test ("length [1,2,3,4]", "Int", "4", Context, Env, Prelude);
+      Test ("zero 0", "Bool", "K", Context, Env, Prelude);
+      Test ("zero 1", "Bool", "K I", Context, Env, Prelude);
+      Test ("zero 100", "Bool", "K I", Context, Env, Prelude);
+      Test ("small 3", "Bool", "K", Context, Env, Prelude);
+      Test ("small 5", "Bool", "K I", Context, Env, Prelude);
+      Test ("id 123", "Int", "123", Context, Env, Prelude);
+      Test ("const 3 []", "Int", "3", Context, Env, Prelude);
+      Test ("2 * 3 + 4", "Int", "10", Context, Env, Prelude);
+      Test ("2 + 3 * 4", "Int", "14", Context, Env, Prelude);
+      Test ("2 - 3 * 4", "Int", "-10", Context, Env, Prelude);
+      Test ("seq (#trace 42) 4", "Int", "4", Context, Env, Prelude);
+      Test ("sum [1,2,3,4]", "Int", "10", Context, Env, Prelude);
+      Test ("sum (map succ [1,2,3])", "Int", "9", Context, Env, Prelude);
+      Test ("length (take 10 [1,2,3])", "Int", "3", Context, Env, Prelude);
+      Test ("length (take 2 [1,2,3])", "Int", "2", Context, Env, Prelude);
     --  Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);
     --  Test ("sum (do { let x = 42; return x })", "Int", "42", Env, Prelude);
-      Test ("maybe 42 id Nothing", "Int", "42", Env, Prelude);
-      Test ("maybe 0 sum (Just [1,2,3])", "Int", "6", Env, Prelude);
-      Test ("fst (123,456)", "Int", "123", Env, Prelude);
-      Test ("snd (123,456)", "Int", "456", Env, Prelude);
-      Test ("length ""Hello""", "Int", "5", Env, Prelude);
-      Test ("runIO (putChar 'A')", "()", "I", Env, Prelude);
-      Test ("runIO (putStr ""Hello, world!\n"")", "()", "I", Env, Prelude);
+      Test ("maybe 42 id Nothing", "Int", "42", Context, Env, Prelude);
+      Test ("maybe 0 sum (Just [1,2,3])", "Int", "6", Context, Env, Prelude);
+      Test ("fst (123,456)", "Int", "123", Context, Env, Prelude);
+      Test ("snd (123,456)", "Int", "456", Context, Env, Prelude);
+      Test ("length ""Hello""", "Int", "5", Context, Env, Prelude);
+      Test ("runIO (putChar 'A')", "()", "I", Context, Env, Prelude);
+      Test ("runIO (putStr ""Hello, world!\n"")", "()", "I", Context, Env, Prelude);
 
       Leander.Tests.Self.Run_Tests
-        ("./share/leander/tests/RunTests.hs", Env);
+        ("./share/leander/tests/RunTests.hs", Context, Env);
 
       Machine.Report;
    end Run_Tests;
@@ -85,13 +87,14 @@ package body Leander.Tests.Evaluation is
      (Expression     : String;
       Expected_Type  : String;
       Expected_Value : String;
+      Context        : Leander.Parser.Parse_Context;
       Skit_Env       : Skit.Environment.Reference;
       Prelude        : Leander.Environment.Reference)
    is
       use Leander.Core.Inference;
       use Leander.Core.Expressions.Inference;
       Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 Leander.Parser.Parse_Expression (Expression);
+                 Context.Parse_Expression (Expression);
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=

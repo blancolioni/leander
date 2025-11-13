@@ -21,4 +21,12 @@ package Leander.Core is
       Instance_Context,
       Data_Context);
 
+private
+
+   type Core_Reference is access constant Abstraction'Class;
+
+   function Allocate
+     (This : Abstraction'Class)
+      return Core_Reference;
+
 end Leander.Core;

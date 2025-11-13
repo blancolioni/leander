@@ -101,5 +101,6 @@ package Leander.Environment is
    is abstract;
 
    function New_Environment (Name : String) return Reference;
+   function Boot_Environment return Reference;
 
 end Leander.Environment;

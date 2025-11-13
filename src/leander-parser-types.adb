@@ -1,3 +1,5 @@
+with Ada.Containers.Doubly_Linked_Lists;
+with Leander.Core;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
@@ -11,7 +13,8 @@ package body Leander.Parser.Types is
    -----------------------
 
    function Parse_Atomic_Type
-     return Leander.Syntax.Types.Reference
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Types.Reference
    is
       use Leander.Syntax.Types;
       Loc    : constant Leander.Source.Source_Location :=
@@ -41,7 +44,7 @@ package body Leander.Parser.Types is
             if Tok = Tok_Comma then
                Scan;
                declare
-                  T : constant Reference := Parse_Type_Expression;
+                  T : constant Reference := Parse_Type_Expression (Context);
                begin
                   return T & Go;
                end;
@@ -86,7 +89,7 @@ package body Leander.Parser.Types is
             end return;
          else
             declare
-               Inner : constant Reference := Parse_Type_Expression;
+               Inner : constant Reference := Parse_Type_Expression (Context);
             begin
                Expect (Tok_Right_Bracket, [Tok_Right_Arrow, Tok_Identifier]);
                return Application (Loc, Constructor (Loc, "[]"), Inner);
@@ -99,7 +102,7 @@ package body Leander.Parser.Types is
             return Constructor (Loc, "()");
          else
             declare
-               Inner : constant Reference := Parse_Type_Expression;
+               Inner : constant Reference := Parse_Type_Expression (Context);
             begin
                if Tok = Tok_Comma then
                   return Scan_Rest_Of_Tuple (Inner);
@@ -120,25 +123,101 @@ package body Leander.Parser.Types is
 
    end Parse_Atomic_Type;
 
+   -------------------------------------
+   -- Parse_Qualified_Type_Expression --
+   -------------------------------------
+
+   function Parse_Qualified_Type_Expression
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Qualified_Types.Reference
+   is
+      package Predicate_Lists is
+        new Ada.Containers.Doubly_Linked_Lists
+          (Leander.Syntax.Qualified_Types.Predicate,
+           Leander.Syntax.Qualified_Types."=");
+      Ps     : Predicate_Lists.List;
+
+      function At_Predicate return Boolean
+      is (Tok = Tok_Identifier
+          and then At_Constructor
+          and then Context.Known_Class (Tok_Text)
+          and then Next_Tok = Tok_Identifier);
+
+      function Parse_Predicate
+        return Leander.Syntax.Qualified_Types.Predicate;
+
+      ---------------------
+      -- Parse_Predicate --
+      ---------------------
+
+      function Parse_Predicate
+        return Leander.Syntax.Qualified_Types.Predicate
+      is
+         Loc : constant Source.Source_Location := Current_Source_Location;
+         Con : constant String := Scan_Identifier;
+         Var : constant String := Scan_Identifier;
+      begin
+         return (Loc, Core.To_Conid (Con), Core.To_Varid (Var));
+      end Parse_Predicate;
+
+   begin
+      if At_Predicate then
+         Ps.Append (Parse_Predicate);
+         Expect (Tok_Double_Right_Arrow, [Tok_Left_Paren, Tok_Identifier]);
+      elsif Tok = Tok_Left_Paren
+        and then Next_Tok = Tok_Identifier
+        and then Context.Known_Class (Tok_Text (1))
+      then
+         Scan;
+         while At_Predicate loop
+            Ps.Append (Parse_Predicate);
+            if Tok = Tok_Comma then
+               Scan;
+               if not At_Predicate then
+                  Error ("expected a predicate");
+                  Skip_To ([], [Tok_Right_Paren]);
+                  exit;
+               end if;
+            elsif At_Predicate then
+               Error ("missing ','");
+            end if;
+         end loop;
+         Expect (Tok_Right_Paren, [Tok_Double_Right_Arrow]);
+         Expect (Tok_Double_Right_Arrow, [Tok_Left_Paren, Tok_Identifier]);
+      end if;
+
+      declare
+         Expr : constant Syntax.Types.Reference :=
+                  Parse_Type_Expression (Context);
+      begin
+         return Syntax.Qualified_Types.Qualified_Type
+           ([for P of Ps => P], Expr);
+      end;
+
+   end Parse_Qualified_Type_Expression;
+
    ---------------------------
    -- Parse_Type_Expression --
    ---------------------------
 
    function Parse_Type_Expression
-     return Leander.Syntax.Types.Reference
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Types.Reference
    is
       use Leander.Syntax.Types;
       Indent : constant Positive := Tok_Indent;
       Loc    : constant Leander.Source.Source_Location :=
                  Current_Source_Location;
-      Expr : Reference := Parse_Atomic_Type;
+
+
+      Expr : Reference := Parse_Atomic_Type (Context);
    begin
 
       while Tok_Indent > Indent
         and then At_Atomic_Type
       loop
          declare
-            Right : constant Reference := Parse_Atomic_Type;
+            Right : constant Reference := Parse_Atomic_Type (Context);
          begin
             Expr := Application (Loc, Expr, Right);
          end;
@@ -147,7 +226,7 @@ package body Leander.Parser.Types is
       if Tok = Tok_Right_Arrow then
          Scan;
          declare
-            Target : constant Reference := Parse_Type_Expression;
+            Target : constant Reference := Parse_Type_Expression (Context);
          begin
             Expr :=
               Application

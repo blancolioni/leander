@@ -1,3 +1,7 @@
+with Leander.Core.Kinds;
+with Leander.Core.Types;
+with Leander.Core.Tyvars;
+
 package body Leander.Syntax.Classes is
 
    ------------------
@@ -22,8 +26,13 @@ package body Leander.Syntax.Classes is
       Variable_Name : String)
    is
    begin
-      This.Constraints :=
-        This.Constraints.Constrain (Class_Name, Variable_Name);
+      This.Constraints.Append
+        (Leander.Core.Predicates.Predicate
+           (Class_Name,
+            Leander.Core.Types.TVar
+              (Leander.Core.Tyvars.Tyvar
+                   (Core.To_Varid (Variable_Name),
+                    Leander.Core.Kinds.Star))));
    end Add_Constraint;
 
    ---------------
@@ -38,7 +47,7 @@ package body Leander.Syntax.Classes is
       return Leander.Core.Type_Classes.Type_Class
         (Class_Name    => This.Class_Name,
          Variable_Name => This.Variable_Name,
-         Constraints   => This.Constraints,
+         Predicates    => [for P of This.Constraints => P],
          Bindings      => This.Bindings);
    end Get_Class;
 

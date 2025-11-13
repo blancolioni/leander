@@ -1,3 +1,6 @@
+with Leander.Core.Kinds;
+with Leander.Core.Predicates;
+with Leander.Core.Qualified_Types;
 with Leander.Core.Substitutions;
 with Leander.Core.Types;
 with Leander.Core.Tyvars;
@@ -15,6 +18,10 @@ package Leander.Core.Schemes is
 
    function Fresh_Instance
      (This : Instance)
+      return Qualified_Types.Reference;
+
+   function Inner_Type
+     (This : Instance)
       return Types.Reference;
 
    function To_Scheme
@@ -23,6 +30,12 @@ package Leander.Core.Schemes is
 
    function Quantify
      (Vs    : Leander.Core.Tyvars.Tyvar_Array;
+      T     : not null access constant Qualified_Types.Instance'Class)
+      return Reference;
+
+   function Quantify
+     (Vs    : Leander.Core.Tyvars.Tyvar_Array;
+      Ps    : Leander.Core.Predicates.Predicate_Array;
       T     : Leander.Core.Types.Reference)
       return Reference;
 
@@ -30,12 +43,14 @@ package Leander.Core.Schemes is
 
 private
 
+   type Kind_Array is array (Positive range <>) of Leander.Core.Kinds.Kind;
+
    type Instance (Count : Natural) is
      new Leander.Core.Tyvars.Container_Abstraction
      and Leander.Showable.Abstraction with
       record
-         Tyvars : Leander.Core.Tyvars.Tyvar_Array (1 .. Count);
-         Ty     : Leander.Core.Types.Reference;
+         Ks : Kind_Array (1 .. Count);
+         QT : Leander.Core.Qualified_Types.Reference;
       end record;
 
    overriding function Contains
@@ -53,5 +68,10 @@ private
       return access constant Instance;
 
    overriding function Show (This : Instance) return String;
+
+   function Inner_Type
+     (This : Instance)
+      return Types.Reference
+   is (This.QT.Get_Type);
 
 end Leander.Core.Schemes;

@@ -8,7 +8,8 @@ package body Leander.Parser.Sequences is
    --------------------
 
    procedure Parse_Sequence
-     (On_Parsed : not null access
+     (Context   : Parse_Context'Class;
+      On_Parsed : not null access
         procedure (Element : Element_Type))
    is
    begin
@@ -16,7 +17,7 @@ package body Leander.Parser.Sequences is
          Scan;
          while At_Element loop
             declare
-               E : constant Element_Type := Parse;
+               E : constant Element_Type := Parse (Context);
             begin
                On_Parsed (E);
                if Tok = Tok_Semi then
@@ -42,7 +43,7 @@ package body Leander.Parser.Sequences is
               and then At_Element
             loop
                declare
-                  E : constant Element_Type := Parse;
+                  E : constant Element_Type := Parse (Context);
                begin
                   On_Parsed (E);
                end;

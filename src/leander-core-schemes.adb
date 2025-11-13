@@ -1,4 +1,5 @@
 with Leander.Allocator;
+with Leander.Core.Qualifiers;
 
 package body Leander.Core.Schemes is
 
@@ -21,10 +22,13 @@ package body Leander.Core.Schemes is
       Subst : Leander.Core.Substitutions.Instance'Class)
       return access constant Instance
    is
-      W : constant Leander.Names.Name_Array :=
-            [for Tv of This.Tyvars => Leander.Names.Leander_Name (Tv.Name)];
+      Result : constant Variable_Reference := Allocator.Allocate
+        (Instance'
+           (Count => This.count,
+            Ks    => This.Ks,
+            QT    => This.QT.Apply (Subst)));
    begin
-      return Quantify (This.Tyvars, This.Ty.Apply (Subst.Without (W)));
+      return Result;
    end Apply;
 
    --------------
@@ -52,33 +56,18 @@ package body Leander.Core.Schemes is
 
    function Fresh_Instance
      (This : Instance)
-      return Types.Reference
+      return Qualified_Types.Reference
    is
-      function Create_Subst
-        (Index : Positive)
-         return Leander.Core.Substitutions.Instance;
+      function New_Tyvar
+        (K : Leander.Core.Kinds.Kind)
+         return Leander.Core.Types.Reference
+      is (Leander.Core.Types.TVar
+            (Leander.Core.Tyvars.New_Tyvar (K)));
 
-      ------------------
-      -- Create_Subst --
-      ------------------
-
-      function Create_Subst
-        (Index : Positive)
-         return Leander.Core.Substitutions.Instance
-      is
-      begin
-         if Index <= This.Count then
-            return Leander.Core.Substitutions.Compose
-              (Leander.Names.Leander_Name (This.Tyvars (Index).Name),
-               Leander.Core.Types.New_TVar,
-               Create_Subst (Index + 1));
-         else
-            return Leander.Core.Substitutions.Empty;
-         end if;
-      end Create_Subst;
-
+      Ts : constant Core.Types.Type_Array :=
+             [for K of This.Ks => New_Tyvar (K)];
    begin
-      return This.Ty.Apply (Create_Subst (1));
+      return This.QT.Instantiate (Ts);
    end Fresh_Instance;
 
    ----------------
@@ -89,9 +78,8 @@ package body Leander.Core.Schemes is
      (This  : Instance)
       return Leander.Core.Tyvars.Tyvar_Array
    is
-      use type Leander.Core.Tyvars.Tyvar_Array;
    begin
-      return This.Ty.Get_Tyvars / This.Tyvars;
+      return This.QT.Get_Tyvars;
    end Get_Tyvars;
 
 
@@ -110,11 +98,40 @@ package body Leander.Core.Schemes is
 
    function Quantify
      (Vs    : Leander.Core.Tyvars.Tyvar_Array;
+      T     : not null access constant Qualified_Types.Instance'Class)
+      return Reference
+   is
+      Tvs : constant Leander.Core.Tyvars.Tyvar_Array :=
+              Tyvars.Intersection
+                (T.Get_Tyvars, Vs);
+      Ks  : constant Kind_Array :=
+              [for V of Tvs => V.Get_Kind];
+      S   : Leander.Core.Substitutions.Instance :=
+              Core.Substitutions.Empty;
+      G   : Natural := 1;
+   begin
+      for V of Tvs loop
+         S := Substitutions.Compose (Leander.Names.Leander_Name (V.Name),
+                                     Types.TGen (G), S);
+         G := G + 1;
+      end loop;
+      return Allocate
+        (Instance'
+           (Ks'Length, Ks, T.Apply (S)));
+   end Quantify;
+
+   --------------
+   -- Quantify --
+   --------------
+
+   function Quantify
+     (Vs    : Leander.Core.Tyvars.Tyvar_Array;
+      Ps    : Leander.Core.Predicates.Predicate_Array;
       T     : Leander.Core.Types.Reference)
       return Reference
    is
    begin
-      return Allocate (Instance'(Vs'Length, Vs, T));
+      return Quantify (Vs, Qualified_Types.Qualified_Type (Ps, T));
    end Quantify;
 
    ----------
@@ -123,7 +140,7 @@ package body Leander.Core.Schemes is
 
    overriding function Show (This : Instance) return String is
    begin
-      return This.Ty.Show;
+      return This.QT.Show;
    end Show;
 
    ---------------
@@ -135,7 +152,10 @@ package body Leander.Core.Schemes is
       return Reference
    is
    begin
-      return Quantify ([], T);
+      return Quantify
+        ([],
+         Qualified_Types.Qualified_Type
+           (Qualifiers.Empty, T));
    end To_Scheme;
 
 end Leander.Core.Schemes;

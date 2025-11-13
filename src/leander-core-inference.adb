@@ -38,6 +38,18 @@ package body Leander.Core.Inference is
       This.Expr_Types.Insert (Item, Nullable_Type_Reference (To));
    end Bind;
 
+   ------------------------
+   -- Current_Predicates --
+   ------------------------
+
+   function Current_Predicates
+     (This : Inference_Context)
+      return Leander.Core.Predicates.Predicate_Array
+   is
+   begin
+      return [for P of This.Predicates => P];
+   end Current_Predicates;
+
    --------------------------
    -- Current_Substitution --
    --------------------------
@@ -72,6 +84,20 @@ package body Leander.Core.Inference is
       This.Type_Env := This.Env_Stack.Last_Element;
       This.Env_Stack.Delete_Last;
    end Restore_Type_Env;
+
+   ---------------------
+   -- Save_Predicates --
+   ---------------------
+
+   procedure Save_Predicates
+     (This       : in out Inference_Context;
+      Predicates : Leander.Core.Predicates.Predicate_Array)
+   is
+   begin
+      for P of Predicates loop
+         This.Predicates.Append (P);
+      end loop;
+   end Save_Predicates;
 
    -----------------------
    -- Save_Substitution --

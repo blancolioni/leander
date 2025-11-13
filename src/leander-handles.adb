@@ -3,7 +3,6 @@ with Leander.Calculus;
 
 with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
-with Leander.Parser;
 with Leander.Syntax.Expressions;
 
 with Skit.Compiler;
@@ -36,13 +35,15 @@ package body Leander.Handles is
       Skit_Env : constant Skit.Environment.Reference :=
                    Skit.Environment.Create
                      (Machine);
+      Context  : constant Context_Reference :=
+                   new Leander.Parser.Parse_Context;
       Env      : constant Leander.Environment.Reference :=
-                   Leander.Parser.Load_Module
+                   Context.Load_Module
                      ("./share/leander/modules/Prelude.hs");
    begin
       Skit.Library.Load_Primitives (Skit_Env);
       return Handle'
-        (Skit_Env, Env);
+        (Skit_Env, Env, Context);
    end Create;
 
    -------------------------
@@ -69,12 +70,13 @@ package body Leander.Handles is
       use Leander.Core.Inference;
       use Leander.Core.Expressions.Inference;
       Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 Leander.Parser.Parse_Expression (Expression);
+                 This.Context.Parse_Expression (Expression);
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=
                  Initial_Context (This.Env.Type_Env);
    begin
+      Leander.Syntax.Prune;
       Infer (Result, Core);
       if not Result.OK then
          Ada.Text_IO.Put_Line
@@ -113,7 +115,7 @@ package body Leander.Handles is
       use Leander.Core.Inference;
       use Leander.Core.Expressions.Inference;
       Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 Leander.Parser.Parse_Expression (Expression);
+                 This.Context.Parse_Expression (Expression);
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=
@@ -136,7 +138,7 @@ package body Leander.Handles is
       Path : String)
    is
    begin
-      This.Env := Leander.Parser.Load_Module (Path);
+      This.Env := This.Context.Load_Module (Path);
       declare
          Result : constant String :=
                     This.Evaluate ("runIO main");

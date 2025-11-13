@@ -5,7 +5,6 @@ with Leander.Calculus;
 with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
 with Leander.Environment;
-with Leander.Parser;
 with Leander.Syntax.Expressions;
 
 with Skit.Compiler;
@@ -17,15 +16,16 @@ package body Leander.Tests.Self is
    ---------------
 
    procedure Run_Tests
-     (Path           : String;
-      Skit_Env       : Skit.Environment.Reference)
+     (Path      : String;
+      Context   : in out Leander.Parser.Parse_Context'Class;
+      Skit_Env  : Skit.Environment.Reference)
    is
       use Leander.Core.Inference;
       use Leander.Core.Expressions.Inference;
       Test_Env : constant Leander.Environment.Reference :=
-                   Leander.Parser.Load_Module (Path);
+                   Context.Load_Module (Path);
       Syntax   : constant Leander.Syntax.Expressions.Reference :=
-                   Leander.Parser.Parse_Expression ("runIO main");
+                   Context.Parse_Expression ("runIO main");
       Core     : constant Leander.Core.Expressions.Reference :=
                    Syntax.To_Core;
       Result   : Inference_Context :=

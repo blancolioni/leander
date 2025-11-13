@@ -22,9 +22,10 @@ package Leander.Core.Tyvars is
       return Instance;
 
    function New_Tyvar
+     (Kind : Leander.Core.Kinds.Kind := Leander.Core.Kinds.Star)
      return Instance;
 
-   type Container_Abstraction is interface;
+   type Container_Abstraction is interface and Leander.Showable.Abstraction;
 
    function Contains
      (This  : Container_Abstraction;
@@ -42,6 +43,10 @@ package Leander.Core.Tyvars is
       Subst : Leander.Core.Substitutions.Instance'Class)
       return access constant Container_Abstraction
       is abstract;
+
+   function Generate
+     (This : not null access constant Container_Abstraction'Class)
+      return access constant Container_Abstraction'Class;
 
    function "/"
      (Container : Tyvar_Array;

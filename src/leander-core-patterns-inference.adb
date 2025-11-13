@@ -1,3 +1,4 @@
+with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
 with Leander.Core.Type_Env;
 with Leander.Core.Types;
@@ -14,6 +15,23 @@ package body Leander.Core.Patterns.Inference is
      (Context : in out Leander.Core.Inference.Inference_Context'Class;
       Pattern : not null access constant Instance'Class)
    is
+      procedure Bind
+        (Pat : not null access constant Instance'Class;
+         QT  : Core.Qualified_Types.Reference);
+
+      ----------
+      -- Bind --
+      ----------
+
+      procedure Bind
+        (Pat : not null access constant Instance'Class;
+         QT  : Core.Qualified_Types.Reference)
+      is
+      begin
+         Context.Save_Predicates (QT.Predicates);
+         Context.Bind (Pat, QT.Get_Type);
+      end Bind;
+
    begin
       case Pattern.Tag is
          when PVar =>
@@ -30,7 +48,7 @@ package body Leander.Core.Patterns.Inference is
                end if;
             end;
          when PLit =>
-            Context.Bind (Pattern, Pattern.Literal.Get_Type);
+            Bind (Pattern, Pattern.Literal.Get_Type);
          when PCon =>
             declare
                use Leander.Core.Type_Env;
@@ -50,13 +68,16 @@ package body Leander.Core.Patterns.Inference is
                declare
                   T : Core.Types.Reference := Core.Types.New_TVar;
                   R : constant Core.Types.Reference := T;
+                  Q1 : constant Qualified_Types.Reference :=
+                         Sigma.Fresh_Instance;
                begin
+                  Context.Save_Predicates (Q1.Predicates);
                   for Arg_Type of reverse Ts loop
                      T := Core.Types.Fn (Arg_Type, T);
                   end loop;
                   Context.Save_Substitution
                     (Core.Types.Unification.Most_General_Unifier
-                       (T, Sigma.Fresh_Instance));
+                       (T, Q1.Get_Type));
                   Leander.Logging.Log
                     ("PATS",
                      Pattern.Show

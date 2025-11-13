@@ -44,6 +44,7 @@ package body Leander.Environment.Prelude is
         (Core.To_Conid ("(,)"),
          Quantify
            ([Tv_A, Tv_B],
+            [],
             Core.Types.Fn
               (T_A,
                Core.Types.Fn
@@ -64,11 +65,11 @@ package body Leander.Environment.Prelude is
       Builder.Start
         (T_List_A);
       Builder.Add_Con
-        (Core.To_Conid ("[]"), Quantify ([Tv_A], T_List_A));
+        (Core.To_Conid ("[]"), Quantify ([Tv_A], [], T_List_A));
       Builder.Add_Con
         (Core.To_Conid (":"),
          Quantify
-           ([Tv_A],
+           ([Tv_A], [],
             Core.Types.Fn (T_A,
               Core.Types.Fn (T_List_A, T_List_A))));
       Builder.Build;

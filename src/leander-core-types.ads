@@ -62,10 +62,6 @@ package Leander.Core.Types is
       Refs : Type_Array)
       return Reference;
 
-   function Generate
-     (This : not null access constant Instance'Class)
-      return Reference;
-
    function TVar (T : Tyvars.Instance) return Reference;
 
    function New_TVar return Reference;

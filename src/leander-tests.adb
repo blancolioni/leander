@@ -2,6 +2,7 @@ with Ada.Command_Line;
 with Ada.Text_IO;
 
 with Leander.Core;
+with Leander.Syntax;
 with Leander.Tests.Evaluation;
 with Leander.Tests.Expressions;
 with Leander.Tests.Inference;
@@ -75,6 +76,7 @@ package body Leander.Tests is
       Leander.Tests.Inference.Run_Tests;
       Leander.Tests.Prelude.Run_Tests;
       Leander.Tests.Evaluation.Run_Tests;
+      Leander.Syntax.Prune;
       Leander.Core.Prune;
       Ada.Text_IO.Put_Line
         ("Tests:" & Total_Tests'Image

@@ -3,6 +3,7 @@ with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
 with Leander.Core.Inference;
+with Leander.Environment.Prelude;
 with Leander.Logging;
 with Leander.Names.Maps;
 with WL.String_Maps;
@@ -120,6 +121,8 @@ package body Leander.Environment is
       return Leander.Core.Type_Env.Reference
    is (This.Type_Env);
 
+   Local_Boot_Env : Reference := null;
+
    --------------
    -- Bindings --
    --------------
@@ -131,6 +134,18 @@ package body Leander.Environment is
    begin
       This.Bindings := Groups;
    end Bindings;
+
+   ----------------------
+   -- Boot_Environment --
+   ----------------------
+
+   function Boot_Environment return Reference is
+   begin
+      if Local_Boot_Env = null then
+         Local_Boot_Env := Prelude.Create;
+      end if;
+      return Local_Boot_Env;
+   end Boot_Environment;
 
    -----------------
    -- Constructor --

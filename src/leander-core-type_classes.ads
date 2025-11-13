@@ -1,18 +1,18 @@
 with Leander.Core.Binding_Groups;
-with Leander.Core.Constraints;
+with Leander.Core.Predicates;
 with Leander.Core.Schemes;
 
 package Leander.Core.Type_Classes is
 
-   type Instance is tagged private;
+   type Instance (<>) is tagged private;
    type Reference is access constant Instance'Class;
 
    function Id (This : Instance'Class) return Conid;
 
    function Type_Class
-     (Class_Name : Conid;
+     (Class_Name    : Conid;
       Variable_Name : Varid;
-      Constraints   : Leander.Core.Constraints.Constraint_Set;
+      Predicates    : Leander.Core.Predicates.Predicate_Array;
       Bindings      : Leander.Core.Binding_Groups.Reference)
       return Reference;
 
@@ -32,11 +32,11 @@ package Leander.Core.Type_Classes is
 
 private
 
-   type Instance is tagged
+   type Instance (Predicate_Count : Natural) is tagged
       record
-         Class_Id : Conid;
-         Var_Id   : Varid;
-         Constraints : Core.Constraints.Constraint_Set;
+         Class_Id    : Conid;
+         Var_Id      : Varid;
+         Predicates  : Core.Predicates.Predicate_Array (1 .. Predicate_Count);
          Bindings    : Leander.Core.Binding_Groups.Reference;
       end record;
 
