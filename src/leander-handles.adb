@@ -125,7 +125,7 @@ package body Leander.Handles is
       if not Result.OK then
          return Result.Error_Message;
       else
-         return Result.Get_Type (Core).Generate.Show;
+         return Result.Get_Qualified_Type (Core).Generate.Show;
       end if;
    end Infer_Type;
 

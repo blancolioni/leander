@@ -1,5 +1,6 @@
 private with Ada.Containers.Doubly_Linked_Lists;
 with LEander.Core.Predicates;
+with Leander.Core.Qualified_Types;
 with Leander.Core.Substitutions;
 with Leander.Core.Type_Env;
 private with Leander.Core.Typeable.Maps;
@@ -78,6 +79,11 @@ package Leander.Core.Inference is
       Typeable   : not null access constant Core.Typeable.Abstraction'Class)
       return Leander.Core.Types.Reference;
 
+   function Get_Qualified_Type
+     (This       : Inference_Context;
+      Typeable   : not null access constant Core.Typeable.Abstraction'Class)
+      return Leander.Core.Qualified_Types.Reference;
+
 private
 
    type Nullable_Type_Reference is
@@ -139,5 +145,12 @@ private
       return Inference_Context
    is (Inference_Context'
          (Type_Env => Type_Env, others => <>));
+
+   function Get_Qualified_Type
+     (This       : Inference_Context;
+      Typeable   : not null access constant Core.Typeable.Abstraction'Class)
+      return Leander.Core.Qualified_Types.Reference
+   is (Leander.Core.Qualified_Types.Qualified_Type
+       (This.Current_Predicates, This.Get_Type (Typeable)));
 
 end Leander.Core.Inference;

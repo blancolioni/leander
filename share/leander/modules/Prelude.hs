@@ -31,10 +31,13 @@ infixl 1  >>, >>=
 infixr 1  =<<
 infixr 0  $, $!, `seq`
 
+class Show a where
+    show :: a -> [Char]
+
 class Bounded a where
     minBound :: a
     maxBound :: a
-    
+
 id :: a -> a
 id x = x
 

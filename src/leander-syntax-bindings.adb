@@ -1,3 +1,4 @@
+with Leander.Core;
 with Leander.Core.Alts;
 with Leander.Core.Bindings;
 with Leander.Core.Qualified_Types;
@@ -92,10 +93,27 @@ package body Leander.Syntax.Bindings is
       Name      : String;
       Type_Expr : Leander.Syntax.Qualified_Types.Reference)
    is
+      use type Leander.Core.Declaration_Context;
+      use type Leander.Core.Predicates.Predicate_Array;
+      Bound_Type : Leander.Syntax.Qualified_Types.Reference := Type_Expr;
    begin
+      if This.Context = Leander.Core.Class_Context then
+         declare
+            use Leander.Core.Predicates;
+            Ps : constant Predicate_Array :=
+                   [for P of This.Predicates => P];
+            Qs : constant Predicate_Array :=
+                   Bound_Type.Predicates;
+         begin
+            Bound_Type :=
+              Leander.Syntax.Qualified_Types.Qualified_Type
+                (Ps & Qs, Bound_Type.Get_Type);
+         end;
+      end if;
+
       This.Types.Append
         (Type_Binding'
-           (Leander.Names.To_Leander_Name (Name), Type_Expr));
+           (Leander.Names.To_Leander_Name (Name), Bound_Type));
    end Add_Type;
 
    -----------

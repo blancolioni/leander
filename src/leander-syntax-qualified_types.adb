@@ -1,8 +1,3 @@
-with Leander.Core.Kinds;
-with Leander.Core.Predicates;
-with Leander.Core.Types;
-with Leander.Core.Tyvars;
-
 package body Leander.Syntax.Qualified_Types is
 
    --------------------
@@ -10,7 +5,7 @@ package body Leander.Syntax.Qualified_Types is
    --------------------
 
    function Qualified_Type
-     (Predicates : Predicate_Array;
+     (Predicates : Leander.Core.Predicates.Predicate_Array;
       With_Type  : Leander.Syntax.Types.Reference)
       return Reference
    is
@@ -31,16 +26,9 @@ package body Leander.Syntax.Qualified_Types is
      (This : Instance'Class)
       return Leander.Core.Qualified_Types.Reference
    is
-      Predicates : constant Leander.Core.Predicates.Predicate_Array :=
-                     [for P of This.Predicates =>
-                                     Leander.Core.Predicates.Predicate
-                        (Core.To_String (P.Class),
-                         Leander.Core.Types.TVar
-                           (Leander.Core.Tyvars.Tyvar
-                              (P.Variable, Leander.Core.Kinds.Star)))];
    begin
       return Leander.Core.Qualified_Types.Qualified_Type
-        (Predicates, This.T.To_Core);
+        (This.Predicates, This.T.To_Core);
    end To_Core;
 
 end Leander.Syntax.Qualified_Types;

@@ -1,5 +1,10 @@
 with Ada.Containers.Doubly_Linked_Lists;
-with Leander.Core;
+
+with Leander.Core.Kinds;
+with Leander.Core.Predicates;
+with Leander.Core.Types;
+
+with Leander.Core.Tyvars;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
@@ -133,8 +138,8 @@ package body Leander.Parser.Types is
    is
       package Predicate_Lists is
         new Ada.Containers.Doubly_Linked_Lists
-          (Leander.Syntax.Qualified_Types.Predicate,
-           Leander.Syntax.Qualified_Types."=");
+          (Leander.Core.Predicates.Instance,
+           Leander.Core.Predicates."=");
       Ps     : Predicate_Lists.List;
 
       function At_Predicate return Boolean
@@ -144,20 +149,25 @@ package body Leander.Parser.Types is
           and then Next_Tok = Tok_Identifier);
 
       function Parse_Predicate
-        return Leander.Syntax.Qualified_Types.Predicate;
+        return Leander.Core.Predicates.Instance;
 
       ---------------------
       -- Parse_Predicate --
       ---------------------
 
       function Parse_Predicate
-        return Leander.Syntax.Qualified_Types.Predicate
+        return Leander.Core.Predicates.Instance
       is
-         Loc : constant Source.Source_Location := Current_Source_Location;
+         Loc : constant Source.Source_Location := Current_Source_Location
+           with Unreferenced;
          Con : constant String := Scan_Identifier;
          Var : constant String := Scan_Identifier;
       begin
-         return (Loc, Core.To_Conid (Con), Core.To_Varid (Var));
+         return Leander.Core.Predicates.Predicate
+           (Con,
+            Leander.Core.Types.TVar
+              (Leander.Core.Tyvars.Tyvar
+                   (Core.To_Varid (Var), Leander.Core.Kinds.Star)));
       end Parse_Predicate;
 
    begin
