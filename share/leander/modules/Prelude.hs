@@ -31,12 +31,20 @@ infixl 1  >>, >>=
 infixr 1  =<<
 infixr 0  $, $!, `seq`
 
+class Eq a where
+    (==), (/=) :: a -> a -> Bool
+    (/=) x y = not (x == y)
+    (==) x y = not (x /= y)
+
 class Show a where
     show :: a -> [Char]
 
 class Bounded a where
     minBound :: a
     maxBound :: a
+
+instance Eq Int where
+    (==) = #primIntEq
 
 id :: a -> a
 id x = x
@@ -69,11 +77,6 @@ not False = True
 
 (||) True _ = True
 (||) False b = b
-
-(==), (/=) :: Int -> Int -> Bool
-(==) = #primIntEq
-
-(/=) x y = not (x == y)
 
 null :: [a] -> Bool
 null [] = True
@@ -158,6 +161,10 @@ data  Maybe a  =  Nothing | Just a
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe n f Nothing  =  n
 maybe n f (Just x) =  f x
+
+showMaybe :: Show a => Maybe a -> [Char]
+showMaybe Nothing  = "Nothing"
+showMaybe (Just x) = "Just " ++ show x
 
 data IO a = IO (Int -> (a,Int))
 

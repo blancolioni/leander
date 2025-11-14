@@ -26,8 +26,11 @@ package body Leander.Parser.Declarations is
    procedure Parse_Foreign_Import
      (Context : Parse_Context'Class);
 
+   procedure Parse_Instance_Declaration
+     (Context : in out Parse_Context'Class);
+
    procedure Parse_Constraints
-     (Context : Parse_Context'Class;
+     (Context        : Parse_Context'Class;
       Add_Constraint : not null access
         procedure (Constraint_Name : String;
                    Variable_Name   : String));
@@ -95,7 +98,7 @@ package body Leander.Parser.Declarations is
       end if;
 
       declare
-         Name : constant String := Scan_Identifier;
+         Name  : constant String := Scan_Identifier;
          Varid : constant String :=
                    (if At_Variable_Name
                     then Scan_Identifier
@@ -127,8 +130,8 @@ package body Leander.Parser.Declarations is
                             [Leander.Core.Predicates.Predicate
                                (Name, Tyvar)];
             Bindings    : constant Leander.Syntax.Bindings.Reference :=
-                         Leander.Syntax.Bindings.Empty
-                           (Leander.Core.Class_Context, Constraints);
+                            Leander.Syntax.Bindings.Empty
+                              (Leander.Core.Class_Context, Constraints);
          begin
             while Tok_Indent > Indent loop
                Leander.Parser.Bindings.Parse_Binding (Context, Bindings);
@@ -146,7 +149,7 @@ package body Leander.Parser.Declarations is
    -----------------------
 
    procedure Parse_Constraints
-     (Context : Parse_Context'Class;
+     (Context        : Parse_Context'Class;
       Add_Constraint : not null access
         procedure (Constraint_Name : String;
                    Variable_Name   : String))
@@ -239,7 +242,7 @@ package body Leander.Parser.Declarations is
       declare
          TExpr : constant Leander.Syntax.Types.Reference :=
                    Leander.Parser.Types.Parse_Type_Expression (Context);
-         Data : constant Leander.Core.Types.Reference :=
+         Data  : constant Leander.Core.Types.Reference :=
                    TExpr.To_Core;
       begin
 
@@ -332,12 +335,12 @@ package body Leander.Parser.Declarations is
             end if;
          elsif Tok in Tok_Infix | Tok_Infixl | Tok_Infixr then
             declare
-               Assoc : constant Expressions.Associativity_Type :=
-                         (if Tok = Tok_Infixl
-                          then Expressions.Left
-                          elsif Tok = Tok_Infixr
-                          then Expressions.Right
-                          else Expressions.None);
+               Assoc    : constant Expressions.Associativity_Type :=
+                            (if Tok = Tok_Infixl
+                             then Expressions.Left
+                             elsif Tok = Tok_Infixr
+                             then Expressions.Right
+                             else Expressions.None);
                Priority : Expressions.Priority_Range := 0;
             begin
                Scan;
@@ -376,6 +379,8 @@ package body Leander.Parser.Declarations is
             Parse_Data_Declaration (Context);
          elsif Tok = Tok_Class then
             Parse_Class_Declaration (Context);
+         elsif Tok = Tok_Instance then
+            Parse_Instance_Declaration (Context);
          else
             Error ("only bindings are supported");
             Scan;
@@ -435,6 +440,64 @@ package body Leander.Parser.Declarations is
          Error ("missing local name");
       end if;
    end Parse_Foreign_Import;
+
+   procedure Parse_Instance_Declaration
+     (Context : in out Parse_Context'Class)
+   is
+      Indent : constant Positive := Tok_Indent;
+   begin
+      pragma Assert (Tok = Tok_Instance);
+      Scan;
+
+      declare
+         Constraint : constant Leander.Core.Predicates.Predicate_Array :=
+                        (if Tok = Tok_Left_Paren
+                         then Leander.Parser.Types.Parse_Constraint (Context)
+                         else []);
+      begin
+         if Tok /= Tok_Identifier
+           or else not At_Constructor
+         then
+            Error ("missing class name");
+            Skip_Declaration;
+            return;
+         end if;
+
+         if not Context.Known_Class (Tok_Text) then
+            Error ("unknown class: " & Tok_Text);
+         end if;
+
+         declare
+            Class_Name    : constant String := Scan_Identifier;
+            Instance_Type : constant Leander.Syntax.Types.Reference :=
+                              Parser.Types.Parse_Type_Expression (Context);
+         begin
+            if Tok /= Tok_Where then
+               Error ("missing 'where'");
+               Skip_Declaration;
+               return;
+            end if;
+
+            Scan;
+
+            declare
+               Bindings    : constant Leander.Syntax.Bindings.Reference :=
+                               Leander.Syntax.Bindings.Empty
+                                 (Leander.Core.Instance_Context, Constraint);
+            begin
+               while Tok_Indent > Indent loop
+                  Leander.Parser.Bindings.Parse_Binding (Context, Bindings);
+               end loop;
+
+               Context.Environment.Type_Instance
+                 (Class_Id      => Core.To_Conid (Class_Name),
+                  Constraints   => Constraint,
+                  Instance_Type => Instance_Type.To_Core,
+                  Bindings      => Bindings.To_Core);
+            end;
+         end;
+      end;
+   end Parse_Instance_Declaration;
 
    ----------------------
    -- Skip_Declaration --

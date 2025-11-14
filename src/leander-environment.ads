@@ -1,5 +1,6 @@
 with Leander.Calculus;
 with Leander.Core.Binding_Groups;
+with Leander.Core.Predicates;
 with Leander.Core.Schemes;
 with Leander.Core.Type_Classes;
 with Leander.Core.Type_Env;
@@ -80,8 +81,16 @@ package Leander.Environment is
    is abstract;
 
    procedure Type_Class
-     (This : in out Abstraction;
+     (This  : in out Abstraction;
       Class : Leander.Core.Type_Classes.Reference)
+   is abstract;
+
+   procedure Type_Instance
+     (This          : in out Abstraction;
+      Class_Id      : Leander.Core.Conid;
+      Constraints   : Leander.Core.Predicates.Predicate_Array;
+      Instance_Type : Leander.Core.Types.Reference;
+      Bindings      : Leander.Core.Binding_Groups.Reference)
    is abstract;
 
    procedure Import
