@@ -1,5 +1,3 @@
-with Ada.Text_IO;
-
 package body Leander.Core.Type_Classes is
 
    -------------------
@@ -27,10 +25,7 @@ package body Leander.Core.Type_Classes is
    is
    begin
       for P of Current loop
-         Ada.Text_IO.Put_Line
-           ("entails: " & P.Show & " <> " & Check.Show);
          for C of This.Super_Classes (Check.Class_Id) loop
-            Ada.Text_IO.Put_Line ("super: " & To_String (C));
             if C = P.Class_Id then
                return True;
             end if;

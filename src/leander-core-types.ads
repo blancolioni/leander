@@ -61,6 +61,10 @@ package Leander.Core.Types is
      (Left, Right : not null access constant Instance'Class)
       return Boolean;
 
+   function Head_Normal_Form
+     (This : Instance'Class)
+      return Boolean;
+
    function Instantiate
      (This : not null access constant Instance'Class;
       Refs : Type_Array)

@@ -249,6 +249,27 @@ package body Leander.Core.Types is
       end case;
    end Head;
 
+   ----------------------
+   -- Head_Normal_Form --
+   ----------------------
+
+   function Head_Normal_Form
+     (This : Instance'Class)
+      return Boolean
+   is
+   begin
+      case This.Tag is
+         when TVar =>
+            return True;
+         when TCon =>
+            return False;
+         when TApp =>
+            return This.Left.Head_Normal_Form;
+         when TGen =>
+            return True;
+      end case;
+   end Head_Normal_Form;
+
    -----------------
    -- Instantiate --
    -----------------

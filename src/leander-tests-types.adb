@@ -47,6 +47,11 @@ package body Leander.Tests.Types is
                Fn (Fn (TVar ("a"), TVar ("b")),
                  Fn (TVar ("a"), TVar ("b"))));
       end;
+
+      Test ("hnf ()", not T_Unit.Head_Normal_Form);
+      Test ("hnf Int", not T_Int.Head_Normal_Form);
+      Test ("hnf a", Core.Types.TVar (Core.Tyvars.New_Tyvar).Head_Normal_Form);
+      Test ("hnf [a]", not T_List.Head_Normal_Form);
    end Run_Tests;
 
    ----------
