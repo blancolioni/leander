@@ -12,6 +12,7 @@ with Leander.Names;
 package Leander.Environment is
 
    type Abstraction is interface
+     and Leander.Core.Type_Classes.Class_Environment
      and Leander.Calculus.Calculus_Environment;
 
    type Reference is access all Abstraction'Class;

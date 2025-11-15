@@ -53,11 +53,6 @@ private
          QT        : Leander.Core.Types.Reference;
       end record;
 
-   overriding function Location
-     (This : Instance)
-      return Leander.Source.Source_Location
-   is (Leander.Source.No_Location);
-
    overriding function Show (This : Instance) return String;
 
    overriding function Contains

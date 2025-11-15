@@ -1,6 +1,8 @@
 with Leander.Core.Binding_Groups;
+with Leander.Core.Type_Instances;
 with Leander.Core.Predicates;
 with Leander.Core.Schemes;
+with Leander.Source;
 
 package Leander.Core.Type_Classes is
 
@@ -29,6 +31,40 @@ package Leander.Core.Type_Classes is
      (This : Instance'Class;
       Id   : Varid)
       return Leander.Core.Schemes.Reference;
+
+   function Super_Classes
+     (This : Instance'Class)
+      return Leander.Core.Conid_Array;
+
+   type Class_Environment is interface;
+
+   function Get_Class
+     (This : Class_Environment;
+      Id   : Conid)
+      return Reference
+      is abstract;
+
+   function Get_Instances
+     (This : Class_Environment;
+      Id   : Conid)
+      return Leander.Core.Type_Instances.Reference_Array
+      is abstract;
+
+   function Super_Classes
+     (This : Class_Environment'Class;
+      Id   : Conid)
+      return Leander.Core.Conid_Array;
+
+   function All_Instances
+     (This      : Class_Environment'Class;
+      Class_Id  : Conid)
+      return Leander.Core.Type_Instances.Reference_Array;
+
+   function Entails
+     (This    : Class_Environment'Class;
+      Current : Core.Predicates.Predicate_Array;
+      Check   : Core.Predicates.Instance)
+      return Boolean;
 
 private
 

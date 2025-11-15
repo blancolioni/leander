@@ -75,8 +75,9 @@ package body Leander.Core.Qualified_Types is
    ----------
 
    overriding function Show (This : Instance) return String is
+      Q : constant String := This.Qualifier.Show;
    begin
-      return This.Qualifier.SHow & " => " & This.QT.Show;
+      return (if Q = "" then "" else Q & " => ") & This.QT.Show;
    end Show;
 
 end Leander.Core.Qualified_Types;

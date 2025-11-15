@@ -57,6 +57,10 @@ package Leander.Core.Types is
       return Reference
      with Pre'Class => This.Is_Application;
 
+   function Equivalent
+     (Left, Right : not null access constant Instance'Class)
+      return Boolean;
+
    function Instantiate
      (This : not null access constant Instance'Class;
       Refs : Type_Array)

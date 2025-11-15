@@ -3,7 +3,7 @@ with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
 with Leander.Core.Inference;
-with Leander.Core.Qualified_Types;
+with Leander.Core.Type_Instances;
 with Leander.Environment.Prelude;
 with Leander.Logging;
 with Leander.Names.Maps;
@@ -40,8 +40,7 @@ package body Leander.Environment is
 
    type Instance_Record is
       record
-         Class      : Leander.Core.Conid;
-         Instance   : Leander.Core.Qualified_Types.Reference;
+         Element    : Leander.Core.Type_Instances.Reference;
          Bindings   : Value_Maps.Map;
          Dictionary : Leander.Calculus.Tree;
       end record;
@@ -119,6 +118,16 @@ package body Leander.Environment is
       Name  : Leander.Names.Leander_Name;
       Class : Element_Class)
       return Boolean;
+
+   overriding function Get_Class
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Core.Type_Classes.Reference;
+
+   overriding function Get_Instances
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Core.Type_Instances.Reference_Array;
 
    overriding procedure Elaborate
      (This : in out Instance);
@@ -394,6 +403,39 @@ package body Leander.Environment is
          others   => <>);
    end New_Environment;
 
+   ---------------
+   -- Get_Class --
+   ---------------
+
+   overriding function Get_Class
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Core.Type_Classes.Reference
+   is
+   begin
+      return This.Classes (Core.To_String (Id));
+   end Get_Class;
+
+   -------------------
+   -- Get_Instances --
+   -------------------
+
+   overriding function Get_Instances
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Core.Type_Instances.Reference_Array
+   is
+   begin
+      if not This.Instances.Contains
+           (Leander.Names.Leander_Name (Id))
+      then
+         return [];
+      end if;
+      return [for Inst of
+                This.Instances.Element (Leander.Names.Leander_Name (Id)) =>
+                  Inst.Element];
+   end Get_Instances;
+
    ----------------
    -- Type_Class --
    ----------------
@@ -442,11 +484,12 @@ package body Leander.Environment is
       Instance_Type : Leander.Core.Types.Reference;
       Bindings      : Leander.Core.Binding_Groups.Reference)
    is
-      Rec : constant Instance_Record := Instance_Record'
-        (Class      => Class_Id,
-         Instance   =>
-           Leander.Core.Qualified_Types.Qualified_Type
-             (Constraints, Instance_Type),
+      Inst       : constant Core.Type_Instances.Reference :=
+                     Core.Type_Instances.Make_Instance
+                       (Constraints,
+                        Core.Predicates.Predicate (Class_Id, Instance_Type));
+      Rec        : constant Instance_Record := Instance_Record'
+        (Element    => Inst,
          Bindings   => <>,
          Dictionary => <>);
       Class_Name : constant Leander.Names.Leander_Name :=

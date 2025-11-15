@@ -6,6 +6,7 @@ with Leander.Core.Typeable;
 with Leander.Disposable;
 limited with Leander.Environment;
 with Leander.Showable;
+with Leander.Source;
 with Leander.Traverseable;
 
 package Leander.Core.Expressions is

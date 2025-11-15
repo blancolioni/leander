@@ -36,6 +36,9 @@ class Eq a where
     (/=) x y = not (x == y)
     (==) x y = not (x /= y)
 
+class Eq a => Ord a where
+    (<), (<=), (>=), (>) :: a -> a -> Bool
+
 class Show a where
     show :: a -> [Char]
 
@@ -117,6 +120,9 @@ concat (xs:xss) = xs ++ concat xss
 (++) :: [a] -> [a] -> [a]
 (++) [] ys = ys
 (++) (x:xs) ys = x : (xs ++ ys)
+
+equals :: Eq a => a -> a -> Bool
+equals x y = x == y
 
 zero :: Int -> Bool
 zero 0 = True

@@ -10,6 +10,10 @@ package Leander.Core.Predicates is
 
    type Predicate_Array is array (Positive range <>) of Instance;
 
+   function Class_Id
+     (This : Instance'Class)
+      return Conid;
+
    function Class_Name
      (This : Instance'Class)
       return String;
@@ -17,6 +21,11 @@ package Leander.Core.Predicates is
    function Get_Type
      (This : Instance'Class)
       return Leander.Core.Types.Reference;
+
+   function Predicate
+     (Class_Id : Conid;
+      For_Type : Leander.Core.Types.Reference)
+      return Instance;
 
    function Predicate
      (Class_Name : String;
@@ -36,21 +45,27 @@ private
          For_Type   : Nullable_Type_Reference;
       end record;
 
-   overriding function Location
-     (This : Instance)
-      return Leander.Source.Source_Location
-   is (Leander.Source.No_Location);
-
    overriding function Show (This : Instance) return String
    is (Core.To_String (This.Class_Name)
        & " "
        & This.For_Type.Show);
 
    function Predicate
+     (Class_Id : Conid;
+      For_Type : Leander.Core.Types.Reference)
+      return Instance
+   is (Class_Id, Nullable_Type_Reference (For_Type));
+
+   function Predicate
      (Class_Name : String;
       For_Type   : Leander.Core.Types.Reference)
       return Instance
-   is (Core.To_Conid (Class_Name), Nullable_Type_Reference (For_Type));
+   is (Predicate (Core.To_Conid (Class_Name), For_Type));
+
+   function Class_Id
+     (This : Instance'Class)
+      return Conid
+   is (This.Class_Name);
 
    function Class_Name
      (This : Instance'Class)
