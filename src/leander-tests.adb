@@ -54,12 +54,18 @@ package body Leander.Tests is
    begin
       Total_Tests := @ + 1;
       Put (Col_1);
-      Set_Col (25);
-      Put (Col_2);
-      Set_Col (50);
-      Put (Col_3);
-      Set_Col (75);
-      Put (Col_4);
+      if Col_2 /= "" then
+         Set_Col (25);
+         Put (Col_2);
+      end if;
+      if Col_3 /= "" then
+         Set_Col (50);
+         Put (Col_3);
+      end if;
+      if Col_4 /= "" then
+         Set_Col (75);
+         Put (Col_4);
+      end if;
       New_Line;
    end Report;
 

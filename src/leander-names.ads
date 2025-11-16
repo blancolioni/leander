@@ -9,6 +9,8 @@ package Leander.Names is
 
    function New_Name return Leander_Name;
 
+   function Intersection (Left, Right : Name_Array) return Name_Array;
+
 private
 
    type Leander_Name is new Positive;

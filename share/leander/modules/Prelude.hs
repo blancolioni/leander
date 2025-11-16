@@ -49,6 +49,12 @@ class Bounded a where
 instance Eq Int where
     (==) = #primIntEq
 
+instance (Eq a) => Eq [a] where
+    (==) [] []     = True
+    (==) [] _      = False
+    (==) _  []     = False
+    (==) xs ys     = head xs == head ys && tail xs == tail ys
+
 id :: a -> a
 id x = x
 

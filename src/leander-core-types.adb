@@ -306,6 +306,57 @@ package body Leander.Core.Types is
       return Application (T_List, Reference (This));
    end List_Of;
 
+   -----------
+   -- Match --
+   -----------
+
+   function Match
+     (Left, Right : not null access constant Instance'Class;
+      Success     : out Boolean)
+      return Leander.Core.Substitutions.Instance
+   is
+      use type Leander.Core.Kinds.Kind;
+   begin
+      if Left.Tag /= Right.Tag then
+         Success := False;
+         return Leander.Core.Substitutions.Empty;
+      end if;
+
+      case Left.Tag is
+         when TVar =>
+            Success := Left.Tyvar.Kind = Right.Tyvar.Kind;
+            if Success then
+               return Leander.Core.Substitutions.Singleton
+                 (Leander.Names.Leander_Name (Left.Tyvar.Name), Right);
+            end if;
+         when TCon =>
+            Success := Left.Tycon.Id = Right.Tycon.Id;
+            return Leander.Core.Substitutions.Empty;
+         when TApp =>
+            declare
+               Left_Subst  : constant Leander.Core.Substitutions.Instance :=
+                               Match (Left.Left, Right.Left, Success);
+            begin
+               if Success then
+                  declare
+                     Right_Subst : constant Leander.Core.Substitutions.Instance :=
+                                     Match (Left.Right, Right.Right, Success);
+                  begin
+                     if Success then
+                        return Left_Subst.Merge (Right_Subst, Success);
+                     else
+                        return Leander.Core.Substitutions.Empty;
+                     end if;
+                  end;
+               end if;
+            end;
+         when TGen =>
+            null;
+      end case;
+      Success := False;
+      return Leander.Core.Substitutions.Empty;
+   end Match;
+
    --------------
    -- New_TVar --
    --------------
@@ -406,7 +457,7 @@ package body Leander.Core.Types is
    --------------
 
    overriding procedure Traverse
-     (This : not null access constant Instance;
+     (This    : not null access constant Instance;
       Process : not null access
         procedure (This : not null access constant
                      Traverseable.Abstraction'Class))

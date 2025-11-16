@@ -21,10 +21,20 @@ package Leander.Core.Substitutions is
       Right : Instance)
       return Instance;
 
+   function Singleton
+     (Name  : Leander.Names.Leander_Name;
+      Ty    : not null access constant Leander.Core.Types.Instance'Class)
+      return Instance;
+
    function Without
      (This : Instance;
       Tvs  : Leander.Names.Name_Array)
       return Instance;
+
+   function Merge
+     (Left, Right : Instance;
+      Success     : out Boolean)
+        return Instance;
 
    type Nullable_Type_Reference is
      access constant Leander.Core.Types.Instance'Class;
@@ -51,5 +61,11 @@ private
       end record;
 
    overriding function Show (This : Instance) return String;
+
+   function Singleton
+     (Name  : Leander.Names.Leander_Name;
+      Ty    : not null access constant Leander.Core.Types.Instance'Class)
+      return Instance
+   is (Compose (Name, Ty, Empty));
 
 end Leander.Core.Substitutions;

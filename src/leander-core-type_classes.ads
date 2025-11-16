@@ -60,11 +60,22 @@ package Leander.Core.Type_Classes is
       Class_Id  : Conid)
       return Leander.Core.Type_Instances.Reference_Array;
 
+   function By_Instance
+     (This      : Class_Environment'Class;
+      Predicate : Leander.Core.Predicates.Instance;
+      Success   : out Boolean)
+      return Leander.Core.Predicates.Predicate_Array;
+
    function Entails
      (This    : Class_Environment'Class;
       Current : Core.Predicates.Predicate_Array;
       Check   : Core.Predicates.Instance)
       return Boolean;
+
+   function To_Head_Normal_Form
+     (This      : Class_Environment'Class;
+      Predicate : Leander.Core.Predicates.Instance)
+      return Leander.Core.Predicates.Predicate_Array;
 
 private
 

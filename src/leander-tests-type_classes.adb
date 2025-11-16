@@ -1,5 +1,7 @@
+with Leander.Core;
 with Leander.Core.Kinds;
 with Leander.Core.Predicates;
+with Leander.Core.Type_Classes;
 with Leander.Core.Types;
 with Leander.Core.Tyvars;
 with Leander.Environment;
@@ -16,7 +18,7 @@ package body Leander.Tests.Type_Classes is
       Prelude : constant Leander.Environment.Reference :=
                   Context.Load_Module
                     ("./share/leander/modules/Prelude.hs");
-      Tv_A : constant Leander.Core.Types.Reference :=
+      Tv_A    : constant Leander.Core.Types.Reference :=
                   Leander.Core.Types.TVar
                     (Leander.Core.Tyvars.Tyvar
                        (Core.To_Varid ("a"), Leander.Core.Kinds.Star));
@@ -42,6 +44,12 @@ package body Leander.Tests.Type_Classes is
             Prelude.Entails
               ([],
                Leander.Core.Predicates.Predicate ("Eq", Core.Types.T_Int)));
+      Test ("to-hnf Eq a == [Eq a]",
+            Prelude.To_Head_Normal_Form
+              (Leander.Core.Predicates.Predicate ("Eq", Tv_A))'Length = 1);
+      Test ("to-hnf Eq [a] == [Eq a]",
+            Prelude.To_Head_Normal_Form
+              (Leander.Core.Predicates.Predicate ("Eq", Leander.Core.Types.List_Of (Tv_A))) (1).Show = "Eq a");
    end Run_Tests;
 
 end Leander.Tests.Type_Classes;

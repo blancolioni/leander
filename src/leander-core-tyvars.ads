@@ -16,6 +16,10 @@ package Leander.Core.Tyvars is
      (This : Instance)
       return Varid;
 
+   function Kind
+     (This : Instance)
+      return Leander.Core.Kinds.Kind;
+
    function Tyvar
      (Id   : Varid;
       Kind : Leander.Core.Kinds.Kind)
@@ -23,7 +27,7 @@ package Leander.Core.Tyvars is
 
    function New_Tyvar
      (Kind : Leander.Core.Kinds.Kind := Leander.Core.Kinds.Star)
-     return Instance;
+      return Instance;
 
    type Container_Abstraction is interface and Leander.Showable.Abstraction;
 
@@ -101,6 +105,11 @@ private
      (This : Instance)
       return Varid
    is (This.Id);
+
+   function Kind
+     (This : Instance)
+      return Leander.Core.Kinds.Kind
+   is (This.Kind);
 
    function To_Varid (S : String) return Varid
    is (Varid (Leander.Names.To_Leander_Name (S)));

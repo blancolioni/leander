@@ -10,6 +10,55 @@ package body Leander.Names is
 
    Name_Vector : Name_Vectors.Vector;
 
+   ------------------
+   -- Intersection --
+   ------------------
+
+   function Intersection (Left, Right : Name_Array) return Name_Array is
+      Result : Leander.Names.Name_Array (1 .. Left'Length + Right'Length) := [others => 1];
+      Last   : Natural := 0;
+      Found  : Boolean;
+   begin
+      for I in Left'Range loop
+         Found := False;
+         for J in 1 .. Last loop
+            if Result (J) = Left (I) then
+               Found := True;
+               exit;
+            end if;
+         end loop;
+         if not Found then
+            for J in Right'Range loop
+               if Left (I) = Right (J) then
+                  Last := Last + 1;
+                  Result (Last) := Left (I);
+                  exit;
+               end if;
+            end loop;
+         end if;
+      end loop;
+
+      for I in Right'Range loop
+         Found := False;
+         for J in 1 .. Last loop
+            if Result (J) = Right (I) then
+               Found := True;
+               exit;
+            end if;
+         end loop;
+         if not Found then
+            for J in Left'Range loop
+               if Right (I) = Left (J) then
+                  Last := Last + 1;
+                  Result (Last) := Right (I);
+                  exit;
+               end if;
+            end loop;
+         end if;
+      end loop;
+      return Result (1 .. Last);
+   end Intersection;
+
    --------------
    -- New_Name --
    --------------
