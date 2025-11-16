@@ -50,6 +50,9 @@ package body Leander.Tests.Type_Classes is
       Test ("to-hnf Eq [a] == [Eq a]",
             Prelude.To_Head_Normal_Form
               (Leander.Core.Predicates.Predicate ("Eq", Leander.Core.Types.List_Of (Tv_A))) (1).Show = "Eq a");
+      Test ("to-hnf Eq Int == []",
+            Prelude.To_Head_Normal_Form
+              (Leander.Core.Predicates.Predicate ("Eq", Leander.Core.Types.T_Int))'Length = 0);
    end Run_Tests;
 
 end Leander.Tests.Type_Classes;
