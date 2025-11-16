@@ -77,6 +77,12 @@ package Leander.Core.Type_Classes is
       Predicate : Leander.Core.Predicates.Instance)
       return Leander.Core.Predicates.Predicate_Array;
 
+   function Reduce
+     (This       : Class_Environment'Class;
+      Predicates : Leander.Core.Predicates.Predicate_Array;
+      Success    : out Boolean)
+      return Leander.Core.Predicates.Predicate_Array;
+
 private
 
    type Instance (Predicate_Count : Natural) is tagged

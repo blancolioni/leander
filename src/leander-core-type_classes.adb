@@ -8,6 +8,17 @@ package body Leander.Core.Type_Classes is
       Success            : out Boolean)
       return Leander.Core.Substitutions.Instance;
 
+   function To_Head_Normal_Form
+     (This       : Class_Environment'Class;
+      Predicates : Leander.Core.Predicates.Predicate_Array;
+      Success    : out Boolean)
+      return Leander.Core.Predicates.Predicate_Array;
+
+   function Simplify
+     (This       : Class_Environment'Class;
+      Predicates : Leander.core.Predicates.Predicate_Array)
+      return Leander.core.Predicates.Predicate_Array;
+
    -------------------
    -- All_Instances --
    -------------------
@@ -60,8 +71,8 @@ package body Leander.Core.Type_Classes is
    is
    begin
       for P of Current loop
-         for C of This.Super_Classes (Check.Class_Id) loop
-            if C = P.Class_Id then
+         for C of This.Super_Classes (P.Class_Id) loop
+            if C = Check.Class_Id then
                return True;
             end if;
          end loop;
@@ -104,6 +115,58 @@ package body Leander.Core.Type_Classes is
          return Leander.Core.Substitutions.Empty;
       end if;
    end Match_Predicate;
+
+   ------------
+   -- Reduce --
+   ------------
+
+   function Reduce
+     (This       : Class_Environment'Class;
+      Predicates : Leander.Core.Predicates.Predicate_Array;
+      Success    : out Boolean)
+      return Leander.Core.Predicates.Predicate_Array
+   is
+      Qs : constant Leander.Core.Predicates.Predicate_Array :=
+        This.To_Head_Normal_Form (Predicates, Success);
+   begin
+      if Success then
+         return This.Simplify (Qs);
+      end if;
+      return [];
+   end Reduce;
+
+   --------------
+   -- Simplify --
+   --------------
+
+   function Simplify
+     (This       : Class_Environment'Class;
+      Predicates : Leander.core.Predicates.Predicate_Array)
+      return Leander.core.Predicates.Predicate_Array
+   is
+      use Leander.Core.Predicates;
+      function Go (Acc : Predicate_Array; Index : Positive) return Predicate_Array;
+
+      function Go (Acc : Predicate_Array; Index : Positive) return Predicate_Array is
+      begin
+         if Index > Predicates'Last then
+            return Acc;
+         else
+            declare
+               P : constant Core.Predicates.Instance := Predicates (Index);
+            begin
+               if This.Entails (Acc & Predicates (Index + 1 .. Predicates'Last), P) then
+                  return Go (Acc, Index + 1);
+               else
+                  return Go (Acc & P, Index + 1);
+               end if;
+            end;
+         end if;
+      end Go;
+
+   begin
+      return Go ([], Predicates'First);
+   end Simplify;
 
    -------------------
    -- Super_Classes --
@@ -179,6 +242,25 @@ package body Leander.Core.Type_Classes is
             end if;
          end;
       end if;
+   end To_Head_Normal_Form;
+
+   function To_Head_Normal_Form
+     (This       : Class_Environment'Class;
+      Predicates : Leander.Core.Predicates.Predicate_Array;
+      Success    : out Boolean)
+      return Leander.Core.Predicates.Predicate_Array
+   is
+      use type Leander.Core.Predicates.Predicate_Array;
+      function HNF
+        (Idx : Positive)
+         return Leander.Core.Predicates.Predicate_Array
+      is (if Idx <= Predicates'Last
+         then This.To_Head_Normal_Form (Predicates (Idx))
+         & HNF (Idx + 1)
+         else []);
+   begin
+      Success := True;
+      return HNF (Predicates'First);
    end To_Head_Normal_Form;
 
    ----------------

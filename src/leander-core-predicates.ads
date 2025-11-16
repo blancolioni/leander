@@ -32,6 +32,8 @@ package Leander.Core.Predicates is
       For_Type   : Leander.Core.Types.Reference)
       return Instance;
 
+   function Show (Ps : Predicate_Array) return String;
+
 private
 
    type Nullable_Type_Reference is
