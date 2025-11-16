@@ -101,8 +101,14 @@ package body Leander.Core.Expressions.Inference is
                         & To_String (E.Var_Id));
                      return Substitutions.Empty;
                   else
-                     Bind (E, Sigma.Fresh_Instance);
-                     return Substitutions.Empty;
+                     declare
+                        Q : constant Core.Qualified_Types.Reference :=
+                              Sigma.Fresh_Instance;
+                     begin
+                        Bind (E, Q.Get_Type);
+                        Context.Save_Predicates (Q.Predicates);
+                        return Substitutions.Empty;
+                     end;
                   end if;
                end;
             when ECon =>

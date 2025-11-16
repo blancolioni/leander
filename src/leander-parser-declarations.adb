@@ -328,7 +328,7 @@ package body Leander.Parser.Declarations is
                Scan;
                Parse_Foreign_Import (Context);
             else
-               Error ("only foreign imports Supported");
+               Error ("only foreign imports supported");
                while Tok_Indent > 1 loop
                   Scan;
                end loop;
@@ -345,7 +345,7 @@ package body Leander.Parser.Declarations is
             begin
                Scan;
                if Tok /= Tok_Integer_Literal then
-                  Error ("expected an integer Precedence");
+                  Error ("expected an integer precedence");
                else
                   declare
                      P : constant Natural :=

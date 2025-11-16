@@ -1,5 +1,4 @@
 with Leander.Core.Types;
-with Leander.Logging;
 
 package body Leander.Core.Substitutions is
 
@@ -24,10 +23,6 @@ package body Leander.Core.Substitutions is
          return Left;
       end if;
 
-      Leander.Logging.Log
-        ("SUBST", "left=" & Left.Show);
-      Leander.Logging.Log
-        ("SUBST", "right=" & Right.Show);
       for Sr of Right.List loop
          This.List.Append (Subst_Record'
                              (Sr.Name,
@@ -38,9 +33,6 @@ package body Leander.Core.Substitutions is
                              (Sr.Name,
                               Sr.Ref.Apply (Right)));
       end loop;
-
-      Leander.Logging.Log
-        ("SUBST", "composed=" & This.Show);
       return This;
    end Compose;
 

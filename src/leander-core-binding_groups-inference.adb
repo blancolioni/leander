@@ -62,6 +62,12 @@ package body Leander.Core.Binding_Groups.Inference is
          Start_Env : constant Core.Type_Env.Reference := Context.Type_Env;
       begin
 
+         Leander.Logging.Log
+           ("tiExpl",
+            To_String (Explicit.Name)
+            & " :: "
+            & Explicit.Scheme.Show);
+
          Infer_Alts (Explicit.Alts, T);
 
          declare
