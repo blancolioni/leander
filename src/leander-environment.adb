@@ -431,9 +431,21 @@ package body Leander.Environment is
       then
          return [];
       end if;
-      return [for Inst of
-                This.Instances.Element (Leander.Names.Leander_Name (Id)) =>
-                  Inst.Element];
+      declare
+         Name renames Leander.Names.Leander_Name (Id);
+         List : constant Instance_Lists.List := This.Instances.Element (Name);
+         Last : Natural := 0;
+      begin
+         return R : Leander.Core.Type_Instances.Reference_Array
+           (1 .. Natural (List.Length))
+         do
+            for Inst of List loop
+               Last := Last + 1;
+               R (Last) := Inst.Element;
+            end loop;
+            pragma Assert (Last = R'Last);
+         end return;
+      end;
    end Get_Instances;
 
    ----------------
