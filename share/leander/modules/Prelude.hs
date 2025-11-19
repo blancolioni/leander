@@ -50,12 +50,14 @@ instance Eq Int where
     (==) = #primIntEq
     (/=) = #primIntEq
 
--- instance (Eq a) => Eq [a] where
---     (==) [] []     = True
---     (==) [] _      = False
---     (==) _  []     = False
---     (==) xs ys     = head xs == head ys && tail xs == tail ys
---     (/=) xs ys     = not (xs == ys)
+instance (Eq a) => Eq [a] where
+    (==) [] = \ys -> case ys of
+                    [] -> True
+                    _  -> False
+    (==) (x:xs) = \ys -> case ys of
+                    [] -> False
+                    (y:ys') -> (x == y) && (xs == ys')
+    (/=) xs ys = not (xs == ys)
 
 id :: a -> a
 id x = x
