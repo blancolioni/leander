@@ -84,6 +84,11 @@ package Leander.Core.Inference is
       Typeable   : not null access constant Core.Typeable.Abstraction'Class)
       return Leander.Core.Qualified_Types.Reference;
 
+   procedure Update_Type
+     (This  : Inference_Context;
+      Root  : not null access
+        Leander.Core.Qualified_Types.Has_Qualified_Type'Class);
+
 private
 
    type Nullable_Type_Reference is

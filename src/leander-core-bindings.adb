@@ -146,4 +146,18 @@ package body Leander.Core.Bindings is
       end;
    end To_Calculus;
 
+   -----------------
+   -- Update_Type --
+   -----------------
+
+   procedure Update_Type
+     (This    : Instance'Class;
+      Context : Leander.Core.Inference.Inference_Context)
+   is
+   begin
+      for Alt of This.Alts loop
+         Context.Update_Type (Alt);
+      end loop;
+   end Update_Type;
+
 end Leander.Core.Bindings;

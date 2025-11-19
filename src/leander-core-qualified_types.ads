@@ -1,6 +1,7 @@
 with Leander.Core.Predicates;
 with Leander.Core.Qualifiers;
 private with Leander.Core.Substitutions;
+with Leander.Core.Typeable;
 with Leander.Core.Tyvars;
 with Leander.Core.Types;
 with Leander.Showable;
@@ -41,6 +42,24 @@ package Leander.Core.Qualified_Types is
      (Ps : Leander.Core.Predicates.Predicate_Array;
       QT : Leander.Core.Types.Reference)
       return Reference;
+
+   type Has_Qualified_Type is interface
+     and Leander.Core.Typeable.Abstraction;
+
+   function Has_Qualified_Type_Value
+     (This : Has_Qualified_Type)
+      return Boolean
+      is abstract;
+
+   function Qualified_Type
+     (This : Has_Qualified_Type)
+      return Reference
+      is abstract;
+
+   procedure Set_Qualified_Type
+     (This : in out Has_Qualified_Type;
+      QT   : Reference)
+   is abstract;
 
 private
 

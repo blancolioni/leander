@@ -31,9 +31,10 @@ package body Leander.Core.Alts is
    begin
       return Allocate
         (Instance'
-           (Id => Typeable.New_Id,
-            Pat => Nullable_Pattern_Reference (Pat),
-            Expr => Expr));
+           (Id   => Typeable.New_Id,
+            Pat  => Nullable_Pattern_Reference (Pat),
+            Expr => Expr,
+            QT   => null));
    end Alt;
 
    ---------
@@ -47,9 +48,10 @@ package body Leander.Core.Alts is
    begin
       return Allocate
         (Instance'
-           (Id => Typeable.New_Id,
-            Pat => null,
-            Expr => Expr));
+           (Id   => Typeable.New_Id,
+            Pat  => null,
+            Expr => Expr,
+            QT   => null));
    end Alt;
 
    -------------------
@@ -75,6 +77,18 @@ package body Leander.Core.Alts is
       Allocator.Prune;
    end Prune;
 
+   ------------------------
+   -- Set_Qualified_Type --
+   ------------------------
+
+   overriding procedure Set_Qualified_Type
+     (This : in out Instance;
+      QT   : Leander.Core.Qualified_Types.Reference)
+   is
+   begin
+      This.QT := Nullable_Qualified_Type_Reference (QT);
+   end Set_Qualified_Type;
+
    ----------
    -- Show --
    ----------
@@ -85,5 +99,41 @@ package body Leander.Core.Alts is
               then This.Expr.Show
               else This.Pat.Show & " -> " & This.Expr.Show);
    end Show;
+
+   --------------
+   -- Traverse --
+   --------------
+
+   overriding procedure Traverse
+     (This    : not null access constant Instance;
+      Process : not null access
+        procedure (This : not null access constant
+                     Leander.Traverseable.Abstraction'Class))
+   is
+   begin
+      Process (This);
+      if This.Pat /= null then
+         This.Pat.Traverse (Process);
+      end if;
+      This.Expr.Traverse (Process);
+   end Traverse;
+
+   ---------------------
+   -- Update_Traverse --
+   ---------------------
+
+   overriding procedure Update_Traverse
+     (This    : not null access Instance;
+      Process : not null access
+        procedure (This : not null access
+                     Leander.Traverseable.Abstraction'Class))
+   is
+   begin
+      Process (This);
+      if This.Pat /= null then
+         This.Pat.Update_Traverse (Process);
+      end if;
+      This.Expr.Update_Traverse (Process);
+   end Update_Traverse;
 
 end Leander.Core.Alts;

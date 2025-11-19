@@ -41,7 +41,7 @@ package body Leander.Environment is
    type Instance_Record is
       record
          Element    : Leander.Core.Type_Instances.Reference;
-         Bindings   : Value_Maps.Map;
+         Bindings   : Leander.Core.Binding_Groups.Reference;
          Dictionary : Leander.Calculus.Tree;
       end record;
 
@@ -273,7 +273,71 @@ package body Leander.Environment is
       if not Context.OK then
          Ada.Text_IO.Put_Line
            (Context.Error_Message);
+      else
+         declare
+            Ids : constant Core.Varid_Array := This.Bindings.Varids;
+         begin
+            for Id of Ids loop
+               This.Bindings.Lookup (Leander.Names.Leander_Name (Id))
+                 .Update_Type (Context);
+            end loop;
+         end;
       end if;
+
+      for Class of This.Classes loop
+         if This.Instances.Contains
+           (Leander.Names.Leander_Name (Class.Id))
+         then
+            declare
+               Methods : constant Core.Varid_Array :=
+                           Class.Methods;
+            begin
+               for Inst of This.Instances.Element
+                 (Leander.Names.Leander_Name (Class.Id))
+               loop
+                  Leander.Logging.Log
+                    ("INSTANCE", Inst.Element.Predicate.Show);
+                  Leander.Core.Binding_Groups.Inference.Infer
+                    (This.Context, Inst.Bindings);
+
+                  declare
+                     D       : Leander.Calculus.Tree :=
+                                 Leander.Calculus.Symbol ("$class");
+                  begin
+                     for Id of Methods loop
+                        declare
+                           Binding : constant Leander.Core.Bindings.Reference
+                             := Inst.Bindings.Lookup
+                               (Leander.Names.Leander_Name (Id));
+                        begin
+                           Leander.Logging.Log
+                             ("INSTANCE",
+                              Leander.Core.To_String (Id)
+                                  & " = "
+                              & Binding.Show);
+                           D :=
+                             Leander.Calculus.Apply
+                               (D,
+                                Binding.To_Calculus
+                                  (This.Context, This'Unchecked_Access));
+                        end;
+                     end loop;
+                     D := Leander.Calculus.Lambda ("$class", D);
+                     This.Values.Insert
+                       (Leander.Names.To_Leander_Name
+                          ("<"
+                           & Inst.Element.Predicate.Show
+                           & ">"),
+                        D);
+                     Leander.Logging.Log
+                       ("INSTANCE",
+                        "dictionary: " & Leander.Calculus.To_String (D));
+                  end;
+               end loop;
+            end;
+         end if;
+      end loop;
+
    end Elaborate;
 
    ------------
@@ -466,21 +530,24 @@ package body Leander.Environment is
              (Methods (I),
               Class.Method_Scheme (Methods (I)));
          declare
+            D : Leander.Calculus.Tree := Leander.Calculus.Symbol ("$inst");
             E : Leander.Calculus.Tree :=
                   Leander.Calculus.Symbol (I);
          begin
             for J in reverse Methods'Range loop
                E := Leander.Calculus.Lambda (J, E);
             end loop;
+            D := Leander.Calculus.Apply (D, E);
+            D := Leander.Calculus.Lambda ("$inst", D);
             This.Values.Insert
-              (Leander.Names.Leander_Name (Methods (I)), E);
+              (Leander.Names.Leander_Name (Methods (I)), D);
             Leander.Logging.Log
               ("CLASS",
                Core.To_String (Methods (I))
                & " :: "
                & Class.Method_Scheme (Methods (I)).Show
                & " = "
-               & Leander.Calculus.To_String (E));
+               & Leander.Calculus.To_String (D));
          end;
       end loop;
    end Type_Class;
@@ -502,7 +569,7 @@ package body Leander.Environment is
                         Core.Predicates.Predicate (Class_Id, Instance_Type));
       Rec        : constant Instance_Record := Instance_Record'
         (Element    => Inst,
-         Bindings   => <>,
+         Bindings   => Bindings,
          Dictionary => <>);
       Class_Name : constant Leander.Names.Leander_Name :=
                      Leander.Names.Leander_Name (Class_Id);
@@ -517,6 +584,7 @@ package body Leander.Environment is
             This.Instances.Replace (Class_Name, List);
          end;
       end if;
+
    end Type_Instance;
 
 end Leander.Environment;

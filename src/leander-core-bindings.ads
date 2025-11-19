@@ -47,6 +47,10 @@ package Leander.Core.Bindings is
       Env   : not null access constant Leander.Environment.Abstraction'Class)
       return Leander.Calculus.Tree;
 
+   procedure Update_Type
+     (This    : Instance'Class;
+      Context : Leander.Core.Inference.Inference_Context);
+
    procedure Prune;
 
 private

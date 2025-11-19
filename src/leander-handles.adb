@@ -3,6 +3,7 @@ with Leander.Calculus;
 
 with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
+with Leander.Logging;
 with Leander.Syntax.Expressions;
 
 with Skit.Compiler;
@@ -83,6 +84,9 @@ package body Leander.Handles is
            (Ada.Text_IO.Standard_Error, Result.Error_Message);
          return "";
       else
+
+         Result.Update_Type (Core);
+
          declare
             Tree : constant Leander.Calculus.Tree :=
                      Core.To_Calculus (Result, This.Env);
@@ -91,6 +95,13 @@ package body Leander.Handles is
               (Tree, This.Env, This.Skit_Env);
 
             Skit.Compiler.Compile (This.Skit_Env.Machine);
+
+            Leander.Logging.Log
+              ("COMPILED",
+               Skit.Debug.Image
+                 (This.Skit_Env.Machine.Top,
+                  This.Skit_Env.Machine));
+
             This.Skit_Env.Machine.Evaluate;
             declare
                Value : constant String :=
@@ -139,15 +150,6 @@ package body Leander.Handles is
    is
    begin
       This.Env := This.Context.Load_Module (Path);
-      declare
-         Result : constant String :=
-                    This.Evaluate ("runIO main");
-      begin
-         if Result /= "" and then Result /= "I" then
-            Ada.Text_IO.Put_Line
-              (Result);
-         end if;
-      end;
    end Load_Module;
 
    ------------

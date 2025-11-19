@@ -1,5 +1,6 @@
 with Leander.Logging;
 with Leander.Names;
+with Leander.Traverseable;
 
 package body Leander.Core.Inference is
 
@@ -146,6 +147,46 @@ package body Leander.Core.Inference is
    begin
       This.Inferred_Type := Nullable_Type_Reference (Ty);
    end Set_Result;
+
+   -----------------
+   -- Update_Type --
+   -----------------
+
+   procedure Update_Type
+     (This  : Inference_Context;
+      Root  : not null access
+        Leander.Core.Qualified_Types.Has_Qualified_Type'Class)
+   is
+      procedure Update
+        (Traversable : not null access Leander.Traverseable.Abstraction'Class);
+
+      ------------
+      -- Update --
+      ------------
+
+      procedure Update
+        (Traversable : not null access Leander.Traverseable.Abstraction'Class)
+      is
+         use Leander.Core.Qualified_Types;
+         HQT : Has_Qualified_Type'Class renames
+                 Has_Qualified_Type'Class (Traversable.all);
+      begin
+         if HQT.Has_Qualified_Type_Value then
+            declare
+               QT  : constant Leander.Core.Qualified_Types.Reference :=
+                       HQT.Qualified_Type.Apply (This.Current_Substitution);
+            begin
+               HQT.Set_Qualified_Type (QT);
+               Leander.Logging.Log
+                 ("UPDATE",
+                  HQT.Show & " :: " & QT.Show);
+            end;
+         end if;
+      end Update;
+
+   begin
+      Root.Update_Traverse (Update'Access);
+   end Update_Type;
 
    ---------------------
    -- Update_Type_Env --

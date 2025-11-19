@@ -34,6 +34,10 @@ package body Leander.Core.Expressions.Inference is
         (E   : Reference)
          return Leander.Core.Substitutions.Instance'Class;
 
+      ----------
+      -- Bind --
+      ----------
+
       procedure Bind
         (Expr : Reference;
          QT   : Core.Qualified_Types.Reference)
@@ -41,6 +45,7 @@ package body Leander.Core.Expressions.Inference is
       begin
          Context.Save_Predicates (QT.Predicates);
          Bind (Expr, QT.Get_Type);
+         Expr.Set_Qualified_Type (QT);
       end Bind;
 
       ----------
@@ -105,8 +110,7 @@ package body Leander.Core.Expressions.Inference is
                         Q : constant Core.Qualified_Types.Reference :=
                               Sigma.Fresh_Instance;
                      begin
-                        Bind (E, Q.Get_Type);
-                        Context.Save_Predicates (Q.Predicates);
+                        Bind (E, Q);
                         return Substitutions.Empty;
                      end;
                   end if;
@@ -124,8 +128,13 @@ package body Leander.Core.Expressions.Inference is
                         & To_String (E.Con_Id));
                      return Substitutions.Empty;
                   else
-                     Bind (E, Sigma.Fresh_Instance);
-                     return Substitutions.Empty;
+                     declare
+                        Q : constant Core.Qualified_Types.Reference :=
+                              Sigma.Fresh_Instance;
+                     begin
+                        Bind (E, Q);
+                        return Substitutions.Empty;
+                     end;
                   end if;
                end;
             when ELit =>
