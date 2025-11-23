@@ -13,6 +13,7 @@ package body Leander.Tests.Prelude is
    procedure Test
      (Expression    : String;
       Expected_Type : String;
+      Context       : Leander.Parser.Parse_Context;
       Prelude       : Leander.Environment.Reference);
 
    ---------------
@@ -20,22 +21,23 @@ package body Leander.Tests.Prelude is
    ---------------
 
    procedure Run_Tests is
+      Context : Leander.Parser.Parse_Context;
       Prelude : constant Leander.Environment.Reference :=
-                  Leander.Parser.Load_Module
+                  Context.Load_Module
                     ("./share/leander/modules/Prelude.hs");
    begin
-      Test ("1", "Int", Prelude);
-      Test ("True", "Bool", Prelude);
-      Test ("False", "Bool", Prelude);
-      Test ("[]", "[a]", Prelude);
-      Test ("(:) 1 []", "[Int]", Prelude);
-      Test ("let x = 1 in x", "Int", Prelude);
-      Test ("let x = [] in x", "[a]", Prelude);
-      Test ("let {x=1;y=x} in x", "Int", Prelude);
-      Test ("let {x=1;y=x} in y", "Int", Prelude);
-      Test ("let {x=y;y=1} in x", "Int", Prelude);
-      Test ("null", "[a]->Bool", Prelude);
-      Test ("null []", "Bool", Prelude);
+      Test ("1", "Int", Context, Prelude);
+      Test ("True", "Bool", Context, Prelude);
+      Test ("False", "Bool", Context, Prelude);
+      Test ("[]", "[a]", Context, Prelude);
+      Test ("(:) 1 []", "[Int]", Context, Prelude);
+      Test ("let x = 1 in x", "Int", Context, Prelude);
+      Test ("let x = [] in x", "[a]", Context, Prelude);
+      Test ("let {x=1;y=x} in x", "Int", Context, Prelude);
+      Test ("let {x=1;y=x} in y", "Int", Context, Prelude);
+      Test ("let {x=y;y=1} in x", "Int", Context, Prelude);
+      Test ("null", "[a] -> Bool", Context, Prelude);
+      Test ("null []", "Bool", Context, Prelude);
    end Run_Tests;
 
    ----------
@@ -45,12 +47,13 @@ package body Leander.Tests.Prelude is
    procedure Test
      (Expression    : String;
       Expected_Type : String;
+      Context       : Leander.Parser.Parse_Context;
       Prelude       : Leander.Environment.Reference)
    is
       use Leander.Core.Inference;
       use Leander.Core.Expressions.Inference;
       Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 Leander.Parser.Parse_Expression (Expression);
+                 Context.Parse_Expression (Expression);
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=

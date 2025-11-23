@@ -28,6 +28,18 @@ package body Leander.Parser is
 
    Loaded_Module_Map : Loaded_Module_Maps.Map;
 
+   ---------------
+   -- Add_Class --
+   ---------------
+
+   procedure Add_Class
+     (This : in out Parse_Context'Class;
+      Name : String)
+   is
+   begin
+      This.Known_Classes.Append (Name);
+   end Add_Class;
+
    --------------------
    -- At_Constructor --
    --------------------
@@ -115,11 +127,25 @@ package body Leander.Parser is
    end Get_Identifier;
 
    -----------------
+   -- Known_Class --
+   -----------------
+
+   function Known_Class
+     (This : Parse_Context'Class;
+      Name : String)
+      return Boolean
+   is
+   begin
+      return This.Known_Classes.Contains (Name);
+   end Known_Class;
+
+   -----------------
    -- Load_Module --
    -----------------
 
    function Load_Module
-     (Path : String)
+     (Context : in out Parse_Context'Class;
+      Path    : String)
       return Leander.Environment.Reference
    is
       Name : constant String :=
@@ -130,33 +156,47 @@ package body Leander.Parser is
       else
          Open (Path);
          return Env : constant Leander.Environment.Reference :=
-           Leander.Parser.Modules.Parse_Module (Name)
+           Leander.Parser.Modules.Parse_Module (Context, Name)
          do
             Loaded_Module_Map.Insert (Name, Env);
             Close;
 
             if Name /= "Prelude" then
                Env.Import
-                 (Load_Module ("./shared/leander/modules/Prelude.hs"));
+                 (Context.Load_Module ("./shared/leander/modules/Prelude.hs"));
             end if;
 
             Env.Elaborate;
+            Leander.Syntax.Prune;
          end return;
       end if;
    end Load_Module;
+
+   ---------------------
+   -- New_Environment --
+   ---------------------
+
+   procedure New_Environment
+     (This : in out Parse_Context'Class;
+      Env  : Leander.Environment.Reference)
+   is
+   begin
+      This.Env := Env;
+   end New_Environment;
 
    ----------------------
    -- Parse_Expression --
    ----------------------
 
    function Parse_Expression
-     (Expr : String)
+     (Context : Parse_Context'Class;
+      Expr    : String)
       return Leander.Syntax.Expressions.Reference
    is
    begin
       Open_String (Expr);
       return Result : constant Leander.Syntax.Expressions.Reference :=
-        Leander.Parser.Expressions.Parse_Expression
+        Leander.Parser.Expressions.Parse_Expression (Context)
       do
          Close;
       end return;

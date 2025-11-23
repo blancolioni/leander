@@ -2,12 +2,14 @@ with Ada.Command_Line;
 with Ada.Text_IO;
 
 with Leander.Core;
+with Leander.Syntax;
 with Leander.Tests.Evaluation;
 with Leander.Tests.Expressions;
 with Leander.Tests.Inference;
 with Leander.Tests.Kinds;
 with Leander.Tests.Prelude;
 with Leander.Tests.Tycons;
+with Leander.Tests.Type_Classes;
 with Leander.Tests.Types;
 with Leander.Tests.Tyvars;
 
@@ -52,12 +54,18 @@ package body Leander.Tests is
    begin
       Total_Tests := @ + 1;
       Put (Col_1);
-      Set_Col (25);
-      Put (Col_2);
-      Set_Col (50);
-      Put (Col_3);
-      Set_Col (75);
-      Put (Col_4);
+      if Col_2 /= "" then
+         Set_Col (25);
+         Put (Col_2);
+      end if;
+      if Col_3 /= "" then
+         Set_Col (50);
+         Put (Col_3);
+      end if;
+      if Col_4 /= "" then
+         Set_Col (75);
+         Put (Col_4);
+      end if;
       New_Line;
    end Report;
 
@@ -75,6 +83,8 @@ package body Leander.Tests is
       Leander.Tests.Inference.Run_Tests;
       Leander.Tests.Prelude.Run_Tests;
       Leander.Tests.Evaluation.Run_Tests;
+      Leander.Tests.Type_Classes.Run_Tests;
+      Leander.Syntax.Prune;
       Leander.Core.Prune;
       Ada.Text_IO.Put_Line
         ("Tests:" & Total_Tests'Image
@@ -84,6 +94,21 @@ package body Leander.Tests is
          & Failed'Image);
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Failed));
    end Run_Tests;
+
+   ----------
+   -- Test --
+   ----------
+
+   procedure Test (Name : String; Pass : Boolean) is
+   begin
+      if Pass then
+         Report (Name, "", "PASS", "");
+         Passed := Passed + 1;
+      else
+         Report (Name, "", "FAIL");
+         Failed := @ + 1;
+      end if;
+   end Test;
 
    ----------
    -- Test --

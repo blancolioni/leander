@@ -1,7 +1,7 @@
 private with Ada.Strings.Unbounded;
 
 with Leander.Calculus;
-with Leander.Core.Types;
+with Leander.Core.Qualified_Types;
 with Leander.Showable;
 
 package Leander.Core.Literals is
@@ -10,7 +10,7 @@ package Leander.Core.Literals is
 
    function Get_Type
      (This : Instance)
-      return Leander.Core.Types.Reference;
+      return Leander.Core.Qualified_Types.Reference;
 
    function To_Calculus
      (This : Instance)

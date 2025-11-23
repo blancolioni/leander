@@ -156,44 +156,33 @@ package body Leander.Core.Types is
       null;
    end Dispose;
 
-   --------------
-   -- Generate --
-   --------------
+   ----------------
+   -- Equivalent --
+   ----------------
 
-   function Generate
-     (This : not null access constant Instance'Class)
-      return Reference
+   function Equivalent
+     (Left, Right : not null access constant Instance'Class)
+      return Boolean
    is
-      Tvs : constant Core.Tyvars.Tyvar_Array := This.Get_Tyvars;
-      Gens : constant Type_Array :=
-               [for I in Tvs'Range => Core.Types.TGen (I)];
-
-      function Create_Subst
-        (Index : Positive)
-         return Leander.Core.Substitutions.Instance;
-
-      ------------------
-      -- Create_Subst --
-      ------------------
-
-      function Create_Subst
-        (Index : Positive)
-         return Leander.Core.Substitutions.Instance
-      is
-      begin
-         if Index <= Tvs'Length then
-            return Leander.Core.Substitutions.Compose
-              (Leander.Names.Leander_Name (Tvs (Index).Name),
-               Gens (Index),
-               Create_Subst (Index + 1));
-         else
-            return Leander.Core.Substitutions.Empty;
-         end if;
-      end Create_Subst;
-
    begin
-      return This.Apply (Create_Subst (1));
-   end Generate;
+      if Left.Tag /= Right.Tag then
+         return False;
+      end if;
+
+      case Left.Tag is
+         when TVar =>
+            return Left.Tyvar.Name = Right.Tyvar.Name;
+         when TCon =>
+            return Left.Tycon.Id = Right.Tycon.Id;
+         when TApp =>
+            return Left.Left.Equivalent (Right.Left)
+              and then Left.Right.Equivalent (Right.Right);
+         when TGen =>
+            return Left.Index = Right.Index;
+      end case;
+   end Equivalent;
+
+
 
    --------------
    -- Get_Kind --
@@ -260,6 +249,27 @@ package body Leander.Core.Types is
       end case;
    end Head;
 
+   ----------------------
+   -- Head_Normal_Form --
+   ----------------------
+
+   function Head_Normal_Form
+     (This : Instance'Class)
+      return Boolean
+   is
+   begin
+      case This.Tag is
+         when TVar =>
+            return True;
+         when TCon =>
+            return False;
+         when TApp =>
+            return This.Left.Head_Normal_Form;
+         when TGen =>
+            return True;
+      end case;
+   end Head_Normal_Form;
+
    -----------------
    -- Instantiate --
    -----------------
@@ -295,6 +305,57 @@ package body Leander.Core.Types is
    begin
       return Application (T_List, Reference (This));
    end List_Of;
+
+   -----------
+   -- Match --
+   -----------
+
+   function Match
+     (Left, Right : not null access constant Instance'Class;
+      Success     : out Boolean)
+      return Leander.Core.Substitutions.Instance
+   is
+      use type Leander.Core.Kinds.Kind;
+   begin
+      if Left.Tag /= Right.Tag then
+         Success := False;
+         return Leander.Core.Substitutions.Empty;
+      end if;
+
+      case Left.Tag is
+         when TVar =>
+            Success := Left.Tyvar.Kind = Right.Tyvar.Kind;
+            if Success then
+               return Leander.Core.Substitutions.Singleton
+                 (Leander.Names.Leander_Name (Left.Tyvar.Name), Right);
+            end if;
+         when TCon =>
+            Success := Left.Tycon.Id = Right.Tycon.Id;
+            return Leander.Core.Substitutions.Empty;
+         when TApp =>
+            declare
+               Left_Subst  : constant Leander.Core.Substitutions.Instance :=
+                               Match (Left.Left, Right.Left, Success);
+            begin
+               if Success then
+                  declare
+                     Right_Subst : constant Leander.Core.Substitutions.Instance :=
+                                     Match (Left.Right, Right.Right, Success);
+                  begin
+                     if Success then
+                        return Left_Subst.Merge (Right_Subst, Success);
+                     else
+                        return Leander.Core.Substitutions.Empty;
+                     end if;
+                  end;
+               end if;
+            end;
+         when TGen =>
+            null;
+      end case;
+      Success := False;
+      return Leander.Core.Substitutions.Empty;
+   end Match;
 
    --------------
    -- New_TVar --
@@ -344,11 +405,11 @@ package body Leander.Core.Types is
                           and then Left.Right.Left.Left = T_Arrow
                         then
                            return "(" & Left.Right.Show & ")"
-                             & "->"
+                             & " -> "
                              & This.Right.Show;
                         else
                            return Left.Right.Show
-                             & "->"
+                             & " -> "
                              & This.Right.Show;
                         end if;
                      elsif Left.Left.Show = "(,)" then
@@ -396,7 +457,7 @@ package body Leander.Core.Types is
    --------------
 
    overriding procedure Traverse
-     (This : not null access constant Instance;
+     (This    : not null access constant Instance;
       Process : not null access
         procedure (This : not null access constant
                      Traverseable.Abstraction'Class))

@@ -1,7 +1,8 @@
+with Leander.Core;
 with Leander.Core.Alts;
 with Leander.Core.Bindings;
+with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
-with Leander.Core.Types;
 with Leander.Syntax.Bindings.Transform;
 with Leander.Syntax.Expressions;
 
@@ -11,7 +12,7 @@ with WL.String_Maps;
 package body Leander.Syntax.Bindings is
 
    type Nullable_Type_Reference is
-     access constant Leander.Core.Types.Instance'Class;
+     access constant Leander.Core.Qualified_Types.Instance'Class;
 
    type Binding_Entry (Alt_Count : Natural) is
       record
@@ -25,8 +26,10 @@ package body Leander.Syntax.Bindings is
      new WL.String_Maps (Binding_Entry);
 
    function To_Binding_Group
-     (Bindings : Name_Binding_Lists.List;
-      Types    : Type_Binding_Lists.List)
+     (Bindings      : Name_Binding_Lists.List;
+      Types         : Type_Binding_Lists.List;
+      Context       : Core.Declaration_Context;
+      Predicates    : Core.Predicates.Predicate_Array)
       return Leander.Core.Binding_Groups.Reference;
 
    type Graph_Vertex is
@@ -88,21 +91,45 @@ package body Leander.Syntax.Bindings is
      (This      : in out Instance;
       Loc       : Source.Source_Location;
       Name      : String;
-      Type_Expr : Leander.Syntax.Types.Reference)
+      Type_Expr : Leander.Syntax.Qualified_Types.Reference)
    is
+      use type Leander.Core.Declaration_Context;
+      use type Leander.Core.Predicates.Predicate_Array;
+      Bound_Type : Leander.Syntax.Qualified_Types.Reference := Type_Expr;
    begin
+      if This.Context = Leander.Core.Class_Context then
+         declare
+            use Leander.Core.Predicates;
+            Ps : constant Predicate_Array :=
+                   [for P of This.Predicates => P];
+            Qs : constant Predicate_Array :=
+                   Bound_Type.Predicates;
+         begin
+            Bound_Type :=
+              Leander.Syntax.Qualified_Types.Qualified_Type
+                (Ps & Qs, Bound_Type.Get_Type);
+         end;
+      end if;
+
       This.Types.Append
         (Type_Binding'
-           (Leander.Names.To_Leander_Name (Name), Type_Expr));
+           (Leander.Names.To_Leander_Name (Name), Bound_Type));
    end Add_Type;
 
    -----------
    -- Empty --
    -----------
 
-   function Empty return Reference is
+   function Empty
+     (Context    : Core.Declaration_Context := Core.Binding_Context;
+      Predicates : Leander.Core.Predicates.Predicate_Array := [])
+      return Reference
+   is
    begin
-      return new Instance;
+      return new Instance'
+        (Context     => Context,
+         Predicates  => [for P of Predicates => P],
+         others      => <>);
    end Empty;
 
    ----------------------
@@ -110,10 +137,14 @@ package body Leander.Syntax.Bindings is
    ----------------------
 
    function To_Binding_Group
-     (Bindings : Name_Binding_Lists.List;
-      Types    : Type_Binding_Lists.List)
+     (Bindings      : Name_Binding_Lists.List;
+      Types         : Type_Binding_Lists.List;
+      Context       : Core.Declaration_Context;
+      Predicates    : Core.Predicates.Predicate_Array)
       return Leander.Core.Binding_Groups.Reference
    is
+      pragma Unreferenced (Predicates);
+      use Leander.Core;
       Implicit : Binding_Maps.Map;
       Explicit : Binding_Maps.Map;
       Next     : Natural := 0;
@@ -145,38 +176,6 @@ package body Leander.Syntax.Bindings is
          return False;
       end References;
 
-      -------------
-      -- To_Alts --
-      -------------
-
-      --  function To_Alts (Equations : Binding_Record_Lists.List)
-      --                    return Alt_Lists.List
-      --  is
-      --  begin
-      --     return List : Alt_Lists.List do
-      --        for Equation of Equations loop
-      --           declare
-      --              Pats : constant Core.Patterns.Reference_Array :=
-      --                       [for Pat of Equation.Pats =>
-      --                                 Pat.To_Core];
-      --           begin
-      --              if Pats'Length = 0 then
-      --                 List.Append
-      --                   (Leander.Core.Alts.Alt
-      --                      (Equation.Expr.To_Core));
-      --              elsif Pats'Length = 1 then
-      --                 List.Append
-      --                   (Leander.Core.Alts.Alt
-      --                      (Pats (Pats'First), Equation.Expr.To_Core));
-      --              else
-      --                 raise Constraint_Error with
-      --                   "only single patterns supported";
-      --              end if;
-      --           end;
-      --        end loop;
-      --     end return;
-      --  end To_Alts;
-
    begin
       for Binding of Bindings loop
          declare
@@ -204,17 +203,30 @@ package body Leander.Syntax.Bindings is
                     Leander.Names.To_String (Type_Binding.Name);
          begin
             if not Implicit.Contains (Key) then
-               raise Constraint_Error with
-               Source.Show (Type_Binding.Type_Expr.Location)
-                 & ": no value for type binding";
+               if Context = Class_Context then
+                  Explicit.Insert
+                    (Key,
+                     Binding_Entry'
+                       (Alt_Count => 0,
+                        Name      => Type_Binding.Name,
+                        Alts      => [],
+                        Index     => 1,
+                        T         => Nullable_Type_Reference
+                          (Type_Binding.Type_Expr.To_Core)));
+               else
+                  raise Constraint_Error with
+                  Source.Show (Type_Binding.Type_Expr.Location)
+                    & ": no value for type binding";
+               end if;
+            else
+               Explicit.Insert
+                 (Key,
+                  Binding_Entry'
+                    (Implicit.Element (Key) with delta
+                         T    => Nullable_Type_Reference
+                       (Type_Binding.Type_Expr.To_Core)));
+               Implicit.Delete (Key);
             end if;
-            Explicit.Insert
-              (Key,
-               Binding_Entry'
-                 (Implicit.Element (Key) with delta
-                      T    => Nullable_Type_Reference
-                    (Type_Binding.Type_Expr.To_Core)));
-            Implicit.Delete (Key);
          end;
       end loop;
 
@@ -311,8 +323,7 @@ package body Leander.Syntax.Bindings is
             is
             begin
                return Core.Schemes.Quantify
-                 (T.Get_Tyvars,
-                  Core.Types.Reference (T));
+                 (T.Get_Tyvars, T);
             end To_Scheme;
 
          begin
@@ -344,7 +355,11 @@ package body Leander.Syntax.Bindings is
       return Leander.Core.Binding_Groups.Reference
    is
    begin
-      return To_Binding_Group (This.Bindings, This.Types);
+      return To_Binding_Group
+        (This.Bindings, This.Types, This.Context,
+         (if This.Predicates.Is_Empty
+          then []
+          else [for P of This.Predicates => P]));
    end To_Core;
 
 end Leander.Syntax.Bindings;

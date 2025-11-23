@@ -35,7 +35,7 @@ package body Leander.Core.Expressions is
    is
    begin
       return Allocate
-        (Instance'(EApp, Core.Typeable.New_Id, Loc, Left, Right));
+        (Instance'(EApp, Core.Typeable.New_Id, Loc, null, Left, Right));
    end Application;
 
    -----------------
@@ -48,7 +48,7 @@ package body Leander.Core.Expressions is
       return Reference
    is
    begin
-      return Allocate ((ECon, Core.Typeable.New_Id, Loc, Id));
+      return Allocate ((ECon, Core.Typeable.New_Id, Loc, null, Id));
    end Constructor;
 
    -------------
@@ -99,7 +99,8 @@ package body Leander.Core.Expressions is
                     return Reference
    is
    begin
-      return Allocate ((ELam, Core.Typeable.New_Id, Loc, Id, Expression));
+      return Allocate
+        ((ELam, Core.Typeable.New_Id, Loc, null, Id, Expression));
    end Lambda;
 
    ---------
@@ -115,7 +116,7 @@ package body Leander.Core.Expressions is
       Ref : constant Binding_Group_Reference :=
               Binding_Group_Reference (Bindings);
    begin
-      return Allocate ((ELet, Core.Typeable.New_Id, Loc, Ref, Expr));
+      return Allocate ((ELet, Core.Typeable.New_Id, Loc, null, Ref, Expr));
    end Let;
 
    -------------
@@ -126,7 +127,7 @@ package body Leander.Core.Expressions is
       Lit : Literals.Instance)
                      return Reference is
    begin
-      return Allocate ((ELit, Core.Typeable.New_Id, Loc, Lit));
+      return Allocate ((ELit, Core.Typeable.New_Id, Loc, null, Lit));
    end Literal;
 
    -----------
@@ -137,6 +138,18 @@ package body Leander.Core.Expressions is
    begin
       Allocator.Prune;
    end Prune;
+
+   ------------------------
+   -- Set_Qualified_Type --
+   ------------------------
+
+   overriding procedure Set_Qualified_Type
+     (This : in out Instance;
+      QT   : Leander.Core.Qualified_Types.Reference)
+   is
+   begin
+      This.QT := Nullable_Qualified_Type_Reference (QT);
+   end Set_Qualified_Type;
 
    ----------
    -- Show --
@@ -189,22 +202,33 @@ package body Leander.Core.Expressions is
       return Leander.Calculus.Tree
    is
       use Leander.Calculus;
+      Result : Tree;
    begin
-      Leander.Logging.Log
-        ("CALC", This.Show);
       case This.Tag is
          when EVar =>
-            return Symbol (Leander.Names.Leander_Name (This.Var_Id));
+            Leander.Logging.Log
+              ("COMPILE",
+               This.Show & " :: "
+               & This.Qualified_Type.Show);
+            declare
+               E : Tree :=
+                     Symbol (Leander.Names.Leander_Name (This.Var_Id));
+            begin
+               for P of This.Qualified_Type.Predicates loop
+                  E := Apply (E, Symbol ("<" & P.Show & ">"));
+               end loop;
+               Result := E;
+            end;
          when ECon =>
-            return Env.Constructor (Leander.Names.Leander_Name (This.Con_Id));
+            Result := Env.Constructor (Leander.Names.Leander_Name (This.Con_Id));
          when ELit =>
-            return This.Literal.To_Calculus;
+            Result := This.Literal.To_Calculus;
          when EApp =>
-            return Apply
+            Result := Apply
               (This.Left.To_Calculus (Types, Env),
                This.Right.To_Calculus (Types, Env));
          when ELam =>
-            return Lambda
+            Result := Lambda
               (To_String (This.LVar),
                This.LBody.To_Calculus (Types, Env));
          when ELet =>
@@ -221,9 +245,14 @@ package body Leander.Core.Expressions is
                        (Leander.Names.Leander_Name (Id))
                      .To_Calculus (Types, Env));
                end loop;
-               return E;
+               Result := E;
             end;
       end case;
+      Leander.Logging.Log
+        ("RESULT",
+         To_String (Result));
+      return Result;
+
    exception
       when E : others =>
          This.Error (Ada.Exceptions.Exception_Message (E));
@@ -255,9 +284,54 @@ package body Leander.Core.Expressions is
          when ELam =>
             This.LBody.Traverse (Process);
          when ELet =>
-            null;
+            for Id of This.Let_Bindings.Varids loop
+               for Alt of
+                 This.Let_Bindings.Lookup (Leander.Names.Leander_Name (Id))
+                   .Alts
+               loop
+                  Alt.Traverse (Process);
+               end loop;
+            end loop;
+            This.Let_Body.Traverse (Process);
       end case;
    end Traverse;
+
+   ---------------------
+   -- Update_Traverse --
+   ---------------------
+
+   overriding procedure Update_Traverse
+     (This    : not null access Instance;
+      Process : not null access
+        procedure (This : not null access
+                     Leander.Traverseable.Abstraction'Class))
+   is
+   begin
+      Process (This);
+      case This.Tag is
+         when EVar =>
+            null;
+         when ECon =>
+            null;
+         when ELit =>
+            null;
+         when EApp =>
+            This.Left.Update_Traverse (Process);
+            This.Right.Update_Traverse (Process);
+         when ELam =>
+            This.LBody.Update_Traverse (Process);
+         when ELet =>
+            for Id of This.Let_Bindings.Varids loop
+               for Alt of
+                 This.Let_Bindings.Lookup (Leander.Names.Leander_Name (Id))
+                   .Alts
+               loop
+                  Alt.Update_Traverse (Process);
+               end loop;
+            end loop;
+            This.Let_Body.Update_Traverse (Process);
+      end case;
+   end Update_Traverse;
 
    --------------
    -- Variable --
@@ -267,7 +341,7 @@ package body Leander.Core.Expressions is
       Id  : Varid)
                       return Reference is
    begin
-      return Allocate (Instance'(EVar, Core.Typeable.New_Id, Loc, Id));
+      return Allocate (Instance'(EVar, Core.Typeable.New_Id, Loc, null, Id));
    end Variable;
 
 end Leander.Core.Expressions;

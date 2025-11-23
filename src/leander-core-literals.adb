@@ -1,3 +1,6 @@
+with Leander.Core.Qualifiers;
+with Leander.Core.Types;
+
 package body Leander.Core.Literals is
 
    function Make (Tag : Instance_Tag;
@@ -35,18 +38,20 @@ package body Leander.Core.Literals is
 
    function Get_Type
      (This : Instance)
-      return Leander.Core.Types.Reference
+      return Leander.Core.Qualified_Types.Reference
    is
+      use Leander.Core.Qualified_Types;
+      use Leander.Core.Qualifiers;
    begin
       case This.Tag is
          when LChar =>
-            return Types.T_Char;
+            return Qualified_Type (Empty, Types.T_Char);
          when LFloat =>
-            return Types.T_Double;
+            return Qualified_Type (Empty, Types.T_Double);
          when LInteger =>
-            return Types.T_Int;
+            return Qualified_Type (Empty, Types.T_Int);
          when LString =>
-            return Types.T_String;
+            return Qualified_Type (Empty, Types.T_String);
       end case;
    end Get_Type;
 

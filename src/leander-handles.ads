@@ -1,4 +1,5 @@
 private with Leander.Environment;
+with Leander.Parser;
 private with Skit.Environment;
 
 package Leander.Handles is
@@ -30,14 +31,21 @@ package Leander.Handles is
    procedure Report
      (This : in out Handle);
 
+   procedure Trace
+     (This    : in out Handle;
+      Enabled : Boolean);
+
    procedure Close (This : in out Handle);
 
 private
+
+   type Context_Reference is access all Leander.Parser.Parse_Context;
 
    type Handle is tagged
       record
          Skit_Env : Skit.Environment.Reference;
          Env      : Leander.Environment.Reference;
+         Context  : Context_Reference;
       end record;
 
 end Leander.Handles;

@@ -14,7 +14,7 @@ package Leander.Core.Patterns is
      and Leander.Traverseable.Abstraction
    with private;
 
-   type Reference is not null access constant Instance'Class;
+   type Reference is not null access all Instance'Class;
    type Reference_Array is array (Positive range <>) of Reference;
 
    type Conargs is array (Positive range <>) of Varid;

@@ -1,7 +1,10 @@
 with Leander.Core.Types;
-with Leander.Logging;
 
 package body Leander.Core.Substitutions is
+
+   function Names
+     (This : Instance'Class)
+        return Leander.Names.Name_Array;
 
    -------------
    -- Compose --
@@ -20,10 +23,6 @@ package body Leander.Core.Substitutions is
          return Left;
       end if;
 
-      Leander.Logging.Log
-        ("SUBST", "left=" & Left.Show);
-      Leander.Logging.Log
-        ("SUBST", "right=" & Right.Show);
       for Sr of Right.List loop
          This.List.Append (Subst_Record'
                              (Sr.Name,
@@ -34,9 +33,6 @@ package body Leander.Core.Substitutions is
                              (Sr.Name,
                               Sr.Ref.Apply (Right)));
       end loop;
-
-      Leander.Logging.Log
-        ("SUBST", "composed=" & This.Show);
       return This;
    end Compose;
 
@@ -83,6 +79,82 @@ package body Leander.Core.Substitutions is
       end loop;
       return null;
    end Lookup;
+
+   -----------
+   -- Merge --
+   -----------
+
+   function Merge
+     (Left, Right : Instance;
+      Success     : out Boolean)
+        return Instance
+   is
+      function Agree return Boolean;
+
+      -----------
+      -- Agree --
+      -----------
+
+      function Agree return Boolean is
+         Names : constant Leander.Names.Name_Array :=
+                   Leander.Names.Intersection (Left.Names, Right.Names);
+      begin
+         for N of Names loop
+            declare
+               T1 : constant Nullable_Type_Reference := Left.Lookup (N);
+               T2 : constant Nullable_Type_Reference := Right.Lookup (N);
+            begin
+               if not T1.Equivalent (T2) then
+                  return False;
+               end if;
+            end;
+         end loop;
+         return True;
+      end Agree;
+
+   begin
+
+      if not Agree then
+         Success := False;
+         return Empty;
+      end if;
+
+      Success := True;
+      return Right.Compose (Left);
+   end Merge;
+
+   -----------
+   -- Names --
+   -----------
+
+   function Names
+     (This : Instance'Class)
+        return Leander.Names.Name_Array
+   is
+      Result : Leander.Names.Name_Array (1 .. Natural (This.List.Length)) :=
+                 (if This.List.Is_Empty then []
+                  else [for N of This.List => N.Name]);
+      Last   : Natural := 0;
+   begin
+      for Subst of This.List loop
+         declare
+            use type Leander.Names.Leander_Name;
+            Found : Boolean := False;
+         begin
+            for I in 1 .. Last loop
+               if Result (I) = Subst.Name then
+                  Found := True;
+                  exit;
+               end if;
+            end loop;
+            if not Found then
+               Last := Last + 1;
+               Result (Last) := Subst.Name;
+            end if;
+         end;
+      end loop;
+      return Result (1 .. Last);
+   end Names;
 
    ----------
    -- Show --

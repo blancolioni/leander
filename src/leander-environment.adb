@@ -3,6 +3,8 @@ with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
 with Leander.Core.Inference;
+with Leander.Core.Type_Instances;
+with Leander.Environment.Prelude;
 with Leander.Logging;
 with Leander.Names.Maps;
 with WL.String_Maps;
@@ -12,6 +14,10 @@ package body Leander.Environment is
    package Tycon_Maps is
      new WL.String_Maps (Leander.Data_Types.Reference,
                          Leander.Data_Types."=");
+
+   package Type_Class_Maps is
+     new WL.String_Maps (Leander.Core.Type_Classes.Reference,
+                         Leander.Core.Type_Classes."=");
 
    type Con_Record is
       record
@@ -32,16 +38,31 @@ package body Leander.Environment is
    package Import_Lists is
      new Ada.Containers.Doubly_Linked_Lists (Reference);
 
+   type Instance_Record is
+      record
+         Element    : Leander.Core.Type_Instances.Reference;
+         Bindings   : Leander.Core.Binding_Groups.Reference;
+         Dictionary : Leander.Calculus.Tree;
+      end record;
+
+   package Instance_Lists is
+     new Ada.Containers.Doubly_Linked_Lists (Instance_Record);
+
+   package Instance_Maps is
+     new Leander.Names.Maps (Instance_Lists.List, Instance_Lists."=");
+
    type Instance is new Abstraction with
       record
-         Name     : Leander.Names.Leander_Name;
-         Imports  : Import_Lists.List;
-         Tycons   : Tycon_Maps.Map;
-         Cons     : Con_Maps.Map;
-         Bindings : Leander.Core.Binding_Groups.Reference;
-         Values   : Value_Map_Reference;
-         Context  : Leander.Core.Inference.Inference_Context;
-         Type_Env : Leander.Core.Type_Env.Reference;
+         Name      : Leander.Names.Leander_Name;
+         Imports   : Import_Lists.List;
+         Tycons    : Tycon_Maps.Map;
+         Cons      : Con_Maps.Map;
+         Bindings  : Leander.Core.Binding_Groups.Reference;
+         Values    : Value_Map_Reference;
+         Context   : Leander.Core.Inference.Inference_Context;
+         Type_Env  : Leander.Core.Type_Env.Reference;
+         Classes   : Type_Class_Maps.Map;
+         Instances : Instance_Maps.Map;
       end record;
 
    overriding function Name (This : Instance) return String
@@ -81,11 +102,32 @@ package body Leander.Environment is
      (This   : in out Instance;
       DT     : Leander.Data_Types.Reference);
 
+   overriding procedure Type_Class
+     (This  : in out Instance;
+      Class : Leander.Core.Type_Classes.Reference);
+
+   overriding procedure Type_Instance
+     (This          : in out Instance;
+      Class_Id      : Leander.Core.Conid;
+      Constraints   : Leander.Core.Predicates.Predicate_Array;
+      Instance_Type : Leander.Core.Types.Reference;
+      Bindings      : Leander.Core.Binding_Groups.Reference);
+
    overriding function Exists
      (This  : Instance;
       Name  : Leander.Names.Leander_Name;
       Class : Element_Class)
       return Boolean;
+
+   overriding function Get_Class
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Core.Type_Classes.Reference;
+
+   overriding function Get_Instances
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Core.Type_Instances.Reference_Array;
 
    overriding procedure Elaborate
      (This : in out Instance);
@@ -111,6 +153,8 @@ package body Leander.Environment is
       return Leander.Core.Type_Env.Reference
    is (This.Type_Env);
 
+   Local_Boot_Env : Reference := null;
+
    --------------
    -- Bindings --
    --------------
@@ -122,6 +166,18 @@ package body Leander.Environment is
    begin
       This.Bindings := Groups;
    end Bindings;
+
+   ----------------------
+   -- Boot_Environment --
+   ----------------------
+
+   function Boot_Environment return Reference is
+   begin
+      if Local_Boot_Env = null then
+         Local_Boot_Env := Prelude.Create;
+      end if;
+      return Local_Boot_Env;
+   end Boot_Environment;
 
    -----------------
    -- Constructor --
@@ -217,7 +273,71 @@ package body Leander.Environment is
       if not Context.OK then
          Ada.Text_IO.Put_Line
            (Context.Error_Message);
+      else
+         declare
+            Ids : constant Core.Varid_Array := This.Bindings.Varids;
+         begin
+            for Id of Ids loop
+               This.Bindings.Lookup (Leander.Names.Leander_Name (Id))
+                 .Update_Type (Context);
+            end loop;
+         end;
       end if;
+
+      for Class of This.Classes loop
+         if This.Instances.Contains
+           (Leander.Names.Leander_Name (Class.Id))
+         then
+            declare
+               Methods : constant Core.Varid_Array :=
+                           Class.Methods;
+            begin
+               for Inst of This.Instances.Element
+                 (Leander.Names.Leander_Name (Class.Id))
+               loop
+                  Leander.Logging.Log
+                    ("INSTANCE", Inst.Element.Predicate.Show);
+                  Leander.Core.Binding_Groups.Inference.Infer
+                    (This.Context, Inst.Bindings);
+
+                  declare
+                     D       : Leander.Calculus.Tree :=
+                                 Leander.Calculus.Symbol ("$class");
+                  begin
+                     for Id of Methods loop
+                        declare
+                           Binding : constant Leander.Core.Bindings.Reference
+                             := Inst.Bindings.Lookup
+                               (Leander.Names.Leander_Name (Id));
+                        begin
+                           Leander.Logging.Log
+                             ("INSTANCE",
+                              Leander.Core.To_String (Id)
+                                  & " = "
+                              & Binding.Show);
+                           D :=
+                             Leander.Calculus.Apply
+                               (D,
+                                Binding.To_Calculus
+                                  (This.Context, This'Unchecked_Access));
+                        end;
+                     end loop;
+                     D := Leander.Calculus.Lambda ("$class", D);
+                     This.Values.Insert
+                       (Leander.Names.To_Leander_Name
+                          ("<"
+                           & Inst.Element.Predicate.Show
+                           & ">"),
+                        D);
+                     Leander.Logging.Log
+                       ("INSTANCE",
+                        "dictionary: " & Leander.Calculus.To_String (D));
+                  end;
+               end loop;
+            end;
+         end if;
+      end loop;
+
    end Elaborate;
 
    ------------
@@ -239,6 +359,8 @@ package body Leander.Environment is
             return This.Tycons.Contains (N);
          when Variable_Binding =>
             return False;
+         when Class_Binding =>
+            return This.Classes.Contains (N);
       end case;
    end Exists;
 
@@ -284,7 +406,7 @@ package body Leander.Environment is
       for Position in E.Cons.Iterate loop
          if not This.Cons.Contains (Con_Maps.Key (Position)) then
             This.Cons.Insert (Con_Maps.Key (Position),
-                                Con_Maps.Element (Position));
+                              Con_Maps.Element (Position));
          end if;
       end loop;
 
@@ -309,7 +431,7 @@ package body Leander.Environment is
          declare
             use type Leander.Core.Bindings.Reference;
             Binding : constant Leander.Core.Bindings.Reference :=
-                     This.Bindings.Lookup (Name);
+                        This.Bindings.Lookup (Name);
          begin
             if Binding = null then
                for Import of This.Imports loop
@@ -344,5 +466,125 @@ package body Leander.Environment is
          Values   => new Value_Maps.Map,
          others   => <>);
    end New_Environment;
+
+   ---------------
+   -- Get_Class --
+   ---------------
+
+   overriding function Get_Class
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Core.Type_Classes.Reference
+   is
+   begin
+      return This.Classes (Core.To_String (Id));
+   end Get_Class;
+
+   -------------------
+   -- Get_Instances --
+   -------------------
+
+   overriding function Get_Instances
+     (This : Instance;
+      Id   : Leander.Core.Conid)
+      return Leander.Core.Type_Instances.Reference_Array
+   is
+   begin
+      if not This.Instances.Contains
+           (Leander.Names.Leander_Name (Id))
+      then
+         return [];
+      end if;
+      declare
+         Name renames Leander.Names.Leander_Name (Id);
+         List : constant Instance_Lists.List := This.Instances.Element (Name);
+         Last : Natural := 0;
+      begin
+         return R : Leander.Core.Type_Instances.Reference_Array
+           (1 .. Natural (List.Length))
+         do
+            for Inst of List loop
+               Last := Last + 1;
+               R (Last) := Inst.Element;
+            end loop;
+            pragma Assert (Last = R'Last);
+         end return;
+      end;
+   end Get_Instances;
+
+   ----------------
+   -- Type_Class --
+   ----------------
+
+   overriding procedure Type_Class
+     (This  : in out Instance;
+      Class : Leander.Core.Type_Classes.Reference)
+   is
+      Methods : constant Core.Varid_Array :=
+                  Class.Methods;
+   begin
+      This.Classes.Insert (Core.To_String (Class.Id), Class);
+      for I in Methods'Range loop
+         This.Type_Env :=
+           This.Type_Env.Compose
+             (Methods (I),
+              Class.Method_Scheme (Methods (I)));
+         declare
+            D : Leander.Calculus.Tree := Leander.Calculus.Symbol ("$inst");
+            E : Leander.Calculus.Tree :=
+                  Leander.Calculus.Symbol (I);
+         begin
+            for J in reverse Methods'Range loop
+               E := Leander.Calculus.Lambda (J, E);
+            end loop;
+            D := Leander.Calculus.Apply (D, E);
+            D := Leander.Calculus.Lambda ("$inst", D);
+            This.Values.Insert
+              (Leander.Names.Leander_Name (Methods (I)), D);
+            Leander.Logging.Log
+              ("CLASS",
+               Core.To_String (Methods (I))
+               & " :: "
+               & Class.Method_Scheme (Methods (I)).Show
+               & " = "
+               & Leander.Calculus.To_String (D));
+         end;
+      end loop;
+   end Type_Class;
+
+   -------------------
+   -- Type_Instance --
+   -------------------
+
+   overriding procedure Type_Instance
+     (This          : in out Instance;
+      Class_Id      : Leander.Core.Conid;
+      Constraints   : Leander.Core.Predicates.Predicate_Array;
+      Instance_Type : Leander.Core.Types.Reference;
+      Bindings      : Leander.Core.Binding_Groups.Reference)
+   is
+      Inst       : constant Core.Type_Instances.Reference :=
+                     Core.Type_Instances.Make_Instance
+                       (Constraints,
+                        Core.Predicates.Predicate (Class_Id, Instance_Type));
+      Rec        : constant Instance_Record := Instance_Record'
+        (Element    => Inst,
+         Bindings   => Bindings,
+         Dictionary => <>);
+      Class_Name : constant Leander.Names.Leander_Name :=
+                     Leander.Names.Leander_Name (Class_Id);
+   begin
+      if not This.Instances.Contains (Class_Name) then
+         This.Instances.Insert (Class_Name, [Rec]);
+      else
+         declare
+            List : Instance_Lists.List	:= This.Instances.Element (Class_Name);
+         begin
+            List.Append (Rec);
+            This.Instances.Replace (Class_Name, List);
+         end;
+      end if;
+
+   end Type_Instance;
 
 end Leander.Environment;

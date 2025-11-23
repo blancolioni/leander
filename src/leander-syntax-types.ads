@@ -10,8 +10,10 @@ package Leander.Syntax.Types is
 
    function Kind (This : Instance) return Leander.Core.Kinds.Kind;
 
-   function To_Core (This : Instance) return Leander.Core.Types.Reference
-                     is abstract;
+   function To_Core
+     (This : Instance)
+      return Leander.Core.Types.Reference
+      is abstract;
 
    function Is_Variable (This : Instance) return Boolean;
    function Variable_Name (This : Instance) return String;

@@ -210,6 +210,20 @@ package body Leander.Calculus is
    end Lambda;
 
    ------------
+   -- Lambda --
+   ------------
+
+   function Lambda
+     (Index : Natural;
+      Expr  : Tree)
+      return Tree
+   is
+      Img : constant String := Index'Image;
+   begin
+      return Lambda (Img (2 .. Img'Last), Expr);
+   end Lambda;
+
+   ------------
    -- Number --
    ------------
 
@@ -244,6 +258,19 @@ package body Leander.Calculus is
    is
    begin
       return new Node_Record'(Reference, Name);
+   end Symbol;
+
+   ------------
+   -- Symbol --
+   ------------
+
+   function Symbol
+     (Index : Natural)
+      return Tree
+   is
+      Img : constant String := Index'Image;
+   begin
+      return Symbol (Img (2 .. Img'Last));
    end Symbol;
 
    ---------------

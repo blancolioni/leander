@@ -12,6 +12,9 @@ foreign import skit "#trace" #trace :: a -> a
 
 foreign import skit "#putChar" #primPutChar :: Int -> Int -> Char -> Int
 
+foreign import skit "#minInt" #minInt :: Int
+foreign import skit "#maxInt" #maxInt :: Int
+
 infixr 9  .
 infixr 8  ^, ^^, **
 infixl 7  *, /, `quot`, `rem`, `div`, `mod`
@@ -27,6 +30,34 @@ infixr 2  ||
 infixl 1  >>, >>=
 infixr 1  =<<
 infixr 0  $, $!, `seq`
+
+class Eq a where
+    (==), (/=) :: a -> a -> Bool
+    (/=) x y = not (x == y)
+    (==) x y = not (x /= y)
+
+class Eq a => Ord a where
+    (<), (<=), (>=), (>) :: a -> a -> Bool
+
+class Show a where
+    show :: a -> [Char]
+
+class Bounded a where
+    minBound :: a
+    maxBound :: a
+
+instance Eq Int where
+    (==) = #primIntEq
+    (/=) = #primIntEq
+
+instance (Eq a) => Eq [a] where
+    (==) [] = \ys -> case ys of
+                    [] -> True
+                    _  -> False
+    (==) (x:xs) = \ys -> case ys of
+                    [] -> False
+                    (y:ys') -> (x == y) && (xs == ys')
+    (/=) xs ys = not (xs == ys)
 
 id :: a -> a
 id x = x
@@ -59,11 +90,6 @@ not False = True
 
 (||) True _ = True
 (||) False b = b
-
-(==), (/=) :: Int -> Int -> Bool
-(==) = #primIntEq
-
-(/=) x y = not (x == y)
 
 null :: [a] -> Bool
 null [] = True
@@ -104,6 +130,9 @@ concat (xs:xss) = xs ++ concat xss
 (++) :: [a] -> [a] -> [a]
 (++) [] ys = ys
 (++) (x:xs) ys = x : (xs ++ ys)
+
+equals :: Eq a => a -> a -> Bool
+equals x y = x == y
 
 zero :: Int -> Bool
 zero 0 = True
@@ -148,6 +177,10 @@ data  Maybe a  =  Nothing | Just a
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe n f Nothing  =  n
 maybe n f (Just x) =  f x
+
+showMaybe :: Show a => Maybe a -> [Char]
+showMaybe Nothing  = "Nothing"
+showMaybe (Just x) = "Just " ++ show x
 
 data IO a = IO (Int -> (a,Int))
 

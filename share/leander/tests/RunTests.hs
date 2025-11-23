@@ -27,7 +27,8 @@ tests = [
     ("let x = 3 in x + 1 == 4", (let x = 3 in x + 1) == 4),
     ("case 3 of { 1 -> 10; 2 -> 20; _ -> 30 } == 30", (case 3 of { 1 -> 10; 2 -> 20; _ -> 30 }) == 30),
     ("if True then 5 else 10 == 5", (if True then 5 else 10) == 5),
-    ("if False then 5 else 10 == 10", (if False then 5 else 10) == 10)
+    ("if False then 5 else 10 == 10", (if False then 5 else 10) == 10),
+    ("maxInt == 536870911", #maxInt == 536870911)
 ]
 
 main :: IO ()

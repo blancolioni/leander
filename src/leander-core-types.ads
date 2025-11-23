@@ -57,13 +57,22 @@ package Leander.Core.Types is
       return Reference
      with Pre'Class => This.Is_Application;
 
+   function Equivalent
+     (Left, Right : not null access constant Instance'Class)
+      return Boolean;
+
+   function Match
+     (Left, Right : not null access constant Instance'Class;
+      Success     : out Boolean)
+      return Leander.Core.Substitutions.Instance;
+
+   function Head_Normal_Form
+     (This : Instance'Class)
+      return Boolean;
+
    function Instantiate
      (This : not null access constant Instance'Class;
       Refs : Type_Array)
-      return Reference;
-
-   function Generate
-     (This : not null access constant Instance'Class)
       return Reference;
 
    function TVar (T : Tyvars.Instance) return Reference;
@@ -115,11 +124,11 @@ private
       record
          case Tag is
             when TVar =>
-               Tyvar : Leander.Core.Tyvars.Instance;
+               Tyvar       : Leander.Core.Tyvars.Instance;
             when TCon =>
-               Tycon : Leander.Core.Tycons.Instance;
+               Tycon       : Leander.Core.Tycons.Instance;
             when TGen =>
-               Index : Positive;
+               Index       : Positive;
             when TApp =>
                Left, Right : Reference;
          end case;
@@ -148,7 +157,7 @@ private
    overriding procedure Dispose (This : in out Instance);
 
    overriding procedure Traverse
-     (This : not null access constant Instance;
+     (This    : not null access constant Instance;
       Process : not null access
         procedure (This : not null access constant
                      Traverseable.Abstraction'Class));

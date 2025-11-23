@@ -1,6 +1,8 @@
 with Ada.Text_IO;
 
 with Leander.Core.Alts.Inference;
+with Leander.Core.Qualified_Types;
+with Leander.Core.Qualifiers;
 with Leander.Core.Schemes;
 with Leander.Core.Substitutions;
 with Leander.Core.Type_Env;
@@ -53,9 +55,18 @@ package body Leander.Core.Binding_Groups.Inference is
       procedure Infer_Explicit_Binding
         (Explicit : Leander.Core.Bindings.Reference)
       is
-         T : constant Core.Types.Reference := Explicit.Scheme.Fresh_Instance;
+         QT : constant Core.Qualified_Types.Reference :=
+                Explicit.Scheme.Fresh_Instance;
+         Q  : constant Core.Qualifiers.Reference := QT.Qualifier;
+         T  : constant Core.Types.Reference := QT.Get_Type;
          Start_Env : constant Core.Type_Env.Reference := Context.Type_Env;
       begin
+
+         Leander.Logging.Log
+           ("tiExpl",
+            To_String (Explicit.Name)
+            & " :: "
+            & Explicit.Scheme.Show);
 
          Infer_Alts (Explicit.Alts, T);
 
@@ -63,13 +74,15 @@ package body Leander.Core.Binding_Groups.Inference is
             use type Core.Tyvars.Tyvar_Array;
             Subst : constant Substitutions.Instance :=
                       Context.Current_Substitution;
+            Q1 : constant Core.Qualifiers.Reference := Q.Apply (Subst);
             T1 : constant Core.Types.Reference := T.Apply (Subst);
             Fs : constant Core.Tyvars.Tyvar_Array :=
                    Start_Env.Apply (Subst).Get_Tyvars;
             Gs : constant Core.Tyvars.Tyvar_Array :=
                    T1.Get_Tyvars / Fs;
             Sc1 : constant Leander.Core.Schemes.Reference :=
-                    Schemes.Quantify (Gs, T1);
+                    Schemes.Quantify
+                      (Gs, Qualified_Types.Qualified_Type (Q1, T1));
          begin
             Leander.Logging.Log
               ("explicit: " & Explicit.Scheme.Show);
@@ -154,7 +167,8 @@ package body Leander.Core.Binding_Groups.Inference is
 
          begin
             for I in Ts'Range loop
-               Scs (I) := Core.Schemes.Quantify (Gs, Ts (I));
+               Scs (I) :=
+                 Core.Schemes.Quantify (Gs, [], Ts (I));
             end loop;
          end;
 

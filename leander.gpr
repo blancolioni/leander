@@ -9,7 +9,7 @@ project Leander is
    for Main use ("leander-driver.adb");
 
    package Compiler is
-      for Default_Switches ("ada") use ("-Og", "-ffunction-sections", "-fdata-sections", "-g", "-gnata", "-gnat2022", "-gnatW8", "-gnatVa", "-gnatwa.Xe", "-gnatyaABbc-defhiIklM79nOprStuxos");
+      for Default_Switches ("ada") use ("-Og", "-ffunction-sections", "-fdata-sections", "-g", "-gnata", "-gnat2022", "-gnatW8", "-gnatVa", "-gnatwa.Xe", "-gnatyaABbc-defhiIklM79nOprStuxosD");
    end Compiler;
 
    package Binder is

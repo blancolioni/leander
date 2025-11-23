@@ -5,6 +5,7 @@ private package Leander.Parser.Bindings is
    function At_Binding return Boolean;
 
    procedure Parse_Binding
-     (To : Leander.Syntax.Bindings.Reference);
+     (Context : Parse_Context'Class;
+      To      : Leander.Syntax.Bindings.Reference);
 
 end Leander.Parser.Bindings;

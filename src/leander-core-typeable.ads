@@ -1,10 +1,13 @@
 with Leander.Showable;
+with Leander.Traverseable;
 
 package Leander.Core.Typeable is
 
    type Typeable_Id is private;
 
-   type Abstraction is interface and Leander.Showable.Abstraction;
+   type Abstraction is interface
+     and Leander.Showable.Abstraction
+     and Leander.Traverseable.Abstraction;
 
    function Get_Id (This : Abstraction) return Typeable_Id
                     is abstract;

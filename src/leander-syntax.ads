@@ -19,12 +19,18 @@ package Leander.Syntax is
      (Integer_Literal, Character_Literal,
       Float_Literal, String_Literal);
 
+   procedure Prune;
+
 private
 
    type Instance is abstract tagged
       record
          Location : Leander.Source.Source_Location;
       end record;
+
+   function Allocate
+     (This : Instance)
+      return Reference;
 
    function Location
      (This : Instance'Class)

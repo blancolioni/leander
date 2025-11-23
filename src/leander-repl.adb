@@ -27,6 +27,8 @@ package body Leander.Repl is
                then
                   Put_Line
                     (Handle.Infer_Type (Line (Line'First + 6 .. Line'Last)));
+               elsif Line = ":trace" then
+                  Handle.Trace (True);
                else
                   Put_Line (Standard_Error, "Unimplemented");
                end if;

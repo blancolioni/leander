@@ -11,7 +11,8 @@ package body Leander.Parser.Modules is
    ------------------
 
    function Parse_Module
-     (Name : String)
+     (Context : in out Parse_Context'Class;
+      Name    : String)
       return Leander.Environment.Reference
    is
       Env : constant Leander.Environment.Reference :=
@@ -19,6 +20,7 @@ package body Leander.Parser.Modules is
                then Leander.Environment.Prelude.Create
                else Leander.Environment.New_Environment (Name));
    begin
+      Context.New_Environment (Env);
       Expect (Tok_Module, [Tok_Identifier]);
 
       if Tok = Tok_Identifier then
@@ -35,7 +37,7 @@ package body Leander.Parser.Modules is
                Tok_Class, Tok_Instance]);
 
       begin
-         Declarations.Parse_Declarations (Env);
+         Declarations.Parse_Declarations (Context);
 
          Expect (Tok_End_Of_File, Tok_End_Of_File);
 

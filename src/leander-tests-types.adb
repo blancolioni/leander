@@ -28,9 +28,9 @@ package body Leander.Tests.Types is
       Test ("String", "[Char]", T_String);
       Test ("list-image", "[Int]",
             List_Of (T_Int));
-      Test ("arrow-image", "Int->Char",
+      Test ("arrow-image", "Int -> Char",
             Fn (T_Int, T_Char));
-      Test ("show-Image", "Double->[Char]",
+      Test ("show-Image", "Double -> [Char]",
             Fn (T_Double, List_Of (T_Char)));
 
       declare
@@ -40,13 +40,19 @@ package body Leander.Tests.Types is
                 (Core.To_Varid (Varid),
                    Core.Kinds.Star)));
       begin
-         Test ("const-type", "a->b->a",
+         Test ("const-type", "a -> b -> a",
                Fn (TVar ("a"),
                  Fn (TVar ("b"), TVar ("a"))));
-         Test ("call-type", "(a->b)->a->b",
+         Test ("call-type", "(a -> b) -> a -> b",
                Fn (Fn (TVar ("a"), TVar ("b")),
                  Fn (TVar ("a"), TVar ("b"))));
       end;
+
+      Test ("hnf ()", not T_Unit.Head_Normal_Form);
+      Test ("hnf Int", not T_Int.Head_Normal_Form);
+      Test ("hnf a", Core.Types.TVar (Core.Tyvars.New_Tyvar).Head_Normal_Form);
+      Test ("hnf [a]", not T_List.Head_Normal_Form);
+      Test ("hnf m a", Core.Types.Application (Core.Types.TVar (Core.Tyvars.New_Tyvar), Core.Types.TVar (Core.Tyvars.New_Tyvar)).Head_Normal_Form);
    end Run_Tests;
 
    ----------

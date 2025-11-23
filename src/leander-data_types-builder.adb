@@ -59,7 +59,7 @@ package body Leander.Data_Types.Builder is
          return Natural
       is
          use type Core.Types.Reference;
-         T : Core.Types.Reference := Scheme.Fresh_Instance;
+         T : Core.Types.Reference := Scheme.Inner_Type;
          Count : Natural := 0;
       begin
          while T.Is_Application

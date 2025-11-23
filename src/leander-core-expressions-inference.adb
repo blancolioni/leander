@@ -1,6 +1,7 @@
 with Ada.Exceptions;
 with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
+with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
 with Leander.Core.Substitutions;
 with Leander.Core.Type_Env;
@@ -21,6 +22,10 @@ package body Leander.Core.Expressions.Inference is
         (Expr : Reference;
          Ty   : Core.Types.Reference);
 
+      procedure Bind
+        (Expr : Reference;
+         QT   : Core.Qualified_Types.Reference);
+
       function Binding
         (Expr : Reference)
          return Core.Types.Reference;
@@ -28,6 +33,20 @@ package body Leander.Core.Expressions.Inference is
       function TI
         (E   : Reference)
          return Leander.Core.Substitutions.Instance'Class;
+
+      ----------
+      -- Bind --
+      ----------
+
+      procedure Bind
+        (Expr : Reference;
+         QT   : Core.Qualified_Types.Reference)
+      is
+      begin
+         Context.Save_Predicates (QT.Predicates);
+         Bind (Expr, QT.Get_Type);
+         Expr.Set_Qualified_Type (QT);
+      end Bind;
 
       ----------
       -- Bind --
@@ -87,8 +106,13 @@ package body Leander.Core.Expressions.Inference is
                         & To_String (E.Var_Id));
                      return Substitutions.Empty;
                   else
-                     Bind (E, Sigma.Fresh_Instance);
-                     return Substitutions.Empty;
+                     declare
+                        Q : constant Core.Qualified_Types.Reference :=
+                              Sigma.Fresh_Instance;
+                     begin
+                        Bind (E, Q);
+                        return Substitutions.Empty;
+                     end;
                   end if;
                end;
             when ECon =>
@@ -104,8 +128,13 @@ package body Leander.Core.Expressions.Inference is
                         & To_String (E.Con_Id));
                      return Substitutions.Empty;
                   else
-                     Bind (E, Sigma.Fresh_Instance);
-                     return Substitutions.Empty;
+                     declare
+                        Q : constant Core.Qualified_Types.Reference :=
+                              Sigma.Fresh_Instance;
+                     begin
+                        Bind (E, Q);
+                        return Substitutions.Empty;
+                     end;
                   end if;
                end;
             when ELit =>

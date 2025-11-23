@@ -1,6 +1,8 @@
 with Leander.Calculus;
 with Leander.Core.Binding_Groups;
+with Leander.Core.Predicates;
 with Leander.Core.Schemes;
+with Leander.Core.Type_Classes;
 with Leander.Core.Type_Env;
 with Leander.Core.Types;
 with Leander.Data_Types;
@@ -10,12 +12,14 @@ with Leander.Names;
 package Leander.Environment is
 
    type Abstraction is interface
+     and Leander.Core.Type_Classes.Class_Environment
      and Leander.Calculus.Calculus_Environment;
 
    type Reference is access all Abstraction'Class;
 
    type Element_Class is
-     (Type_Constructor, Constructor, Variable_Binding);
+     (Type_Constructor, Constructor, Variable_Binding,
+      Class_Binding);
 
    function Name (This : Abstraction) return String is abstract;
 
@@ -77,6 +81,19 @@ package Leander.Environment is
       DT     : Leander.Data_Types.Reference)
    is abstract;
 
+   procedure Type_Class
+     (This  : in out Abstraction;
+      Class : Leander.Core.Type_Classes.Reference)
+   is abstract;
+
+   procedure Type_Instance
+     (This          : in out Abstraction;
+      Class_Id      : Leander.Core.Conid;
+      Constraints   : Leander.Core.Predicates.Predicate_Array;
+      Instance_Type : Leander.Core.Types.Reference;
+      Bindings      : Leander.Core.Binding_Groups.Reference)
+   is abstract;
+
    procedure Import
      (This : in out Abstraction;
       Env  : not null access Abstraction'Class)
@@ -94,5 +111,6 @@ package Leander.Environment is
    is abstract;
 
    function New_Environment (Name : String) return Reference;
+   function Boot_Environment return Reference;
 
 end Leander.Environment;

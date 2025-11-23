@@ -6,7 +6,7 @@ with Leander.Parser.Expressions;
 with Leander.Parser.Types;
 
 with Leander.Syntax.Patterns;
-with Leander.Syntax.Types;
+with Leander.Syntax.Qualified_Types;
 
 package body Leander.Parser.Bindings is
 
@@ -18,12 +18,13 @@ package body Leander.Parser.Bindings is
    -------------------
 
    procedure Parse_Binding
-     (To : Leander.Syntax.Bindings.Reference)
+     (Context : Parse_Context'Class;
+      To      : Leander.Syntax.Bindings.Reference)
    is
       Loc  : constant Source.Source_Location := Current_Source_Location;
       Name : constant String := Scan_Identifier;
       Pats : constant Leander.Syntax.Patterns.Reference_Array :=
-               Expressions.Parse_Patterns;
+               Expressions.Parse_Patterns (Context);
 
       procedure Parse_Type_Bindings
         (Acc : Leander.Core.Varid_Array);
@@ -39,8 +40,9 @@ package body Leander.Parser.Bindings is
          if Tok = Tok_Colon_Colon then
             Scan;
             declare
-               Expr : constant Leander.Syntax.Types.Reference :=
-                        Leander.Parser.Types.Parse_Type_Expression;
+               Expr : constant Leander.Syntax.Qualified_Types.Reference :=
+                        Leander.Parser.Types.Parse_Qualified_Type_Expression
+                          (Context);
             begin
                for Id of Acc loop
                   To.Add_Type (Loc, Core.To_String (Id), Expr);
@@ -76,7 +78,8 @@ package body Leander.Parser.Bindings is
          Scan;
          declare
             Expr : constant Leander.Syntax.Expressions.Reference :=
-                     Leander.Parser.Expressions.Parse_Expression;
+                     Leander.Parser.Expressions.Parse_Expression
+                       (Context);
          begin
             To.Add_Binding (Loc, Name, Pats, Expr);
          end;

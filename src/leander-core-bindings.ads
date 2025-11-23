@@ -47,6 +47,10 @@ package Leander.Core.Bindings is
       Env   : not null access constant Leander.Environment.Abstraction'Class)
       return Leander.Calculus.Tree;
 
+   procedure Update_Type
+     (This    : Instance'Class;
+      Context : Leander.Core.Inference.Inference_Context);
+
    procedure Prune;
 
 private
@@ -54,7 +58,7 @@ private
    type Nullable_Scheme_Reference is
      access constant Leander.Core.schemes.Instance'Class;
 
-   type Instance (Alt_Count : Positive) is
+   type Instance (Alt_Count : Natural) is
      new Leander.Showable.Abstraction with
       record
          Name   : Varid;

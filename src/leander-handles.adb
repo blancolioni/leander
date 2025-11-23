@@ -3,7 +3,7 @@ with Leander.Calculus;
 
 with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
-with Leander.Parser;
+with Leander.Logging;
 with Leander.Syntax.Expressions;
 
 with Skit.Compiler;
@@ -36,13 +36,15 @@ package body Leander.Handles is
       Skit_Env : constant Skit.Environment.Reference :=
                    Skit.Environment.Create
                      (Machine);
+      Context  : constant Context_Reference :=
+                   new Leander.Parser.Parse_Context;
       Env      : constant Leander.Environment.Reference :=
-                   Leander.Parser.Load_Module
+                   Context.Load_Module
                      ("./share/leander/modules/Prelude.hs");
    begin
       Skit.Library.Load_Primitives (Skit_Env);
       return Handle'
-        (Skit_Env, Env);
+        (Skit_Env, Env, Context);
    end Create;
 
    -------------------------
@@ -69,18 +71,22 @@ package body Leander.Handles is
       use Leander.Core.Inference;
       use Leander.Core.Expressions.Inference;
       Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 Leander.Parser.Parse_Expression (Expression);
+                 This.Context.Parse_Expression (Expression);
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=
                  Initial_Context (This.Env.Type_Env);
    begin
+      Leander.Syntax.Prune;
       Infer (Result, Core);
       if not Result.OK then
          Ada.Text_IO.Put_Line
            (Ada.Text_IO.Standard_Error, Result.Error_Message);
          return "";
       else
+
+         Result.Update_Type (Core);
+
          declare
             Tree : constant Leander.Calculus.Tree :=
                      Core.To_Calculus (Result, This.Env);
@@ -89,6 +95,13 @@ package body Leander.Handles is
               (Tree, This.Env, This.Skit_Env);
 
             Skit.Compiler.Compile (This.Skit_Env.Machine);
+
+            Leander.Logging.Log
+              ("COMPILED",
+               Skit.Debug.Image
+                 (This.Skit_Env.Machine.Top,
+                  This.Skit_Env.Machine));
+
             This.Skit_Env.Machine.Evaluate;
             declare
                Value : constant String :=
@@ -113,7 +126,7 @@ package body Leander.Handles is
       use Leander.Core.Inference;
       use Leander.Core.Expressions.Inference;
       Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 Leander.Parser.Parse_Expression (Expression);
+                 This.Context.Parse_Expression (Expression);
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=
@@ -123,7 +136,7 @@ package body Leander.Handles is
       if not Result.OK then
          return Result.Error_Message;
       else
-         return Result.Get_Type (Core).Generate.Show;
+         return Result.Get_Qualified_Type (Core).Generate.Show;
       end if;
    end Infer_Type;
 
@@ -136,16 +149,7 @@ package body Leander.Handles is
       Path : String)
    is
    begin
-      This.Env := Leander.Parser.Load_Module (Path);
-      declare
-         Result : constant String :=
-                    This.Evaluate ("runIO main");
-      begin
-         if Result /= "" and then Result /= "I" then
-            Ada.Text_IO.Put_Line
-              (Result);
-         end if;
-      end;
+      This.Env := This.Context.Load_Module (Path);
    end Load_Module;
 
    ------------
@@ -158,5 +162,19 @@ package body Leander.Handles is
    begin
       This.Skit_Env.Machine.Report;
    end Report;
+
+   -----------
+   -- Trace --
+   -----------
+
+   procedure Trace
+     (This    : in out Handle;
+      Enabled : Boolean)
+   is
+   begin
+      This.Skit_Env.Machine.Set
+        ("trace-eval",
+         (if Enabled then "true" else "false"));
+   end Trace;
 
 end Leander.Handles;
