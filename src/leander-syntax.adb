@@ -13,7 +13,7 @@ package body Leander.Syntax is
    --------------
 
    function Allocate
-     (This : Instance)
+     (This : Instance'Class)
       return Reference
    is
    begin

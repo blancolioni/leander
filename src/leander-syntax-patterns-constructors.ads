@@ -38,12 +38,17 @@ private
      (This : Instance)
       return Leander.Core.Patterns.Reference;
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Constructor
      (Location : Leander.Source.Source_Location;
       Name     : String;
       Args     : Reference_Array)
       return Reference
-   is (new Instance'(Args'Length, Location,
-       Leander.Names.To_Leander_Name (Name), Args));
+   is (Allocate (Instance'(Args'Length, Location,
+       Leander.Names.To_Leander_Name (Name), Args)));
 
 end Leander.Syntax.Patterns.Constructors;

@@ -49,6 +49,11 @@ package body Leander.Syntax.Bindings is
      new Ada.Containers.Doubly_Linked_Lists
        (Core.Bindings.Reference, Core.Bindings."=");
 
+   function Allocate
+     (This : Instance)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    -----------------
    -- Add_Binding --
    -----------------
@@ -126,10 +131,10 @@ package body Leander.Syntax.Bindings is
       return Reference
    is
    begin
-      return new Instance'
+      return Allocate (Instance'
         (Context     => Context,
          Predicates  => [for P of Predicates => P],
-         others      => <>);
+         others      => <>));
    end Empty;
 
    ----------------------

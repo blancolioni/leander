@@ -26,11 +26,16 @@ private
      (This : Instance)
       return Leander.Core.Types.Reference;
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Constructor
      (Location : Leander.Source.Source_Location;
       Name     : String)
       return Reference
-   is (new Instance'(Location, Core.Kinds.Star,
-       Leander.Core.To_Conid (Name)));
+   is (Allocate (Instance'(Location, Core.Kinds.Star,
+       Leander.Core.To_Conid (Name))));
 
 end Leander.Syntax.Types.Constructors;

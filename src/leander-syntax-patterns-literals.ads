@@ -53,35 +53,40 @@ private
      (This : Instance)
       return Leander.Core.Patterns.Reference;
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Integer_Literal
      (Location : Leander.Source.Source_Location;
       Image    : String)
       return Reference
-   is (new Instance'
+   is (Allocate (Instance'
          (Location => Location,
           Class    => Integer_Literal,
           Code     => 0,
-          Image    => Ada.Strings.Unbounded.To_Unbounded_String (Image)));
+          Image    => Ada.Strings.Unbounded.To_Unbounded_String (Image))));
 
    function Character_Literal
      (Location : Leander.Source.Source_Location;
       Code     : Natural)
       return Reference
-   is (new Instance'(Location, Character_Literal, Code,
-       Ada.Strings.Unbounded.Null_Unbounded_String));
+   is (Allocate (Instance'(Location, Character_Literal, Code,
+       Ada.Strings.Unbounded.Null_Unbounded_String)));
 
    function String_Literal
      (Location : Leander.Source.Source_Location;
       Image    : String)
       return Reference
-   is (new Instance'(Location, String_Literal, 0,
-       Ada.Strings.Unbounded.To_Unbounded_String (Image)));
+   is (Allocate (Instance'(Location, String_Literal, 0,
+       Ada.Strings.Unbounded.To_Unbounded_String (Image))));
 
    function Float_Literal
      (Location : Leander.Source.Source_Location;
       Image    : String)
       return Reference
-   is (new Instance'(Location, Float_Literal, 0,
-       Ada.Strings.Unbounded.To_Unbounded_String (Image)));
+   is (Allocate (Instance'(Location, Float_Literal, 0,
+       Ada.Strings.Unbounded.To_Unbounded_String (Image))));
 
 end Leander.Syntax.Patterns.Literals;

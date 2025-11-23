@@ -25,10 +25,15 @@ private
       return Leander.Core.Patterns.Reference
    is (Leander.Core.Patterns.Variable (Core.Varid (This.Name)));
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Variable
      (Location : Leander.Source.Source_Location;
       Name     : String)
       return Reference
-   is (new Instance'(Location, Leander.Names.To_Leander_Name (Name)));
+   is (Allocate (Instance'(Location, Leander.Names.To_Leander_Name (Name))));
 
 end Leander.Syntax.Patterns.Variables;

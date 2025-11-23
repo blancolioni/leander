@@ -33,13 +33,18 @@ private
        (Leander.Core.Tyvars.Tyvar
           (This.Name, This.Kind)));
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Variable
      (Location : Leander.Source.Source_Location;
       Name     : String)
       return Reference
-   is (new Instance'
+   is (Allocate (Instance'
          (Location => Location,
           Name     => Leander.Core.To_Varid (Name),
-          others   => <>));
+          others   => <>)));
 
 end Leander.Syntax.Types.Variables;

@@ -32,10 +32,15 @@ private
    is (Leander.Core.Expressions.Variable
        (This.Location, This.Name));
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Variable
      (Location : Leander.Source.Source_Location;
       Name     : String)
       return Reference
-   is (new Instance'(Location, Leander.Core.To_Varid (Name)));
+   is (Allocate (Instance'(Location, Leander.Core.To_Varid (Name))));
 
 end Leander.Syntax.Expressions.Variables;
