@@ -30,10 +30,15 @@ private
    is (Leander.Core.Types.Application
          (This.Left.To_Core, This.Right.To_Core));
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Application
      (Location    : Leander.Source.Source_Location;
       Left, Right : Reference)
       return Reference
-   is (new Instance'(Location, Core.Kinds.Star, Left, Right));
+   is (Allocate (Instance'(Location, Core.Kinds.Star, Left, Right)));
 
 end Leander.Syntax.Types.Applications;

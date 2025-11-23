@@ -21,11 +21,16 @@ private
          Expr        : Reference;
       end record;
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Let
      (Location    : Leander.Source.Source_Location;
       Bindings    : Leander.Syntax.Bindings.Reference;
       Expr        : Reference)
       return Reference
-   is (new Instance'(Location, Bindings, Expr));
+   is (Allocate (Instance'(Location, Bindings, Expr)));
 
 end Leander.Syntax.Expressions.Lets;

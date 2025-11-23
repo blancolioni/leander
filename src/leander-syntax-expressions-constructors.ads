@@ -40,11 +40,16 @@ private
    function Conid (This : Instance'Class) return Core.Conid
    is (This.Name);
 
+   function Allocate
+     (This : Instance'Class)
+      return Reference
+   is (Reference (Syntax.Allocate (This)));
+
    function Constructor
      (Location : Leander.Source.Source_Location;
       Name     : String)
       return Reference
-   is (new Instance'(Location, Leander.Core.To_Conid (Name),
-       Core.Types.T_Error));
+   is (Allocate (Instance'(Location, Leander.Core.To_Conid (Name),
+       Core.Types.T_Error)));
 
 end Leander.Syntax.Expressions.Constructors;

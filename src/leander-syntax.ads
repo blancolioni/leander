@@ -29,7 +29,7 @@ private
       end record;
 
    function Allocate
-     (This : Instance)
+     (This : Instance'Class)
       return Reference;
 
    function Location

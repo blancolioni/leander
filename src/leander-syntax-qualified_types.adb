@@ -1,5 +1,13 @@
 package body Leander.Syntax.Qualified_Types is
 
+   function Allocate
+     (This : Instance)
+      return Reference
+   is
+   begin
+      return Reference (Syntax.Allocate (This));
+   end Allocate;
+
    --------------------
    -- Qualified_Type --
    --------------------
@@ -10,12 +18,11 @@ package body Leander.Syntax.Qualified_Types is
       return Reference
    is
    begin
-      return Reference
-        (Allocate (Instance'
-             (Predicate_Count => Predicates'Length,
-              Location        => With_Type.Location,
-              Predicates      => Predicates,
-              T               => With_Type)));
+      return Allocate (Instance'
+               (Predicate_Count => Predicates'Length,
+                Location        => With_Type.Location,
+                Predicates      => Predicates,
+                T               => With_Type));
    end Qualified_Type;
 
    -------------
