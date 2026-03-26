@@ -139,7 +139,7 @@ package body Leander.Environment is
       Signature    : Leander.Core.Types.Reference);
 
    overriding function Lookup
-     (This : Instance;
+     (This : in out Instance;
       Name : Leander.Names.Leander_Name)
       return Leander.Calculus.Tree;
 
@@ -420,7 +420,7 @@ package body Leander.Environment is
    ------------
 
    overriding function Lookup
-     (This : Instance;
+     (This : in out Instance;
       Name : Leander.Names.Leander_Name)
       return Leander.Calculus.Tree
    is
@@ -442,10 +442,19 @@ package body Leander.Environment is
                raise Constraint_Error with
                  "undefined: " & Leander.Names.To_String (Name);
             else
+               This.Context.Clear_Predicates;
                declare
-                  Tree : constant Leander.Calculus.Tree :=
-                           Binding.To_Calculus (This.Context, This'Access);
+                  Tree : Leander.Calculus.Tree :=
+                            Binding.To_Calculus (This.Context, This'Access);
                begin
+                  for P of This.Context.Current_Predicates loop
+                     Tree :=
+                       Leander.Calculus.Lambda
+                         ("<" & P.Show & ">",
+                          Tree);
+                     Leander.Logging.Log
+                       ("PRED", Leander.Calculus.To_String (Tree));
+                  end loop;
                   This.Values.Insert (Name, Tree);
                   return Tree;
                end;

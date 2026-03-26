@@ -39,6 +39,17 @@ package body Leander.Core.Inference is
       This.Expr_Types.Insert (Item, Nullable_Type_Reference (To));
    end Bind;
 
+   ----------------------
+   -- Clear_Predicates --
+   ----------------------
+
+   procedure Clear_Predicates
+     (This : in out Inference_Context)
+   is
+   begin
+      This.Predicates.Clear;
+   end Clear_Predicates;
+
    ------------------------
    -- Current_Predicates --
    ------------------------

@@ -22,7 +22,7 @@ package Leander.Core.Alts.Compiler is
      with Pre => Alts'Length > 0;
 
    function To_Calculus
-     (This : Builder'Class)
+     (This : in out Builder'Class)
       return Leander.Calculus.Tree;
 
 private

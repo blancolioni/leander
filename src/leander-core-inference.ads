@@ -38,8 +38,11 @@ package Leander.Core.Inference is
       Subst : Leander.Core.Substitutions.Instance'Class);
 
    procedure Save_Predicates
-     (This : in out Inference_Context;
+     (This       : in out Inference_Context;
       Predicates : Leander.Core.Predicates.Predicate_Array);
+
+   procedure Clear_Predicates
+     (This : in out Inference_Context);
 
    function Current_Predicates
      (This : Inference_Context)

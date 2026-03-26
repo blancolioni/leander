@@ -50,7 +50,7 @@ package Leander.Calculus is
       is abstract;
 
    function Lookup
-     (This : Calculus_Environment;
+     (This : in out Calculus_Environment;
       Name : Leander.Names.Leander_Name)
       return Tree
       is abstract
@@ -58,7 +58,7 @@ package Leander.Calculus is
 
    procedure Compile
      (This     : Tree;
-      Env      : not null access constant Calculus_Environment'Class;
+      Env      : not null access Calculus_Environment'Class;
       Skit_Env : Skit.Environment.Reference);
 
    procedure Dispose (This : in out Tree);

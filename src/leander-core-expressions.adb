@@ -2,6 +2,7 @@ with Ada.Exceptions;
 
 with Leander.Allocator;
 with Leander.Core.Binding_Groups;
+with Leander.Core.Predicates;
 with Leander.Environment;
 with Leander.Logging;
 
@@ -196,28 +197,34 @@ package body Leander.Core.Expressions is
    -----------------
 
    function To_Calculus
-     (This : Instance'Class;
-      Types : Leander.Core.Inference.Inference_Context'Class;
+     (This  : Instance'Class;
+      Types : in out Leander.Core.Inference.Inference_Context'Class;
       Env   : not null access constant Leander.Environment.Abstraction'Class)
       return Leander.Calculus.Tree
    is
       use Leander.Calculus;
       Result : Tree;
    begin
+      Leander.Logging.Log
+        ("CALCULUS",
+         This.Show & " :: "
+         & (if This.Has_Qualified_Type_Value
+           then This.Qualified_Type.Show
+           else "?"));
+
       case This.Tag is
          when EVar =>
-            Leander.Logging.Log
-              ("COMPILE",
-               This.Show & " :: "
-               & This.Qualified_Type.Show);
             declare
                E : Tree :=
                      Symbol (Leander.Names.Leander_Name (This.Var_Id));
+               Ps : constant Leander.Core.Predicates.Predicate_Array :=
+                      This.Qualified_Type.Predicates;
             begin
-               for P of This.Qualified_Type.Predicates loop
+               for P of Ps loop
                   E := Apply (E, Symbol ("<" & P.Show & ">"));
                end loop;
                Result := E;
+               Types.Save_Predicates (Ps);
             end;
          when ECon =>
             Result := Env.Constructor (Leander.Names.Leander_Name (This.Con_Id));
@@ -249,7 +256,7 @@ package body Leander.Core.Expressions is
             end;
       end case;
       Leander.Logging.Log
-        ("RESULT",
+        ("RESULT: EVAR",
          To_String (Result));
       return Result;
 
