@@ -1,3 +1,5 @@
+with Leander.Core.Predicates;
+with Leander.Core.Type_Classes;
 with Leander.Logging;
 with Leander.Names;
 with Leander.Traverseable;
@@ -48,7 +50,9 @@ package body Leander.Core.Inference is
       return Leander.Core.Predicates.Predicate_Array
    is
    begin
-      return [for P of This.Predicates => P];
+      return [for P of This.Predicates =>
+               Core.Predicates.Predicate
+                  (P.Class_Name, P.Get_Type.Apply (This.Subst))];
    end Current_Predicates;
 
    --------------------------
@@ -187,6 +191,35 @@ package body Leander.Core.Inference is
    begin
       Root.Update_Traverse (Update'Access);
    end Update_Type;
+
+   ------------------------
+   -- Get_Qualified_Type --
+   ------------------------
+
+   function Get_Qualified_Type
+     (This       : Inference_Context;
+      Typeable   : not null access constant Core.Typeable.Abstraction'Class)
+      return Leander.Core.Qualified_Types.Reference
+   is
+      Ps : constant Leander.Core.Predicates.Predicate_Array :=
+             This.Current_Predicates;
+   begin
+      if This.Class_Env /= null then
+         declare
+            Success : Boolean;
+            Reduced : constant Leander.Core.Predicates.Predicate_Array :=
+                        Leander.Core.Type_Classes.Class_Environment'Class
+                          (This.Class_Env.all).Reduce (Ps, Success);
+         begin
+            if Success then
+               return Leander.Core.Qualified_Types.Qualified_Type
+                        (Reduced, This.Get_Type (Typeable));
+            end if;
+         end;
+      end if;
+      return Leander.Core.Qualified_Types.Qualified_Type
+               (Ps, This.Get_Type (Typeable));
+   end Get_Qualified_Type;
 
    ---------------------
    -- Update_Type_Env --

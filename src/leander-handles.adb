@@ -75,7 +75,8 @@ package body Leander.Handles is
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=
-                 Initial_Context (This.Env.Type_Env);
+                 Initial_Context (This.Env.Type_Env,
+                    Class_Environment_Access (This.Env));
    begin
       Leander.Syntax.Prune;
       Infer (Result, Core);
@@ -130,7 +131,8 @@ package body Leander.Handles is
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=
-                 Initial_Context (This.Env.Type_Env);
+                 Initial_Context (This.Env.Type_Env,
+                    Class_Environment_Access (This.Env));
    begin
       Infer (Result, Core);
       if not Result.OK then
