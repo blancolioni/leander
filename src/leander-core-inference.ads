@@ -2,7 +2,6 @@ private with Ada.Containers.Doubly_Linked_Lists;
 with LEander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Substitutions;
-with Leander.Core.Type_Classes;
 with Leander.Core.Type_Env;
 private with Leander.Core.Typeable.Maps;
 with Leander.Core.Typeable;
@@ -12,12 +11,8 @@ package Leander.Core.Inference is
 
    type Inference_Context is tagged private;
 
-   type Class_Environment_Access is
-     access all Leander.Core.Type_Classes.Class_Environment'Class;
-
    function Initial_Context
-     (Type_Env  : Leander.Core.Type_Env.Reference;
-      Class_Env : Class_Environment_Access := null)
+     (Type_Env : Leander.Core.Type_Env.Reference)
       return Inference_Context;
 
    procedure Save_Type_Env
@@ -124,7 +119,6 @@ private
          Subst         : Leander.Core.Substitutions.Instance :=
                            Leander.Core.Substitutions.Empty;
          Predicates    : Predicate_Lists.List := [];
-         Class_Env     : Class_Environment_Access := null;
       end record;
 
    function OK (This : Inference_Context) return Boolean
@@ -152,12 +146,16 @@ private
    is (This.Type_Env);
 
    function Initial_Context
-     (Type_Env  : Leander.Core.Type_Env.Reference;
-      Class_Env : Class_Environment_Access := null)
+     (Type_Env : Leander.Core.Type_Env.Reference)
       return Inference_Context
    is (Inference_Context'
-         (Type_Env  => Type_Env,
-          Class_Env => Class_Env,
-          others    => <>));
+         (Type_Env => Type_Env, others => <>));
+
+   function Get_Qualified_Type
+     (This       : Inference_Context;
+      Typeable   : not null access constant Core.Typeable.Abstraction'Class)
+      return Leander.Core.Qualified_Types.Reference
+   is (Leander.Core.Qualified_Types.Qualified_Type
+       (This.Current_Predicates, This.Get_Type (Typeable)));
 
 end Leander.Core.Inference;
