@@ -260,10 +260,7 @@ package body Leander.Environment is
      (This : in out Instance)
    is
       Context : Leander.Core.Inference.Inference_Context :=
-                  Leander.Core.Inference.Initial_Context
-                  (This.Type_Env,
-                   Leander.Core.Inference.Class_Environment_Access
-                     (This'Unchecked_Access));
+                  Leander.Core.Inference.Initial_Context (This.Type_Env);
    begin
       Leander.Logging.Log ("ELAB", Leander.Names.To_String (This.Name));
       Leander.Core.Binding_Groups.Inference.Infer

@@ -3,6 +3,9 @@ with Leander.Calculus;
 
 with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
+with Leander.Core.Predicates;
+with Leander.Core.Qualified_Types;
+with Leander.Core.Type_Classes;
 with Leander.Logging;
 with Leander.Syntax.Expressions;
 
@@ -75,8 +78,7 @@ package body Leander.Handles is
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=
-                 Initial_Context (This.Env.Type_Env,
-                    Class_Environment_Access (This.Env));
+                 Initial_Context (This.Env.Type_Env);
    begin
       Leander.Syntax.Prune;
       Infer (Result, Core);
@@ -131,14 +133,24 @@ package body Leander.Handles is
       Core   : constant Leander.Core.Expressions.Reference :=
                  Syntax.To_Core;
       Result : Inference_Context :=
-                 Initial_Context (This.Env.Type_Env,
-                    Class_Environment_Access (This.Env));
+                 Initial_Context (This.Env.Type_Env);
    begin
       Infer (Result, Core);
       if not Result.OK then
          return Result.Error_Message;
       else
-         return Result.Get_Qualified_Type (Core).Generate.Show;
+         declare
+            Ps      : constant Leander.Core.Predicates.Predicate_Array :=
+                        Result.Current_Predicates;
+            Success : Boolean;
+            Reduced : constant Leander.Core.Predicates.Predicate_Array :=
+                        Leander.Core.Type_Classes.Class_Environment'Class
+                          (This.Env.all).Reduce (Ps, Success);
+         begin
+            return Leander.Core.Qualified_Types.Qualified_Type
+                     ((if Success then Reduced else Ps),
+                      Result.Get_Type (Core)).Generate.Show;
+         end;
       end if;
    end Infer_Type;
 
