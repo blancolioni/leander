@@ -1,4 +1,3 @@
-with Leander.Core.Predicates;
 with Leander.Logging;
 with Leander.Names;
 with Leander.Traverseable;
