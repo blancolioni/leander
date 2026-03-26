@@ -150,7 +150,7 @@ package body Leander.Core.Alts.Compiler is
    -----------------
 
    function To_Calculus
-     (This : Builder'Class)
+     (This : in out Builder'Class)
       return Leander.Calculus.Tree
    is
    begin

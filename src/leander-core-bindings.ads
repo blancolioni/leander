@@ -43,7 +43,7 @@ package Leander.Core.Bindings is
 
    function To_Calculus
      (This  : Instance'Class;
-      Types : Leander.Core.Inference.Inference_Context'Class;
+      Types : in out Leander.Core.Inference.Inference_Context'Class;
       Env   : not null access constant Leander.Environment.Abstraction'Class)
       return Leander.Calculus.Tree;
 

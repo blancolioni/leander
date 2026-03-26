@@ -61,8 +61,8 @@ package Leander.Core.Expressions is
       return Boolean;
 
    function To_Calculus
-     (This : Instance'Class;
-      Types : Leander.Core.Inference.Inference_Context'Class;
+     (This  : Instance'Class;
+      Types : in out Leander.Core.Inference.Inference_Context'Class;
       Env   : not null access constant Leander.Environment.Abstraction'Class)
       return Leander.Calculus.Tree;
 
@@ -86,21 +86,21 @@ private
      and Leander.Source.Has_Source_Location
      and Leander.Traverseable.Abstraction with
       record
-         Id : Core.Typeable.Typeable_Id;
+         Id  : Core.Typeable.Typeable_Id;
          Loc : Leander.Source.Source_Location;
          QT  : Nullable_Qualified_Type_Reference;
          case Tag is
             when EVar =>
-               Var_Id      : Varid;
+               Var_Id       : Varid;
             when ECon =>
-               Con_Id      : Conid;
+               Con_Id       : Conid;
             when ELit =>
-               Literal     : Leander.Core.Literals.Instance;
+               Literal      : Leander.Core.Literals.Instance;
             when EApp =>
-               Left, Right : Reference;
+               Left, Right  : Reference;
             when ELam =>
-               LVar        : Varid;
-               LBody       : Reference;
+               LVar         : Varid;
+               LBody        : Reference;
             when ELet =>
                Let_Bindings : Binding_Group_Reference;
                Let_Body     : Reference;

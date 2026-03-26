@@ -1,3 +1,4 @@
+with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Leander.Handles;
 
@@ -36,9 +37,7 @@ package body Leander.Repl is
                declare
                   T : constant String := Handle.Infer_Type (Line);
                begin
-                  if T'Length > 2
-                    and then T (T'First .. T'First + 1) = "IO"
-                  then
+                  if Ada.Strings.Fixed.Index (T, "IO") > 0 then
                      declare
                         Result : constant String :=
                                    Handle.Evaluate ("runIO (" & Line & ")");

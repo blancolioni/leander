@@ -22,6 +22,9 @@ package body Leander.Parser.Bindings is
       To      : Leander.Syntax.Bindings.Reference)
    is
       Loc  : constant Source.Source_Location := Current_Source_Location;
+      pragma Assert (At_Identifier,
+                     Source.Show (Loc) & ": expected an Identifier");
+
       Name : constant String := Scan_Identifier;
       Pats : constant Leander.Syntax.Patterns.Reference_Array :=
                Expressions.Parse_Patterns (Context);

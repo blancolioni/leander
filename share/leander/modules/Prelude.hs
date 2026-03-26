@@ -6,6 +6,8 @@ foreign import skit "#eq" #primCharEq :: Char -> Char -> Bool
 foreign import skit "#add" #primIntAdd :: Int -> Int -> Int
 foreign import skit "#mul" #primIntMul :: Int -> Int -> Int
 foreign import skit "#sub" #primIntSub :: Int -> Int -> Int
+foreign import skit "#div" #primIntDiv :: Int -> Int -> Int
+foreign import skit "#mod" #primIntMod :: Int -> Int -> Int
 
 foreign import skit "#seq" #primSeq :: a -> b -> b
 foreign import skit "#trace" #trace :: a -> a
@@ -45,6 +47,19 @@ class Show a where
 class Bounded a where
     minBound :: a
     maxBound :: a
+
+instance Eq Bool where
+    (==) True = \b -> case b of
+                    True  -> True
+                    False -> False
+    (==) False = \b -> case b of
+                    True  -> False
+                    False -> True
+    (/=) x y = not (x == y)
+
+instance Show Bool where
+    show True  = "True"
+    show False = "False"
 
 instance Eq Int where
     (==) = #primIntEq
@@ -215,6 +230,9 @@ putStr = mapM_ putChar
 
 putStrLn :: [Char] -> IO ()
 putStrLn str = putStr str >> putChar '\n'
+
+print :: Show a => a -> IO ()
+print x = putStrLn (show x)
 
 runIO :: IO a -> a
 runIO a = let getf (IO f) = f

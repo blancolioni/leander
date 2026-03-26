@@ -44,7 +44,7 @@ package body Leander.Calculus is
 
    procedure Compile
      (This     : Tree;
-      Env      : not null access constant Calculus_Environment'Class;
+      Env      : not null access Calculus_Environment'Class;
       Skit_Env : Skit.Environment.Reference)
    is
       package Variable_Index_Maps is
