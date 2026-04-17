@@ -313,6 +313,21 @@ package body Leander.Parser.Expressions is
       end if;
    end Parse_Atomic_Expression;
 
+   --------------------------
+   -- Parse_Atomic_Pattern --
+   --------------------------
+
+   function Parse_Atomic_Pattern
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Patterns.Reference
+   is
+      Expr : constant Syntax.Expressions.Reference :=
+        Parse_Atomic_Expression (Context);
+      Pat  : constant Syntax.Patterns.Reference := Expr.To_Pattern;
+   begin
+      return Pat;
+   end Parse_Atomic_Pattern;
+
    --------------------
    -- Parse_Case_Alt --
    --------------------

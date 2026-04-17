@@ -1,4 +1,5 @@
 with Leander.Syntax.Patterns;
+
 private package Leander.Parser.Expressions is
 
    function At_Expression return Boolean;
@@ -7,6 +8,10 @@ private package Leander.Parser.Expressions is
    function Parse_Expression
      (Context : Parse_Context'Class)
       return Leander.Syntax.Expressions.Reference;
+
+   function Parse_Atomic_Pattern
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Patterns.Reference;
 
    function Parse_Patterns
      (Context : Parse_Context'Class)

@@ -100,11 +100,11 @@ not True = False
 not False = True
 
 (&&), (||) :: Bool -> Bool -> Bool
-(&&) True b = b
-(&&) False _ = False
+True && b = b
+False && _ = False
 
-(||) True _ = True
-(||) False b = b
+True || _ = True
+False || b = b
 
 null :: [a] -> Bool
 null [] = True
