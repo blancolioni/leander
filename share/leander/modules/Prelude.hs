@@ -33,14 +33,49 @@ infixl 1  >>, >>=
 infixr 1  =<<
 infixr 0  $, $!, `seq`
 
-class Eq a where
-    (==), (/=) :: a -> a -> Bool
-    (/=) x y = not (x == y)
-    (==) x y = not (x /= y)
+-- Standard types, classes, instances and related functions  
+ 
+-- Equality and Ordered classes  
+ 
+class  Eq a  where  
+    (==), (/=) :: a -> a -> Bool  
+ 
+        -- Minimal complete definition:  
+        --      (==) or (/=)  
+    x /= y     =  not (x == y)  
+    x == y     =  not (x /= y) 
 
-class Eq a => Ord a where
-    (<), (<=), (>=), (>) :: a -> a -> Bool
+data Ordering = LT | EQ | GT
 
+otherwise :: Bool
+otherwise = True
+
+class  (Eq a) => Ord a  where  
+    compare              :: a -> a -> Ordering  
+    (<), (<=), (>=), (>) :: a -> a -> Bool  
+    max, min             :: a -> a -> a  
+ 
+        -- Minimal complete definition:  
+        --      (<=) or compare  
+        -- Using compare can be more efficient for complex types.  
+    compare x y  
+         | x == y    =  EQ  
+         | x <= y    =  LT  
+         | otherwise =  GT  
+ 
+    x <= y           =  compare x y /= GT  
+    x <  y           =  compare x y == LT  
+    x >= y           =  compare x y /= LT  
+    x >  y           =  compare x y == GT
+
+-- note that (min x y, max x y) = (x,y) or (y,x)  
+    max x y  
+         | x <= y    =  y  
+         | otherwise =  x  
+    min x y  
+         | x <= y    =  x  
+         | otherwise =  y 
+         
 class Show a where
     show :: a -> [Char]
 
