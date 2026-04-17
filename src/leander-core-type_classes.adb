@@ -51,7 +51,7 @@ package body Leander.Core.Type_Classes is
                Match_Predicate (Inst.Predicate, Predicate, Success);
          begin
             if Success then
-               return Inst.Qualifier.Apply (subst).Predicates;
+               return Inst.Qualifier.all.Apply (subst).all.Predicates;
             end if;
          end;
       end loop;
@@ -108,7 +108,7 @@ package body Leander.Core.Type_Classes is
    is
    begin
       if Instance_Predicate.Class_Id = Check_Predicate.Class_Id then
-         return Instance_Predicate.Get_Type.Match
+         return Instance_Predicate.Get_Type.all.Match
                   (Check_Predicate.Get_Type, Success);
       else
          Success := False;
@@ -214,7 +214,7 @@ package body Leander.Core.Type_Classes is
       return Leander.core.Predicates.Predicate_Array
    is
    begin
-      if Predicate.Get_Type.Head_Normal_Form then
+      if Predicate.Get_Type.all.Head_Normal_Form then
          return [Predicate];
       else
          declare

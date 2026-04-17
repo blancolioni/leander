@@ -75,7 +75,7 @@ package body Leander.Core.Binding_Groups.Inference is
             Q1 : constant Core.Qualifiers.Reference := Q.Apply (Subst);
             T1 : constant Core.Types.Reference := T.Apply (Subst);
             Fs : constant Core.Tyvars.Tyvar_Array :=
-                   Start_Env.Apply (Subst).Get_Tyvars;
+                   Start_Env.Apply (Subst).all.Get_Tyvars;
             Gs : constant Core.Tyvars.Tyvar_Array :=
                    T1.Get_Tyvars / Fs;
             Sc1 : constant Leander.Core.Schemes.Reference :=
@@ -83,9 +83,9 @@ package body Leander.Core.Binding_Groups.Inference is
                       (Gs, Qualified_Types.Qualified_Type (Q1, T1));
          begin
             Leander.Logging.Log
-              ("explicit: " & Explicit.Scheme.Show);
+              ("explicit: " & Explicit.Scheme.all.Show);
             Leander.Logging.Log
-              ("Inferred: " & Sc1.Show);
+              ("Inferred: " & Sc1.all.Show);
          end;
       exception
          when others =>
@@ -143,19 +143,19 @@ package body Leander.Core.Binding_Groups.Inference is
               ("INFER",
                To_String (Ids (I))
                & " :: "
-               & Ts (I).Show);
+               & Ts (I).all.Show);
          end loop;
 
          declare
             use type Core.Tyvars.Tyvar_Array;
             Fs : constant Core.Tyvars.Tyvar_Array :=
-                   Start_Env.Apply (Subst).Get_Tyvars;
+                   Start_Env.Apply (Subst).all.Get_Tyvars;
             function New_Tyvars
               (Index : Positive)
                return Core.Tyvars.Tyvar_Array
             is (if Index <= Ts'Last
                 then Core.Tyvars.Union
-                  (Ts (Index).Get_Tyvars,
+                  (Ts (Index).all.Get_Tyvars,
                    New_Tyvars (Index + 1))
                 else []);
 

@@ -192,7 +192,7 @@ package body Leander.Core.Inference is
          if HQT.Has_Qualified_Type_Value then
             declare
                QT  : constant Leander.Core.Qualified_Types.Reference :=
-                       HQT.Qualified_Type.Apply (This.Current_Substitution);
+                       HQT.Qualified_Type.all.Apply (This.Current_Substitution);
             begin
                HQT.Set_Qualified_Type (QT);
                Leander.Logging.Log

@@ -27,7 +27,7 @@ package body Leander.Core.Alts.Compiler is
       else
          This.Add_Alts
            (This.Context.Get_Type (Alts (Alts'First).Pat)
-            .Apply (This.Context.Current_Substitution),
+            .all.Apply (This.Context.Current_Substitution),
             Alts => Alts);
       end if;
    end Add;

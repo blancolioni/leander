@@ -20,7 +20,7 @@ package body Leander.Core.Qualifiers is
          Ps.Append
            (Core.Predicates.Predicate
               (P.Class_Name,
-               P.Get_Type.Apply (Subst)));
+               P.Get_Type.all.Apply (Subst)));
       end loop;
       return Allocate (Instance'(Predicates => Ps));
    end Apply;
@@ -46,7 +46,7 @@ package body Leander.Core.Qualifiers is
             return [];
          else
             return Core.Tyvars.Union
-              (Predicate_Lists.Element (Position).Get_Type.Get_Tyvars,
+              (Predicate_Lists.Element (Position).Get_Type.all.Get_Tyvars,
                Get (Predicate_Lists.Next (Position)));
          end if;
       end Get;
@@ -69,7 +69,7 @@ package body Leander.Core.Qualifiers is
                          (Predicates => [for P of This.Predicates =>
                                              Core.Predicates.Predicate
                                            (P.Class_Name,
-                                            P.Get_Type.Instantiate (Refs))]));
+                                            P.Get_Type.all.Instantiate (Refs))]));
    end Instantiate;
 
    -------------

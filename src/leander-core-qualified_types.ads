@@ -83,7 +83,7 @@ private
      (This  : Instance)
       return Leander.Core.Tyvars.Tyvar_Array
    is (Core.Tyvars.Union
-       (This.Qualifier.Get_Tyvars, This.QT.Get_Tyvars));
+       (This.Qualifier.all.Get_Tyvars, This.QT.all.Get_Tyvars));
 
    overriding function Apply
      (This  : not null access constant Instance;
@@ -98,7 +98,7 @@ private
    function Predicates
      (This : Instance'Class)
       return Leander.Core.Predicates.Predicate_Array
-   is (This.Qualifier.Predicates);
+   is (This.Qualifier.all.Predicates);
 
    function Qualifier
      (This : Instance'Class)

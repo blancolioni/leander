@@ -447,7 +447,7 @@ package body Leander.Environment is
                             Binding.To_Calculus (This.Context, This'Access);
                begin
                   for P of This.Context.Current_Predicates loop
-                     if P.Get_Type.Get_Tyvars'Length > 0
+                     if P.Get_Type.all.Get_Tyvars'Length > 0
                      then
                         declare
                            Dict : constant String :=
@@ -562,7 +562,7 @@ package body Leander.Environment is
               ("CLASS",
                Core.To_String (Methods (I))
                & " :: "
-               & Class.Method_Scheme (Methods (I)).Show
+               & Class.Method_Scheme (Methods (I)).all.Show
                & " = "
                & Leander.Calculus.To_String (D));
          end;

@@ -51,7 +51,7 @@ private
      (This  : Instance;
       Tyvar : Leander.Core.Tyvars.Instance'Class)
       return Boolean
-   is (for some P of This.Predicates => P.Get_Type.Contains (Tyvar));
+   is (for some P of This.Predicates => P.Get_Type.all.Contains (Tyvar));
 
    overriding function Get_Tyvars
      (This  : Instance)
