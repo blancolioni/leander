@@ -58,11 +58,15 @@ package body Leander.Core.Inference is
      (This : Inference_Context)
       return Leander.Core.Predicates.Predicate_Array
    is
-      use Leander.Core.Types;
+      function Apply_Subst
+        (T : Leander.Core.Types.Reference)
+         return Leander.Core.Types.Reference
+      is (Leander.Core.Types.Reference (T.Apply (This.Subst)));
    begin
       return [for P of This.Predicates =>
                Core.Predicates.Predicate
-                  (Predicates.Class_Name (P), P.Get_Type.Apply (This.Subst))];
+                  (Predicates.Class_Name (P),
+                   Apply_Subst (Predicates.Get_Type (P)))];
    end Current_Predicates;
 
    --------------------------
