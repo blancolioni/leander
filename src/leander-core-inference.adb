@@ -61,7 +61,7 @@ package body Leander.Core.Inference is
    begin
       return [for P of This.Predicates =>
                Core.Predicates.Predicate
-                  (P.Class_Name, P.Get_Type.Apply (This.Subst))];
+                  (Predicates.Class_Name (P), P.Get_Type.Apply (This.Subst))];
    end Current_Predicates;
 
    --------------------------
