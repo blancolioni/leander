@@ -82,6 +82,14 @@ package Leander.Core.Tyvars is
      (This : Tyvar_Array_Builder)
       return Tyvar_Array;
 
+   overriding function Get_Kind
+     (This : Instance)
+      return Leander.Core.Kinds.Kind;
+
+   overriding function Show
+     (This : Instance)
+      return String;
+
 private
 
    type Instance is new Kinds.Has_Kind
