@@ -58,6 +58,7 @@ package body Leander.Core.Inference is
      (This : Inference_Context)
       return Leander.Core.Predicates.Predicate_Array
    is
+      use Leander.Core.Types;
    begin
       return [for P of This.Predicates =>
                Core.Predicates.Predicate

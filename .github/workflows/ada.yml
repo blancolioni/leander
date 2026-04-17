@@ -29,6 +29,9 @@ jobs:
     - name: Set up alire
       uses: alire-project/setup-alire@v2
 
+    - name: Show toolchain
+      run: alr toolchain --list && gnatls -v
+
     - name: Build Leander
       run: alr build
       
