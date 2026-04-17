@@ -11,7 +11,9 @@ with Leander.Syntax.Qualified_Types;
 package body Leander.Parser.Bindings is
 
    function At_Binding return Boolean
-   is (At_Variable or else At_Constructor);
+   is (At_Variable
+       or else At_Constructor
+       or else Tok <= [Tok_Left_Bracket, Tok_Left_Paren]);
 
    function Parse_LHS
      (Context : Parse_Context'Class)
@@ -26,9 +28,6 @@ package body Leander.Parser.Bindings is
       To      : Leander.Syntax.Bindings.Reference)
    is
       Loc  : constant Source.Source_Location := Current_Source_Location;
-      pragma Assert (At_Identifier,
-                     Source.Show (Loc) & ": expected an Identifier");
-
       LHS : constant Syntax.Bindings.Binding_LHS := Parse_LHS (Context);
 
       procedure Parse_Type_Bindings

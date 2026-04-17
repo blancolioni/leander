@@ -46,7 +46,8 @@ package body Leander.Parser.Declarations is
       return At_Variable or else At_Constructor or else
         Tok <= [Tok_Class, Tok_Data, Tok_Foreign,
                 Tok_Infix, Tok_Infixl, Tok_Infixr,
-                Tok_Instance];
+                Tok_Instance,
+                Tok_Left_Bracket, Tok_Left_Paren];
    end At_Declaration;
 
    -----------------------------

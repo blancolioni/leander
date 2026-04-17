@@ -423,6 +423,10 @@ package body Leander.Tests.Integration is
         ("--main: operator declaration",
          Test_Root & "Test14_Operators.hs");
 
+      Test_Main
+        ("--main: operator declaration",
+         Test_Root & "Test15_ConcatOp.hs");
+
       Leander.Syntax.Prune;
 
    end Run_Tests;
