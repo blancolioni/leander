@@ -39,6 +39,8 @@ package Leander.Core.Schemes is
       T     : Leander.Core.Types.Reference)
       return Reference;
 
+   overriding function Show (This : Instance) return String;
+
    procedure Prune;
 
 private
@@ -66,8 +68,6 @@ private
      (This  : not null access constant Instance;
       Subst : Leander.Core.Substitutions.Instance'Class)
       return access constant Instance;
-
-   overriding function Show (This : Instance) return String;
 
    function Inner_Type
      (This : Instance)

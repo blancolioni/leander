@@ -109,6 +109,8 @@ package Leander.Core.Types is
 
    function Pair (A, B : Reference) return Reference;
 
+   overriding function Show (This : Instance) return String;
+
    procedure Prune;
 
 private
@@ -137,8 +139,6 @@ private
    overriding function Get_Kind
      (This : Instance)
       return Leander.Core.Kinds.Kind;
-
-   overriding function Show (This : Instance) return String;
 
    overriding function Contains
      (This  : Instance;

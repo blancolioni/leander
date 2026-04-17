@@ -30,6 +30,8 @@ package Leander.Core.Qualifiers is
      (Predicates : Leander.Core.Predicates.Predicate_Array)
      return Reference;
 
+   overriding function Show (This : Instance) return String;
+
 private
 
    package Predicate_Lists is
@@ -44,8 +46,6 @@ private
       record
          Predicates : Predicate_Lists.List;
       end record;
-
-   overriding function Show (This : Instance) return String;
 
    overriding function Contains
      (This  : Instance;

@@ -32,6 +32,8 @@ package Leander.Core.Predicates is
       For_Type   : Leander.Core.Types.Reference)
       return Instance;
 
+   overriding function Show (This : Instance) return String;
+
    function Show (Ps : Predicate_Array) return String;
 
 private

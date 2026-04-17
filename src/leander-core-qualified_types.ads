@@ -61,6 +61,8 @@ package Leander.Core.Qualified_Types is
       QT   : Reference)
    is abstract;
 
+   overriding function Show (This : Instance) return String;
+
 private
 
    type Instance is
@@ -71,8 +73,6 @@ private
          Qualifier : Leander.Core.Qualifiers.Reference;
          QT        : Leander.Core.Types.Reference;
       end record;
-
-   overriding function Show (This : Instance) return String;
 
    overriding function Contains
      (This  : Instance;
