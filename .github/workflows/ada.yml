@@ -30,7 +30,7 @@ jobs:
       uses: alire-project/setup-alire@v2
 
     - name: Show toolchain
-      run: alr toolchain --list && gnatls -v
+      run: alr toolchain && gnatls -v
 
     - name: Build Leander
       run: alr build
