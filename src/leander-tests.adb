@@ -6,6 +6,7 @@ with Leander.Syntax;
 with Leander.Tests.Evaluation;
 with Leander.Tests.Expressions;
 with Leander.Tests.Inference;
+with Leander.Tests.Integration;
 with Leander.Tests.Kinds;
 with Leander.Tests.Prelude;
 with Leander.Tests.Tycons;
@@ -53,17 +54,17 @@ package body Leander.Tests is
       use Ada.Text_IO;
    begin
       Total_Tests := @ + 1;
-      Put (Col_1);
-      if Col_2 /= "" then
-         Set_Col (25);
-         Put (Col_2);
-      end if;
       if Col_3 /= "" then
-         Set_Col (50);
          Put (Col_3);
       end if;
+      Set_Col (10);
+      Put (Col_1);
+      if Col_2 /= "" then
+         Set_Col (35);
+         Put (Col_2);
+      end if;
       if Col_4 /= "" then
-         Set_Col (75);
+         Set_Col (60);
          Put (Col_4);
       end if;
       New_Line;
@@ -84,15 +85,20 @@ package body Leander.Tests is
       Leander.Tests.Prelude.Run_Tests;
       Leander.Tests.Evaluation.Run_Tests;
       Leander.Tests.Type_Classes.Run_Tests;
+      Leander.Tests.Integration.Run_Tests;
       Leander.Syntax.Prune;
       Leander.Core.Prune;
       Ada.Text_IO.Put_Line
         ("Tests:" & Total_Tests'Image
          & "; passed:"
          & Passed'Image
-         & "; failed"
-         & Failed'Image);
-      Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Failed));
+         & "; failed:"
+         & Failed'Image
+         & "; errors:"
+         & Errors'Image);
+      Ada.Command_Line.Set_Exit_Status
+        (Ada.Command_Line.Exit_Status
+           (Failed + Errors));
    end Run_Tests;
 
    ----------

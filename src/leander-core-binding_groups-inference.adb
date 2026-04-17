@@ -1,5 +1,3 @@
-with Ada.Text_IO;
-
 with Leander.Core.Alts.Inference;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Qualifiers;
@@ -91,9 +89,8 @@ package body Leander.Core.Binding_Groups.Inference is
          end;
       exception
          when others =>
-            Ada.Text_IO.Put_Line
-              (Ada.Text_IO.Standard_Error,
-               "inference failed: "
+            Context.Error
+              ("inference failed: "
                & To_String (Explicit.Name)
                & " :: " & Explicit.Scheme.Show);
       end Infer_Explicit_Binding;

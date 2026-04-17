@@ -48,10 +48,12 @@ package body Leander.Allocator is
          end if;
       end loop;
       Allocated_List.Clear;
-      Ada.Text_IO.Put_Line
-        (Name & ": total" & Total'Image
-         & "; pruned" & Pruned'Image
-         & "; kept" & Natural'Image (Total - Pruned));
+      if False then
+         Ada.Text_IO.Put_Line
+         (Name & ": total" & Total'Image
+            & "; pruned" & Pruned'Image
+            & "; kept" & Natural'Image (Total - Pruned));
+      end if;
    end Prune;
 
 end Leander.Allocator;

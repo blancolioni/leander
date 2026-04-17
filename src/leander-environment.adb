@@ -1,5 +1,4 @@
 with Ada.Containers.Doubly_Linked_Lists;
-with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
 with Leander.Core.Inference;
@@ -271,8 +270,8 @@ package body Leander.Environment is
         Context.Type_Env.Save (This.Type_Env, Context.Current_Substitution);
 
       if not Context.OK then
-         Ada.Text_IO.Put_Line
-           (Context.Error_Message);
+         Leander.Logging.Log
+           ("ELAB", Context.Error_Message);
       else
          declare
             Ids : constant Core.Varid_Array := This.Bindings.Varids;
@@ -448,12 +447,21 @@ package body Leander.Environment is
                             Binding.To_Calculus (This.Context, This'Access);
                begin
                   for P of This.Context.Current_Predicates loop
-                     Tree :=
-                       Leander.Calculus.Lambda
-                         ("<" & P.Show & ">",
-                          Tree);
+                     if P.Get_Type.Get_Tyvars'Length > 0
+                     then
+                        declare
+                           Dict : constant String :=
+                             "<" & P.Show & ">";
+                        begin
+                           Tree :=
+                             Leander.Calculus.Lambda
+                               (Dict, Tree);
+                        end;
+                     end if;
                      Leander.Logging.Log
-                       ("PRED", Leander.Calculus.To_String (Tree));
+                       ("PRED",
+                        Leander.Calculus.To_String
+                          (Tree));
                   end loop;
                   This.Values.Insert (Name, Tree);
                   return Tree;

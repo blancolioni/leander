@@ -1,7 +1,7 @@
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Directories;
 
-with Ada.Text_IO;
+with Leander.Logging;
 with WL.String_Maps;
 
 package body Leander.Source is
@@ -52,9 +52,8 @@ package body Leander.Source is
       Message : String)
    is
    begin
-      Ada.Text_IO.Put_Line
-        (Ada.Text_IO.Standard_Error,
-         This.Show_Location & ": " & Message);
+      Leander.Logging.Log
+        (This.Show_Location, Message);
    end Error;
 
    --------------------

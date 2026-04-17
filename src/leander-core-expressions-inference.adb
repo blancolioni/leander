@@ -1,5 +1,4 @@
 with Ada.Exceptions;
-with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
@@ -207,12 +206,8 @@ package body Leander.Core.Expressions.Inference is
 
       exception
          when Ex : others =>
-            E.Error ("unification failure");
-            Ada.Text_IO.Put_Line
+            Context.Error
               (Ada.Exceptions.Exception_Message (Ex));
-            Ada.Text_IO.Put_Line
-              (Ada.Exceptions.Exception_Information (Ex));
-            Context.Error (Ada.Exceptions.Exception_Message (Ex));
             Context.Add_Error_Context
               ("in " & E.Show);
             return Substitutions.Empty;
