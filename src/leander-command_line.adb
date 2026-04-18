@@ -15,7 +15,7 @@ package body Leander.Command_Line is
    is (WL.Command_Line.Find_Option ("version", 'v'));
 
    function Core_Size return Natural
-   is (WL.Command_Line.Find_Option ("core-size", ' ', 256));
+   is (WL.Command_Line.Find_Option ("core-size", ' ', 64));
 
    function Build return String
    is (WL.Command_Line.Find_Option ("build", 'b'));

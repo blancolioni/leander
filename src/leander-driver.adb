@@ -8,7 +8,7 @@ with Leander.Tests;
 with Leander.Version;
 
 procedure Leander.Driver is
-   Core_Size : constant Natural := Command_Line.Core_Size * 1024 / 8;
+   Core_Size : constant Natural := Command_Line.Core_Size * 1024;
 begin
 
    if Command_Line.Version then

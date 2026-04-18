@@ -3,6 +3,8 @@ module Prelude where
 foreign import skit "#eq" #primIntEq :: Int -> Int -> Bool
 foreign import skit "#eq" #primCharEq :: Char -> Char -> Bool
 
+foreign import skit "#le" #primIntLeq :: Int -> Int -> Bool
+
 foreign import skit "#add" #primIntAdd :: Int -> Int -> Int
 foreign import skit "#mul" #primIntMul :: Int -> Int -> Int
 foreign import skit "#sub" #primIntSub :: Int -> Int -> Int
@@ -33,49 +35,21 @@ infixl 1  >>, >>=
 infixr 1  =<<
 infixr 0  $, $!, `seq`
 
--- Standard types, classes, instances and related functions  
- 
--- Equality and Ordered classes  
- 
-class  Eq a  where  
-    (==), (/=) :: a -> a -> Bool  
- 
-        -- Minimal complete definition:  
-        --      (==) or (/=)  
-    x /= y     =  not (x == y)  
-    x == y     =  not (x /= y) 
+class Eq a where
+    (==), (/=) :: a -> a -> Bool
+    x /= y = not (x == y)
+    x == y = not (x /= y)
 
-data Ordering = LT | EQ | GT
-
-otherwise :: Bool
-otherwise = True
-
-class  (Eq a) => Ord a  where  
-    compare              :: a -> a -> Ordering  
-    (<), (<=), (>=), (>) :: a -> a -> Bool  
-    max, min             :: a -> a -> a  
- 
-        -- Minimal complete definition:  
-        --      (<=) or compare  
-        -- Using compare can be more efficient for complex types.  
-    compare x y  
-         | x == y    =  EQ  
-         | x <= y    =  LT  
-         | otherwise =  GT  
- 
+class Eq a => Ord a where
+    (<), (<=), (>=), (>) :: a -> a -> Bool
+    -- compare :: a -> a -> Ordering
+    -- max, min :: a -> a -> a
+         
     x <= y           =  compare x y /= GT  
     x <  y           =  compare x y == LT  
     x >= y           =  compare x y /= LT  
     x >  y           =  compare x y == GT
 
--- note that (min x y, max x y) = (x,y) or (y,x)  
-    max x y  
-         | x <= y    =  y  
-         | otherwise =  x  
-    min x y  
-         | x <= y    =  x  
-         | otherwise =  y 
-         
 class Show a where
     show :: a -> [Char]
 
@@ -95,7 +69,13 @@ instance Show Bool where
 
 instance Eq Int where
     (==) = #primIntEq
-    (/=) x y = not (#primIntEq x y)
+   x /= y = not (#primIntEq x y)
+
+instance Ord Int where
+    x <= y = #primIntLeq x y
+    x <  y = #primIntLeq x y && not (#primIntEq x y)
+    x >= y = not (#primIntLeq x y) || #primIntEq x y
+    x >  y = not (#primIntLeq x y)
 
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
@@ -105,6 +85,11 @@ instance (Eq a) => Eq [a] where
                     [] -> False
                     (y:ys') -> (x == y) && (xs == ys')
     (/=) xs ys = not (xs == ys)
+
+data Ordering = LT | EQ | GT
+
+otherwise :: Bool
+otherwise = True
 
 id :: a -> a
 id x = x

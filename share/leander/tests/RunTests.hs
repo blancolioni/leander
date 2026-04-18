@@ -32,7 +32,27 @@ tests = [
     ("True == True", True == True),
     ("False == False", False == False),
     ("True /= False", True /= False),
-    ("False /= True", False /= True)
+    ("False /= True", False /= True),
+    ("not True == False", not True == False),
+    ("not False == True", not False == True),
+    ("True && True == True", True && True == True),
+    ("True && False == False", True && False == False),
+    ("False && True == False", False && True == False),
+    ("False && False == False", False && False == False),
+    ("True || True == True", True || True == True),
+    ("True || False == True", True || False == True),
+    ("False || True == True", False || True == True),
+    ("False || False == False", False || False == False),
+    ("1 == 1", 1 == 1),
+    ("1 /= 2", 1 /= 2),
+    ("1 < 2", 1 < 2),
+    ("2 > 1", 2 > 1),
+    ("1 <= 1", 1 <= 1),
+    ("1 >= 1", 1 >= 1),
+    ("0 < 0 == False", not (0 < 0)),
+    ("0 > 0 == False", not (0 > 0)),
+    ("0 <= 0 == True", 0 <= 0),
+    ("0 >= 0 == True", 0 >= 0)
 ]
 
 main :: IO ()
