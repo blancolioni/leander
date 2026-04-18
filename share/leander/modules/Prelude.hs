@@ -84,13 +84,10 @@ class Bounded a where
     maxBound :: a
 
 instance Eq Bool where
-    (==) True = \b -> case b of
-                    True  -> True
-                    False -> False
-    (==) False = \b -> case b of
-                    True  -> False
-                    False -> True
-    (/=) x y = not (x == y)
+    True == b = b
+    False == b = not b
+    True /= b = not b
+    False /= b = b
 
 instance Show Bool where
     show True  = "True"
@@ -98,7 +95,7 @@ instance Show Bool where
 
 instance Eq Int where
     (==) = #primIntEq
-    (/=) = #primIntEq
+    (/=) x y = not (#primIntEq x y)
 
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
@@ -116,7 +113,7 @@ const :: a -> b -> a
 const x y = x
 
 (.) :: (b -> c) -> (a -> b) -> (a -> c)
-(.) f g = \x -> f (g x)
+f . g = \x -> f (g x)
 
 flip :: (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
@@ -125,21 +122,21 @@ seq :: a -> b -> a
 seq = #primSeq
 
 ($) :: (a -> b) -> a -> b
-($) f x = f x
+f $ x = f x
 
 ($!) :: (a -> b) -> a -> b
-($!) f x = seq x (f x)
+f $! x = seq x (f x)
 
 not :: Bool -> Bool
 not True = False
 not False = True
 
 (&&), (||) :: Bool -> Bool -> Bool
-(&&) True b = b
-(&&) False _ = False
+True && b = b
+False && _ = False
 
-(||) True _ = True
-(||) False b = b
+True || _ = True
+False || b = b
 
 null :: [a] -> Bool
 null [] = True

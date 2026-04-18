@@ -419,6 +419,14 @@ package body Leander.Tests.Integration is
         ("--main: x = 1 == 1",
          Test_Root & "test_13_minimal_crash.hs");
 
+      Test_Main
+        ("--main: operator declaration",
+         Test_Root & "Test14_Operators.hs");
+
+      Test_Main
+        ("--main: operator declaration",
+         Test_Root & "Test15_ConcatOp.hs");
+
       Leander.Syntax.Prune;
 
    end Run_Tests;

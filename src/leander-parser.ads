@@ -42,6 +42,8 @@ package Leander.Parser is
 
 private
 
+   function Is_Alphanumeric_Identifier (Name : String) return Boolean;
+   function Is_Symbolic_Identifier (Name : String) return Boolean;
    function Is_Constructor (Name : String) return Boolean;
 
    function At_Constructor return Boolean;

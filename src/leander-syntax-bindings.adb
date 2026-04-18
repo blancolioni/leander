@@ -61,6 +61,20 @@ package body Leander.Syntax.Bindings is
    procedure Add_Binding
      (This      : in out Instance;
       Loc       : Source.Source_Location;
+      Bound     : Binding_LHS;
+      Expr      : not null access constant Expressions.Instance'Class)
+   is
+   begin
+      Add_Binding (This, Loc, Bound.Name, Bound.Pats, Expr);
+   end Add_Binding;
+
+   -----------------
+   -- Add_Binding --
+   -----------------
+
+   procedure Add_Binding
+     (This      : in out Instance;
+      Loc       : Source.Source_Location;
       Name      : String;
       Pats      : Patterns.Reference_Array;
       Expr      : not null access constant Expressions.Instance'Class)
