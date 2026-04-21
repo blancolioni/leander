@@ -210,19 +210,24 @@ package body Leander.Core.Expressions is
             declare
                E : Tree :=
                      Symbol (Leander.Names.Leander_Name (This.Var_Id));
-               Ps : constant Leander.Core.Predicates.Predicate_Array :=
-                      This.Qualified_Type.Predicates;
             begin
-               Leander.Logging.Log
-                 ("COMP",
-                  This.Show
-                  & " :: "
-                  & This.Qualified_Type.Show);
-               for P of Ps loop
-                  E := Apply (E, Symbol ("<" & P.Show & ">"));
-               end loop;
+               if This.Has_Qualified_Type_Value then
+                  declare
+                     Ps : constant Leander.Core.Predicates.Predicate_Array :=
+                            This.Qualified_Type.Predicates;
+                  begin
+                     Leander.Logging.Log
+                       ("COMP",
+                        This.Show
+                        & " :: "
+                        & This.Qualified_Type.Show);
+                     for P of Ps loop
+                        E := Apply (E, Symbol ("<" & P.Show & ">"));
+                     end loop;
+                     Types.Save_Predicates (Ps);
+                  end;
+               end if;
                Result := E;
-               Types.Save_Predicates (Ps);
             end;
          when ECon =>
             Result := Env.Constructor (Leander.Names.Leander_Name (This.Con_Id));

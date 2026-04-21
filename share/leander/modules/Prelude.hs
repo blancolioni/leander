@@ -60,8 +60,6 @@ class Bounded a where
 instance Eq Bool where
     True == b = b
     False == b = not b
-    True /= b = not b
-    False /= b = b
 
 instance Show Bool where
     show True  = "True"
@@ -69,7 +67,6 @@ instance Show Bool where
 
 instance Eq Int where
     (==) = #primIntEq
-   x /= y = not (#primIntEq x y)
 
 instance Ord Int where
     x <= y = #primIntLeq x y
@@ -84,7 +81,6 @@ instance (Eq a) => Eq [a] where
     (==) (x:xs) = \ys -> case ys of
                     [] -> False
                     (y:ys') -> (x == y) && (xs == ys')
-    (/=) xs ys = not (xs == ys)
 
 data Ordering = LT | EQ | GT
 

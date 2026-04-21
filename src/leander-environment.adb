@@ -4,6 +4,7 @@ with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
 with Leander.Core.Inference;
 with Leander.Core.Type_Instances;
+with Leander.Core.Types.Unification;
 with Leander.Environment.Prelude;
 with Leander.Logging;
 with Leander.Names.Maps;
@@ -294,56 +295,97 @@ package body Leander.Environment is
                for Inst of This.Instances.Element
                  (Leander.Names.Leander_Name (Class.Id))
                loop
-                  Leander.Core.Binding_Groups.Inference.Infer
-                    (This.Context, Inst.Bindings);
-
                   declare
-                     D       : Leander.Calculus.Tree :=
-                                 Leander.Calculus.Symbol ("$class");
+                     Inst_Context : Leander.Core.Inference.Inference_Context :=
+                                      Leander.Core.Inference.Initial_Context
+                                        (This.Type_Env);
+                     Inst_Type    : constant Leander.Core.Types.Reference :=
+                                      Inst.Element.Predicate.Get_Type;
                   begin
+                     Leander.Core.Binding_Groups.Inference.Infer
+                       (Inst_Context, Inst.Bindings);
+
+                     if Inst_Type.Get_Tyvars'Length = 0 then
+                        for P of Inst_Context.Current_Predicates loop
+                           if P.Class_Name
+                             = Inst.Element.Predicate.Class_Name
+                             and then P.Get_Type.Get_Tyvars'Length > 0
+                           then
+                              Leander.Core.Types.Unification.Unify
+                                (Inst_Context, P.Get_Type, Inst_Type);
+                           end if;
+                        end loop;
+                     end if;
+
                      for Id of Methods loop
                         declare
                            use type Leander.Core.Bindings.Reference;
-                           Binding : constant Leander.Core.Bindings.Reference
-                             := Inst.Bindings.Lookup
-                               (Leander.Names.Leander_Name (Id));
+                           B : constant Leander.Core.Bindings.Reference :=
+                                 Inst.Bindings.Lookup
+                                   (Leander.Names.Leander_Name (Id));
                         begin
-                           if Binding = null then
-                              Error
-                                ("In instance "
-                                 & Leander.Names.To_String
-                                   (Leander.Names.Leander_Name (Class.Id))
-                                 & " "
-                                 & Inst.Element.Predicate.Show
-                                 & ": "
-                                 & "no class method "
-                                 & Leander.Names.To_String
-                                   (Leander.Names.Leander_Name (Id))
-                                 & " found");
-                           else
-                              Leander.Logging.Log
-                                ("INST", Binding.Show);
-                              declare
-                                 Calc : constant Leander.Calculus.Tree :=
-                                   Binding.To_Calculus
-                                     (This.Context, This'Unchecked_Access);
-                              begin
-                                 Leander.Logging.Log
-                                   ("CALC", Leander.Calculus.To_String (Calc));
-                                 D :=
-                                   Leander.Calculus.Apply
-                                     (D, Calc);
-                              end;
+                           if B /= null then
+                              B.Update_Type (Inst_Context);
                            end if;
                         end;
                      end loop;
-                     D := Leander.Calculus.Lambda ("$class", D);
-                     This.Values.Insert
-                       (Leander.Names.To_Leander_Name
-                          ("<"
-                           & Inst.Element.Predicate.Show
-                           & ">"),
-                        D);
+
+                     declare
+                        D : Leander.Calculus.Tree :=
+                              Leander.Calculus.Symbol ("$class");
+                     begin
+                        for Id of Methods loop
+                           declare
+                              use type Leander.Core.Bindings.Reference;
+                              Binding : constant Leander.Core.Bindings.Reference
+                                := Inst.Bindings.Lookup
+                                  (Leander.Names.Leander_Name (Id));
+                           begin
+                              if Binding = null then
+                                 Error
+                                   ("In instance "
+                                    & Leander.Names.To_String
+                                      (Leander.Names.Leander_Name (Class.Id))
+                                    & " "
+                                    & Inst.Element.Predicate.Show
+                                    & ": "
+                                    & "no class method "
+                                    & Leander.Names.To_String
+                                      (Leander.Names.Leander_Name (Id))
+                                    & " found");
+                              else
+                                 Leander.Logging.Log
+                                   ("INST", Binding.Show);
+                                 declare
+                                    Calc : constant Leander.Calculus.Tree :=
+                                      Binding.To_Calculus
+                                        (Inst_Context, This'Unchecked_Access);
+                                 begin
+                                    Leander.Logging.Log
+                                      ("CALC", Leander.Calculus.To_String (Calc));
+                                    D :=
+                                      Leander.Calculus.Apply
+                                        (D, Calc);
+                                 end;
+                              end if;
+                           end;
+                        end loop;
+                        D := Leander.Calculus.Lambda ("$class", D);
+                        declare
+                           Dict_Name : constant String :=
+                             "<" & Inst.Element.Predicate.Show & ">";
+                        begin
+                           if Leander.Calculus.Has_Reference
+                             (D, Dict_Name)
+                           then
+                              D := Leander.Calculus.Apply
+                                (Leander.Calculus.Symbol ("Y"),
+                                 Leander.Calculus.Lambda (Dict_Name, D));
+                           end if;
+                           This.Values.Insert
+                             (Leander.Names.To_Leander_Name (Dict_Name), D);
+                        end;
+                     end;
                   end;
                end loop;
             end;

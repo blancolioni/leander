@@ -312,8 +312,12 @@ package body Leander.Syntax.Bindings is
          for Other of Implicit loop
             if Binding.Index /= Other.Index
               and then not Graph.Connected (Other.Index, Binding.Index)
-              and then (References (Binding, Other.Name)
-                        or else References (Other, Binding.Name))
+              and then
+                (if Context = Instance_Context
+                 then References (Binding, Other.Name)
+                      and then References (Other, Binding.Name)
+                 else References (Binding, Other.Name)
+                      or else References (Other, Binding.Name))
             then
                Graph.Connect (Other.Index, Binding.Index);
                Graph.Connect (Binding.Index, Other.Index);

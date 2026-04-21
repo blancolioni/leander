@@ -49,6 +49,40 @@ The selectors are stored in the environment's value map under the
 method name. They are built in `Environment.Type_Class`
 (`leander-environment.adb`).
 
+## Default methods
+
+A class declaration may include default method implementations:
+
+```haskell
+class Eq a where
+    (==), (/=) :: a -> a -> Bool
+    x /= y = not (x == y)
+    x == y = not (x /= y)
+```
+
+Default method bodies are parsed and stored alongside the class
+declaration. In the parser, a class's syntax-level bindings are
+saved in the `Parse_Context` via `Add_Class` and retrieved with
+`Class_Bindings`. At the core level, the `Type_Class` record holds
+these defaults in its `Bindings` field.
+
+When an instance declaration is parsed, any method not explicitly
+defined is copied from the class defaults before the instance is
+registered:
+
+```ada
+-- leander-parser-declarations.adb, Parse_Instance_Declaration
+Bindings.Copy_Missing_Bindings (Context.Class_Bindings (Class_Name));
+Context.Environment.Type_Instance (..., Bindings => Bindings.To_Core);
+```
+
+`Copy_Missing_Bindings` (`leander-syntax-bindings.adb`) appends
+each class default whose name is absent from the instance's binding
+list. By the time `Type_Instance` is called, the binding group
+passed in already includes defaults for every unimplemented method.
+This means the `Elaborate` procedure sees a complete binding group
+and never needs to fall back to class-level defaults at runtime.
+
 ## Instance declarations
 
 When an instance is declared:
@@ -57,7 +91,7 @@ When an instance is declared:
 instance Eq Bool where
     (==) True  = \b -> case b of { True -> True; False -> False }
     (==) False = \b -> case b of { True -> False; False -> True }
-    (/=) x y = not (x == y)
+    -- (/=) is omitted; the class default `x /= y = not (x == y)` is injected
 ```
 
 two things happen:
@@ -133,12 +167,18 @@ environment.
 
 When the environment compiles a binding to lambda calculus
 (`Environment.Lookup`), it wraps the result in a lambda for each
-predicate the binding requires:
+predicate whose type contains free type variables:
 
 ```
 -- If binding f has predicates [Eq a, Show a]:
 f  ==>  \<Eq a>.\<Show a>. <compiled body of f>
 ```
+
+Predicates whose type has no free type variables (e.g. `Eq Int`)
+are **not** wrapped as lambdas — the dictionary symbol (e.g.
+`<Eq Int>`) is expected to be present in the environment's value
+map as a concrete binding. The filter is the check
+`P.Get_Type.all.Get_Tyvars'Length > 0` in `Environment.Lookup`.
 
 This makes the compiled binding a function that takes dictionary
 arguments before its regular arguments.
@@ -162,7 +202,8 @@ Registers:
 instance Eq Bool where
     (==) True  = \b -> case b of { True -> True; False -> False }
     (==) False = \b -> case b of { True -> False; False -> True }
-    (/=) x y = not (x == y)
+    -- (/=) not written; class default `x /= y = not (x == y)` is injected
+    -- by Copy_Missing_Bindings before this instance is registered
 ```
 
 Compiles the dictionary:
@@ -172,9 +213,9 @@ Compiles the dictionary:
     (\x.\y. not ((==) <Eq Bool> x y))
 ```
 
-Note that `(/=)` references `(==)` via `(==) <Eq Bool>` — the
-selector applied to the same dictionary, which will be resolved
-at runtime.
+The `(/=)` entry comes from the injected default. It references
+`(==)` via `(==) <Eq Bool>` — the selector applied to the same
+dictionary, resolved at runtime.
 
 ### Use site
 
@@ -221,7 +262,10 @@ This is used during:
    by `Ord a`.
 
 Superclass resolution is implemented in `Type_Classes.Super_Classes`,
-which recursively computes the transitive closure of all superclasses.
+which returns the class itself followed by the transitive closure of
+all its superclasses (i.e. `Super_Classes(Eq)` includes `Eq`). This
+means `Entails([Eq a], Eq a)` succeeds through the superclass path,
+not only through instance resolution.
 
 ## Predicate lifecycle
 
@@ -251,6 +295,7 @@ which recursively computes the transitive closure of all superclasses.
 | `leander-core-predicates.ads` | Predicate representation (class name + type) |
 | `leander-environment.adb` | Selector construction, dictionary compilation, value lookup with predicate wrapping |
 | `leander-core-expressions.adb` | Use-site compilation (EVar predicate application) |
-| `leander-syntax-classes.ads/adb` | Builder for parsing class declarations |
-| `leander-parser-declarations.adb` | Parsing class and instance declarations |
+| `leander-syntax-classes.ads/adb` | Builder for parsing class declarations (stores default bindings) |
+| `leander-syntax-bindings.adb` | `Copy_Missing_Bindings` — injects class defaults into instance binding groups |
+| `leander-parser-declarations.adb` | Parsing class and instance declarations; calls `Copy_Missing_Bindings` |
 | `leander-core-binding_groups-inference.adb` | Inference for instance binding groups |

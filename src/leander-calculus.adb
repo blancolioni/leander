@@ -183,6 +183,33 @@ package body Leander.Calculus is
       Free (This);
    end Dispose;
 
+   -------------------
+   -- Has_Reference --
+   -------------------
+
+   function Has_Reference
+     (This : Tree;
+      Name : String)
+      return Boolean
+   is
+      use type Leander.Names.Leander_Name;
+      N : constant Leander.Names.Leander_Name :=
+            Leander.Names.To_Leander_Name (Name);
+   begin
+      case This.Class is
+         when Number =>
+            return False;
+         when Reference =>
+            return This.Ref = N;
+         when Apply =>
+            return Has_Reference (This.L, Name)
+              or else Has_Reference (This.R, Name);
+         when Lambda =>
+            return This.X /= N
+              and then Has_Reference (This.E, Name);
+      end case;
+   end Has_Reference;
+
    ------------
    -- Lambda --
    ------------

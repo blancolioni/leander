@@ -184,7 +184,7 @@ package body Leander.Tests.Integration is
       Module_Path : String)
    is
       H      : Leander.Handles.Handle :=
-                 Leander.Handles.Create (32 * 1024);
+                 Leander.Handles.Create (64 * 1024);
    begin
       H.Load_Module (Module_Path);
       declare
