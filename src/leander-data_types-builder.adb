@@ -1,4 +1,3 @@
-with Leander.Logging;
 with Leander.Names;
 
 package body Leander.Data_Types.Builder is
@@ -101,14 +100,6 @@ package body Leander.Data_Types.Builder is
          for Id of reverse Pat_Ids loop
             E := Calculus.Lambda (Id, E);
          end loop;
-         Leander.Logging.Log
-           ("DATA",
-            "create con" & Index'Image
-            & ": " & Core.To_String (Id)
-            & " :: "
-            & Scheme.Show
-            & " = "
-            & Leander.Calculus.To_String (E));
          return Con_Record'
            (Con_Name => Id,
             Con_Type => Scheme,
@@ -123,10 +114,6 @@ package body Leander.Data_Types.Builder is
          Kind      => This.Kind,
          Cons      => [for I in 1 .. This.Cons.Last_Index =>
                            Create_Con_Record (I)]);
-      Leander.Logging.Log
-        ("DATA",
-         Core.To_String (This.DT.Id)
-         & " :: " & Core.Kinds.Show (This.DT.Kind));
    end Build;
 
    ---------------

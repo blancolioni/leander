@@ -34,10 +34,12 @@ package body Leander.Parser is
 
    procedure Add_Class
      (This : in out Parse_Context'Class;
-      Name : String)
+      Name : String;
+      Bindings : Leander.Syntax.Bindings.Reference)
    is
+      Rec : constant Class_Record := (Name'Length, Name, Bindings);
    begin
-      This.Known_Classes.Append (Name);
+      This.Known_Classes.Append (Rec);
    end Add_Class;
 
    --------------------
@@ -103,6 +105,25 @@ package body Leander.Parser is
       return At_Identifier and then not At_Constructor;
    end At_Variable;
 
+   --------------------
+   -- Class_Bindings --
+   --------------------
+
+   function Class_Bindings
+     (This : Parse_Context'Class;
+      Name : String)
+      return Leander.Syntax.Bindings.Reference
+   is
+   begin
+      for Rec of This.Known_Classes loop
+         if Rec.Name = Name then
+            return Rec.Bindings;
+         end if;
+      end loop;
+      raise Constraint_Error with
+        "asked for bindings for unknown class: " & Name;
+   end Class_Bindings;
+
    -----------------------------
    -- Current_Source_Location --
    -----------------------------
@@ -136,7 +157,12 @@ package body Leander.Parser is
       return Boolean
    is
    begin
-      return This.Known_Classes.Contains (Name);
+      for Rec of This.Known_Classes loop
+         if Rec.Name = Name then
+            return True;
+         end if;
+      end loop;
+      return False;
    end Known_Class;
 
    -----------------
@@ -149,7 +175,7 @@ package body Leander.Parser is
       return Leander.Environment.Reference
    is
       Name : constant String :=
-               Ada.Directories.Base_Name (Path);
+        Ada.Directories.Base_Name (Path);
    begin
       if Loaded_Module_Map.Contains (Name) then
          return Loaded_Module_Map (Name);
@@ -208,9 +234,9 @@ package body Leander.Parser is
 
    function Scan_Identifier return String is
       Name : constant String :=
-               (if Tok = Tok_Identifier
-                then Tok_Text
-                else Tok_Text (1));
+        (if Tok = Tok_Identifier
+         then Tok_Text
+         else Tok_Text (1));
    begin
       if Tok = Tok_Identifier then
          Scan;

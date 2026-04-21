@@ -24,6 +24,11 @@ package Leander.Syntax.Bindings is
    function Name (Rec : Binding_LHS) return String;
    function Pats (Rec : Binding_LHS) return Patterns.Reference_Array;
 
+   function Contains
+     (This : Instance;
+      Name : String)
+      return Boolean;
+
    procedure Add_Binding
      (This      : in out Instance;
       Loc       : Source.Source_Location;
@@ -36,6 +41,10 @@ package Leander.Syntax.Bindings is
       Loc       : Source.Source_Location;
       Bound     : Binding_LHS;
       Expr      : not null access constant Expressions.Instance'Class);
+
+   procedure Copy_Missing_Bindings
+     (This      : in out Instance;
+      From      : not null access constant Instance'Class);
 
    procedure Add_Type
      (This      : in out Instance;

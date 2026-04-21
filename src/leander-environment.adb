@@ -1,4 +1,5 @@
 with Ada.Containers.Doubly_Linked_Lists;
+with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
 with Leander.Core.Inference;
@@ -154,6 +155,9 @@ package body Leander.Environment is
 
    Local_Boot_Env : Reference := null;
 
+   procedure Error
+     (Message : String);
+
    --------------
    -- Bindings --
    --------------
@@ -261,7 +265,6 @@ package body Leander.Environment is
       Context : Leander.Core.Inference.Inference_Context :=
                   Leander.Core.Inference.Initial_Context (This.Type_Env);
    begin
-      Leander.Logging.Log ("ELAB", Leander.Names.To_String (This.Name));
       Leander.Core.Binding_Groups.Inference.Infer
         (Context, This.Bindings);
 
@@ -269,10 +272,7 @@ package body Leander.Environment is
       This.Type_Env :=
         Context.Type_Env.Save (This.Type_Env, Context.Current_Substitution);
 
-      if not Context.OK then
-         Leander.Logging.Log
-           ("ELAB", Context.Error_Message);
-      else
+      if Context.OK then
          declare
             Ids : constant Core.Varid_Array := This.Bindings.Varids;
          begin
@@ -294,8 +294,6 @@ package body Leander.Environment is
                for Inst of This.Instances.Element
                  (Leander.Names.Leander_Name (Class.Id))
                loop
-                  Leander.Logging.Log
-                    ("INSTANCE", Inst.Element.Predicate.Show);
                   Leander.Core.Binding_Groups.Inference.Infer
                     (This.Context, Inst.Bindings);
 
@@ -305,20 +303,38 @@ package body Leander.Environment is
                   begin
                      for Id of Methods loop
                         declare
+                           use type Leander.Core.Bindings.Reference;
                            Binding : constant Leander.Core.Bindings.Reference
                              := Inst.Bindings.Lookup
                                (Leander.Names.Leander_Name (Id));
                         begin
-                           Leander.Logging.Log
-                             ("INSTANCE",
-                              Leander.Core.To_String (Id)
-                                  & " = "
-                              & Binding.Show);
-                           D :=
-                             Leander.Calculus.Apply
-                               (D,
-                                Binding.To_Calculus
-                                  (This.Context, This'Unchecked_Access));
+                           if Binding = null then
+                              Error
+                                ("In instance "
+                                 & Leander.Names.To_String
+                                   (Leander.Names.Leander_Name (Class.Id))
+                                 & " "
+                                 & Inst.Element.Predicate.Show
+                                 & ": "
+                                 & "no class method "
+                                 & Leander.Names.To_String
+                                   (Leander.Names.Leander_Name (Id))
+                                 & " found");
+                           else
+                              Leander.Logging.Log
+                                ("INST", Binding.Show);
+                              declare
+                                 Calc : constant Leander.Calculus.Tree :=
+                                   Binding.To_Calculus
+                                     (This.Context, This'Unchecked_Access);
+                              begin
+                                 Leander.Logging.Log
+                                   ("CALC", Leander.Calculus.To_String (Calc));
+                                 D :=
+                                   Leander.Calculus.Apply
+                                     (D, Calc);
+                              end;
+                           end if;
                         end;
                      end loop;
                      D := Leander.Calculus.Lambda ("$class", D);
@@ -328,16 +344,25 @@ package body Leander.Environment is
                            & Inst.Element.Predicate.Show
                            & ">"),
                         D);
-                     Leander.Logging.Log
-                       ("INSTANCE",
-                        "dictionary: " & Leander.Calculus.To_String (D));
                   end;
                end loop;
             end;
          end if;
       end loop;
-
    end Elaborate;
+
+   -----------
+   -- Error --
+   -----------
+
+   procedure Error
+     (Message : String)
+   is
+   begin
+      Ada.Text_IO.Put_Line
+        (Ada.Text_IO.Standard_Error,
+         Message);
+   end Error;
 
    ------------
    -- Exists --
@@ -393,8 +418,6 @@ package body Leander.Environment is
    is
       E : Instance'Class renames Instance'Class (Env.all);
    begin
-      Leander.Logging.Log
-        ("IMPORT", Leander.Names.To_String (E.Name));
       This.Imports.Append (Reference (Env));
       for Position in E.Tycons.Iterate loop
          if not This.Tycons.Contains (Tycon_Maps.Key (Position)) then
@@ -409,8 +432,6 @@ package body Leander.Environment is
          end if;
       end loop;
 
-      Leander.Logging.Log
-        ("IMPORT", E.Type_Env.Show);
       This.Type_Env := This.Type_Env.Compose (E.Type_Env);
    end Import;
 
@@ -458,10 +479,6 @@ package body Leander.Environment is
                                (Dict, Tree);
                         end;
                      end if;
-                     Leander.Logging.Log
-                       ("PRED",
-                        Leander.Calculus.To_String
-                          (Tree));
                   end loop;
                   This.Values.Insert (Name, Tree);
                   return Tree;
@@ -558,13 +575,6 @@ package body Leander.Environment is
             D := Leander.Calculus.Lambda ("$inst", D);
             This.Values.Insert
               (Leander.Names.Leander_Name (Methods (I)), D);
-            Leander.Logging.Log
-              ("CLASS",
-               Core.To_String (Methods (I))
-               & " :: "
-               & Class.Method_Scheme (Methods (I)).all.Show
-               & " = "
-               & Leander.Calculus.To_String (D));
          end;
       end loop;
    end Type_Class;

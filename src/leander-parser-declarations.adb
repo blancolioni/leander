@@ -139,7 +139,7 @@ package body Leander.Parser.Declarations is
             end loop;
 
             Builder.Add_Bindings (Bindings.To_Core);
-            Context.Add_Class (Name);
+            Context.Add_Class (Name, Bindings);
             Context.Environment.Type_Class (Builder.Get_Class);
          end;
       end;
@@ -442,6 +442,10 @@ package body Leander.Parser.Declarations is
       end if;
    end Parse_Foreign_Import;
 
+   --------------------------------
+   -- Parse_Instance_Declaration --
+   --------------------------------
+
    procedure Parse_Instance_Declaration
      (Context : in out Parse_Context'Class)
    is
@@ -489,6 +493,9 @@ package body Leander.Parser.Declarations is
                while Tok_Indent > Indent loop
                   Leander.Parser.Bindings.Parse_Binding (Context, Bindings);
                end loop;
+
+               Bindings.Copy_Missing_Bindings
+                 (Context.Class_Bindings (Class_Name));
 
                Context.Environment.Type_Instance
                  (Class_Id      => Core.To_Conid (Class_Name),

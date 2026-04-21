@@ -1,6 +1,7 @@
 with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 with Leander.Environment;
+with Leander.Syntax.Bindings;
 with Leander.Syntax.Expressions;
 
 with Leander.Source;
@@ -26,7 +27,13 @@ package Leander.Parser is
 
    procedure Add_Class
      (This : in out Parse_Context'Class;
-      Name : String);
+      Name : String;
+      Bindings : Leander.Syntax.Bindings.Reference);
+
+   function Class_Bindings
+     (This : Parse_Context'Class;
+      Name : String)
+      return Leander.Syntax.Bindings.Reference;
 
    function Parse_Expression
      (Context : Parse_Context'Class;
@@ -73,8 +80,14 @@ private
    function Scan_Identifier return String
      with Pre => At_Identifier;
 
-   package String_Lists is
-     new Ada.Containers.Indefinite_Doubly_Linked_Lists (String);
+   type Class_Record (Name_Length : Natural) is
+      record
+         Name : String (1 .. Name_Length);
+         Bindings : Leander.Syntax.Bindings.Reference;
+      end record;
+
+   package Class_Record_Lists is
+     new Ada.Containers.Indefinite_Doubly_Linked_Lists (Class_Record);
 
    package Environment_Lists is
      new Ada.Containers.Doubly_Linked_Lists
@@ -84,7 +97,7 @@ private
    type Parse_Context is tagged
       record
          Env           : Leander.Environment.Reference;
-         Known_Classes : String_Lists.List;
+         Known_Classes : Class_Record_Lists.List;
       end record;
 
    function Environment

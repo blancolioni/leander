@@ -32,6 +32,10 @@ package Leander.Core.Type_Classes is
       Id   : Varid)
       return Leander.Core.Schemes.Reference;
 
+   function Bindings
+     (This : Instance'Class)
+     return Leander.Core.Binding_Groups.Reference;
+
    function Super_Classes
      (This : Instance'Class)
       return Leander.Core.Conid_Array;
@@ -95,6 +99,11 @@ private
 
    function Id (This : Instance'Class) return Conid
    is (This.Class_Id);
+
+   function Bindings
+     (This : Instance'Class)
+      return Leander.Core.Binding_Groups.Reference
+   is (This.Bindings);
 
    function Methods
      (This : Instance'Class)

@@ -6,7 +6,6 @@ with Leander.Core.Substitutions;
 with Leander.Core.Type_Env;
 with Leander.Core.Types.Unification;
 with Leander.Core.Tyvars;
-with Leander.Logging;
 
 package body Leander.Core.Binding_Groups.Inference is
 
@@ -59,13 +58,6 @@ package body Leander.Core.Binding_Groups.Inference is
          T  : constant Core.Types.Reference := QT.Get_Type;
          Start_Env : constant Core.Type_Env.Reference := Context.Type_Env;
       begin
-
-         Leander.Logging.Log
-           ("tiExpl",
-            To_String (Explicit.Name)
-            & " :: "
-            & Explicit.Scheme.Show);
-
          Infer_Alts (Explicit.Alts, T);
 
          declare
@@ -82,10 +74,7 @@ package body Leander.Core.Binding_Groups.Inference is
                     Schemes.Quantify
                       (Gs, Qualified_Types.Qualified_Type (Q1, T1));
          begin
-            Leander.Logging.Log
-              ("explicit: " & Explicit.Scheme.all.Show);
-            Leander.Logging.Log
-              ("Inferred: " & Sc1.all.Show);
+            pragma Unreferenced (Sc1);
          end;
       exception
          when others =>
@@ -128,10 +117,6 @@ package body Leander.Core.Binding_Groups.Inference is
                  (Core.Substitutions.Instance (S1).Compose (Subst));
             end;
 
-            Leander.Logging.Log
-              ("SUBST",
-               Subst.Show);
-
             Env := Env.Compose
               (Ids (I),
                Core.Schemes.To_Scheme
@@ -139,11 +124,6 @@ package body Leander.Core.Binding_Groups.Inference is
          end loop;
          for I in Ts'Range loop
             Ts (I) := Ts (I).Apply (Subst);
-            Leander.Logging.Log
-              ("INFER",
-               To_String (Ids (I))
-               & " :: "
-               & Ts (I).all.Show);
          end loop;
 
          declare

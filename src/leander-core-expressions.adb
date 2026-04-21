@@ -205,13 +205,6 @@ package body Leander.Core.Expressions is
       use Leander.Calculus;
       Result : Tree;
    begin
-      Leander.Logging.Log
-        ("CALCULUS",
-         This.Show & " :: "
-         & (if This.Has_Qualified_Type_Value
-           then This.Qualified_Type.Show
-           else "?"));
-
       case This.Tag is
          when EVar =>
             declare
@@ -220,6 +213,11 @@ package body Leander.Core.Expressions is
                Ps : constant Leander.Core.Predicates.Predicate_Array :=
                       This.Qualified_Type.Predicates;
             begin
+               Leander.Logging.Log
+                 ("COMP",
+                  This.Show
+                  & " :: "
+                  & This.Qualified_Type.Show);
                for P of Ps loop
                   E := Apply (E, Symbol ("<" & P.Show & ">"));
                end loop;
@@ -255,9 +253,6 @@ package body Leander.Core.Expressions is
                Result := E;
             end;
       end case;
-      Leander.Logging.Log
-        ("RESULT: EVAR",
-         To_String (Result));
       return Result;
 
    exception

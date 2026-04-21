@@ -3,7 +3,6 @@ with Leander.Core.Schemes;
 with Leander.Core.Type_Env;
 with Leander.Core.Types;
 with Leander.Core.Types.Unification;
-with Leander.Logging;
 
 package body Leander.Core.Patterns.Inference is
 
@@ -78,11 +77,6 @@ package body Leander.Core.Patterns.Inference is
                   Context.Save_Substitution
                     (Core.Types.Unification.Most_General_Unifier
                        (T, Q1.Get_Type));
-                  Leander.Logging.Log
-                    ("PATS",
-                     Pattern.Show
-                     & " ==> "
-                     & Context.Current_Substitution.Show);
                   for I in Ts'Range loop
                      Context.Update_Type_Env
                        (Context.Type_Env.Compose
