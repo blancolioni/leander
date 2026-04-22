@@ -2,6 +2,7 @@ with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
+with Leander.Core.Expressions;
 with Leander.Core.Inference;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Qualifiers;
@@ -462,6 +463,16 @@ package body Leander.Environment is
                                       (Leander.Names.Leander_Name (Id))
                                     & " found");
                               else
+                                 --  Strip self-referential predicates so
+                                 --  that Y-wrapped recursive methods don't
+                                 --  apply the dictionary to the fixpoint.
+                                 if Binding.Has_Reference (Id) then
+                                    for Alt of Binding.Alts loop
+                                       Leander.Core.Expressions
+                                         .Clear_Self_Predicates
+                                           (Alt.Expression, Id);
+                                    end loop;
+                                 end if;
                                  Leander.Logging.Log
                                    ("INST", Binding.Show);
                                  declare

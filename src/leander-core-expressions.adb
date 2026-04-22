@@ -195,6 +195,36 @@ package body Leander.Core.Expressions is
       end case;
    end Show;
 
+   ---------------------------
+   -- Clear_Self_Predicates --
+   ---------------------------
+
+   procedure Clear_Self_Predicates
+     (Root : Reference;
+      Name : Varid)
+   is
+      procedure Process
+        (Node : not null access Leander.Traverseable.Abstraction'Class)
+      is
+      begin
+         if Node.all not in Instance'Class then
+            return;
+         end if;
+         declare
+            E : Instance'Class renames Instance'Class (Node.all);
+         begin
+            if E.Tag = EVar
+              and then E.Var_Id = Name
+              and then E.QT /= null
+            then
+               E.QT := null;
+            end if;
+         end;
+      end Process;
+   begin
+      Root.Update_Traverse (Process'Access);
+   end Clear_Self_Predicates;
+
    ---------------
    -- Dict_Expr --
    ---------------

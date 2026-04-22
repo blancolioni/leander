@@ -66,6 +66,10 @@ package Leander.Core.Expressions is
       Env   : not null access constant Leander.Environment.Abstraction'Class)
       return Leander.Calculus.Tree;
 
+   procedure Clear_Self_Predicates
+     (Root : Reference;
+      Name : Varid);
+
    procedure Prune;
 
 private

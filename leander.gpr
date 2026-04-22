@@ -8,6 +8,10 @@ project Leander is
    for Exec_Dir use "bin";
    for Main use ("leander-driver.adb");
 
+   package Builder is
+      for Executable ("leander-driver.adb") use "leander";
+   end Builder;
+
    package Compiler is
       for Default_Switches ("ada") use ("-Og", "-ffunction-sections", "-fdata-sections", "-g", "-gnata", "-gnat2022", "-gnatW8", "-gnatVa", "-gnatwa.Xe", "-gnatyaABbc-defhiIklM79nOprStuxosD");
    end Compiler;

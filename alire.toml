@@ -9,7 +9,7 @@ licenses = "GPL-3.0-or-later"
 website = ""
 tags = ["haskell", "compiler"]
 
-executables = ["leander-driver"]
+executables = ["leander"]
 
 [[depends-on]]
 skit="*"

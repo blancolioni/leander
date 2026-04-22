@@ -41,14 +41,20 @@ class Eq a where
 
 class Eq a => Ord a where
     (<), (<=), (>=), (>) :: a -> a -> Bool
-    -- compare :: a -> a -> Ordering
-    -- max, min :: a -> a -> a
+    compare :: a -> a -> Ordering
+    max, min :: a -> a -> a
          
     x <= y           =  compare x y /= GT  
     x <  y           =  compare x y == LT  
     x >= y           =  compare x y /= LT  
     x >  y           =  compare x y == GT
 
+    compare x y       =  if x == y then EQ
+                         else if x <= y then LT
+                         else GT
+    max x y           =  if x <= y then y else x
+    min x y           =  if x <= y then x else y
+    
 class Show a where
     show :: a -> [Char]
 

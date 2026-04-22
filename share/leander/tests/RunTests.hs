@@ -37,8 +37,8 @@ tests = [
     ("not False == True", not False == True),
     ("True && True == True", True && True == True),
     ("True && False == False", True && False == False),
-    ("False && True == False", False && True == False),
-    ("False && False == False", False && False == False),
+    ("False && True == False", (False && True) == False),
+    ("False && False == False", (False && False) == False),
     ("True || True == True", True || True == True),
     ("True || False == True", True || False == True),
     ("False || True == True", False || True == True),
@@ -54,7 +54,9 @@ tests = [
     ("0 <= 0 == True", 0 <= 0),
     ("0 >= 0 == True", 0 >= 0),
     ("[1] == [1]", [1] == [1]),
-    ("[1] /= [2]", [1] /= [2])
+    ("[1] /= [2]", [1] /= [2]),
+    ("max 1 2 == 2", max 1 2 == 2),
+    ("min 1 2 == 1", min 1 2 == 1)
 ]
 
 main :: IO ()
