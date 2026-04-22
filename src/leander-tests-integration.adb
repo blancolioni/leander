@@ -321,6 +321,59 @@ package body Leander.Tests.Integration is
          "same 3 3", "K",
          Context, Env);
 
+      --  Derived Eq instances
+
+      Test_Module
+        ("module: deriving Eq nullary match",
+         Test_Root & "test_16_deriving_eq.hs",
+         "colorEq", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq nullary mismatch",
+         Test_Root & "test_16_deriving_eq.hs",
+         "colorNe", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq nullary /=",
+         Test_Root & "test_16_deriving_eq.hs",
+         "colorBl", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq args match",
+         Test_Root & "test_16_deriving_eq.hs",
+         "pairEq", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq args mismatch last",
+         Test_Root & "test_16_deriving_eq.hs",
+         "pairNe1", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq args mismatch first",
+         Test_Root & "test_16_deriving_eq.hs",
+         "pairNe2", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq mixed nullary",
+         Test_Root & "test_16_deriving_eq.hs",
+         "mixLL", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq mixed arity",
+         Test_Root & "test_16_deriving_eq.hs",
+         "mixRR", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq cross constructor",
+         Test_Root & "test_16_deriving_eq.hs",
+         "mixLR", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq same constructor diff args",
+         Test_Root & "test_16_deriving_eq.hs",
+         "mixRdif", "K I",
+         Context, Env);
+
       --  Phase 3: IO module tests
       --  Minimal IO
 

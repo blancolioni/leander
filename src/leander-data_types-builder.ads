@@ -41,11 +41,12 @@ private
 
    type Data_Type_Builder is tagged
       record
-         Id    : Core.Conid;
-         Tycon : Nullable_Type_Reference;
-         Kind  : Leander.Core.Kinds.Kind;
-         Cons  : Con_Record_Vectors.Vector;
-         DT    : Nullable_Data_Type;
+         Id      : Core.Conid;
+         Tycon   : Nullable_Type_Reference;
+         Applied : Nullable_Type_Reference;
+         Kind    : Leander.Core.Kinds.Kind;
+         Cons    : Con_Record_Vectors.Vector;
+         DT      : Nullable_Data_Type;
       end record;
 
 end Leander.Data_Types.Builder;

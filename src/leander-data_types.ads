@@ -10,6 +10,10 @@ package Leander.Data_Types is
 
    function Id (This : Instance'Class) return Core.Conid;
 
+   function Applied_Type
+     (This : Instance'Class)
+      return Leander.Core.Types.Reference;
+
    function Constructor_Count
      (This : Instance'Class)
       return Natural;
@@ -47,14 +51,20 @@ private
 
    type Instance (Con_Count : Positive) is tagged
       record
-         Id    : Core.Conid;
-         Tycon : Leander.Core.Types.Reference;
-         Kind  : Leander.Core.Kinds.Kind;
-         Cons  : Con_Array (1 .. Con_Count);
+         Id      : Core.Conid;
+         Tycon   : Leander.Core.Types.Reference;
+         Applied : Leander.Core.Types.Reference;
+         Kind    : Leander.Core.Kinds.Kind;
+         Cons    : Con_Array (1 .. Con_Count);
       end record;
 
    function Id (This : Instance'Class) return Core.Conid
    is (This.Id);
+
+   function Applied_Type
+     (This : Instance'Class)
+      return Leander.Core.Types.Reference
+   is (This.Applied);
 
    function Constructor_Count
      (This : Instance'Class)

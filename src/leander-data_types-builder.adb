@@ -111,6 +111,7 @@ package body Leander.Data_Types.Builder is
         (Con_Count => This.Cons.Last_Index,
          Id        => This.Tycon.Constructor.Id,
          Tycon     => Core.Types.Reference (This.Tycon),
+         Applied   => Core.Types.Reference (This.Applied),
          Kind      => This.Kind,
          Cons      => [for I in 1 .. This.Cons.Last_Index =>
                            Create_Con_Record (I)]);
@@ -147,6 +148,7 @@ package body Leander.Data_Types.Builder is
       This.Id := T.Constructor.Id;
       This.Kind := K;
       This.Tycon := Nullable_Type_Reference (T);
+      This.Applied := Nullable_Type_Reference (Ty);
       This.Cons.Clear;
       This.DT := null;
    end Start;

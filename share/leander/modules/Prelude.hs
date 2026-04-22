@@ -87,7 +87,7 @@ instance (Eq a) => Eq [a] where
                     [] -> False
                     (y:ys') -> equals x y && (xs == ys')
 
-data Ordering = LT | EQ | GT
+data Ordering = LT | EQ | GT deriving (Eq)
 
 otherwise :: Bool
 otherwise = True

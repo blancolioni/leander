@@ -269,37 +269,45 @@ package body Leander.Environment is
    is
       Context : Leander.Core.Inference.Inference_Context :=
                   Leander.Core.Inference.Initial_Context (This.Type_Env);
-   begin
-      Leander.Core.Binding_Groups.Inference.Infer
-        (Context, This.Bindings);
 
-      This.Context := Context;
-      This.Type_Env :=
-        Context.Type_Env.Save (This.Type_Env, Context.Current_Substitution);
+      procedure Elaborate_Instance
+        (Class : Leander.Core.Type_Classes.Reference;
+         Inst  : Instance_Record);
 
-      if Context.OK then
-         declare
-            Ids : constant Core.Varid_Array := This.Bindings.Varids;
-         begin
-            for Id of Ids loop
-               This.Bindings.Lookup (Leander.Names.Leander_Name (Id))
-                 .Update_Type (Context);
-            end loop;
-         end;
-      end if;
+      function Find_Class_In_Imports
+        (Class_Id : Leander.Core.Conid)
+         return Leander.Core.Type_Classes.Reference;
 
-      for Class of This.Classes loop
-         if This.Instances.Contains
-           (Leander.Names.Leander_Name (Class.Id))
-         then
-            declare
-               Methods : constant Core.Varid_Array :=
-                           Class.Methods;
+      ---------------------------
+      -- Find_Class_In_Imports --
+      ---------------------------
+
+      function Find_Class_In_Imports
+        (Class_Id : Leander.Core.Conid)
+         return Leander.Core.Type_Classes.Reference
+      is
+      begin
+         for Import of This.Imports loop
             begin
-               for Inst of This.Instances.Element
-                 (Leander.Names.Leander_Name (Class.Id))
-               loop
-                  declare
+               return Import.Get_Class (Class_Id);
+            exception
+               when others => null;
+            end;
+         end loop;
+         return null;
+      end Find_Class_In_Imports;
+
+      ------------------------
+      -- Elaborate_Instance --
+      ------------------------
+
+      procedure Elaborate_Instance
+        (Class : Leander.Core.Type_Classes.Reference;
+         Inst  : Instance_Record)
+      is
+         Methods : constant Core.Varid_Array := Class.Methods;
+      begin
+         declare
                      Inst_Context : Leander.Core.Inference.Inference_Context :=
                                       Leander.Core.Inference.Initial_Context
                                         (This.Type_Env);
@@ -566,7 +574,55 @@ package body Leander.Environment is
                         end;
                      end;
                   end;
-               end loop;
+      end Elaborate_Instance;
+
+   begin
+      Leander.Core.Binding_Groups.Inference.Infer
+        (Context, This.Bindings);
+
+      This.Context := Context;
+      This.Type_Env :=
+        Context.Type_Env.Save (This.Type_Env, Context.Current_Substitution);
+
+      if Context.OK then
+         declare
+            Ids : constant Core.Varid_Array := This.Bindings.Varids;
+         begin
+            for Id of Ids loop
+               This.Bindings.Lookup (Leander.Names.Leander_Name (Id))
+                 .Update_Type (Context);
+            end loop;
+         end;
+      end if;
+
+      for Class of This.Classes loop
+         if This.Instances.Contains
+           (Leander.Names.Leander_Name (Class.Id))
+         then
+            for Inst of This.Instances.Element
+              (Leander.Names.Leander_Name (Class.Id))
+            loop
+               Elaborate_Instance (Class, Inst);
+            end loop;
+         end if;
+      end loop;
+
+      --  Process instances whose class is defined in an imported module.
+      for Class_Name of This.Instances.Get_Keys loop
+         if not This.Classes.Contains
+           (Leander.Names.To_String (Class_Name))
+         then
+            declare
+               use type Leander.Core.Type_Classes.Reference;
+               Class : constant Leander.Core.Type_Classes.Reference :=
+                         Find_Class_In_Imports
+                           (Leander.Core.Conid (Class_Name));
+            begin
+               if Class /= null then
+                  for Inst of This.Instances.Element (Class_Name) loop
+                     Elaborate_Instance (Class, Inst);
+                  end loop;
+               end if;
             end;
          end if;
       end loop;
