@@ -305,66 +305,100 @@ package body Leander.Environment is
                                         (This.Type_Env);
                      Inst_Type    : constant Leander.Core.Types.Reference :=
                                       Inst.Element.Predicate.Get_Type;
+                     New_Bindings : Leander.Core.Binding_Groups.Reference;
                   begin
-                     --  Change 1: pre-populate Inst_Context with instance-
-                     --  specific schemes so cross-method calls within the
-                     --  instance body use the right predicate.
+                     --  Build a new binding group where each method is
+                     --  an EXPLICIT binding with a scheme specific to
+                     --  this instance, derived from the class method
+                     --  scheme by substituting the class type variable
+                     --  with the instance type. Making instance methods
+                     --  explicit (rather than implicit) ensures that
+                     --  cross-method calls within the instance body
+                     --  (e.g. min's use of <=) see the right predicate
+                     --  (e.g. Ord Int) and compile to a dictionary
+                     --  application.
                      declare
-                        Inst_Env : Leander.Core.Type_Env.Reference :=
-                                     Inst_Context.Type_Env;
+                        Explicit_Array :
+                          Leander.Core.Bindings.Reference_Array
+                            (1 .. Methods'Length);
+                        Explicit_Count : Natural := 0;
+                        Builder        :
+                          Leander.Core.Binding_Groups.Instance_Builder;
                      begin
                         for Id of Methods loop
                            declare
+                              use type Leander.Core.Bindings.Reference;
                               Global_Scheme : constant
                                 Leander.Core.Schemes.Reference :=
                                   Class.Method_Scheme (Id);
                               Global_QT     : constant
                                 Leander.Core.Qualified_Types.Reference :=
                                   Global_Scheme.Fresh_Instance;
+                              B             : constant
+                                Leander.Core.Bindings.Reference :=
+                                  Inst.Bindings.Lookup
+                                    (Leander.Names.Leander_Name (Id));
                            begin
-                              for P of Global_QT.Predicates loop
-                                 if P.Class_Name
-                                   = Core.To_String (Class.Id)
-                                 then
-                                    declare
-                                       Success : Boolean;
-                                       Subst   : constant
-                                         Leander.Core.Substitutions.Instance :=
-                                           Leander.Core.Types.Match
-                                             (P.Get_Type, Inst_Type, Success);
-                                    begin
-                                       if Success then
-                                          declare
-                                             Inst_QT :
-                                               constant
-                                               Leander.Core.Qualified_Types
-                                                 .Reference :=
-                                                 Leander.Core.Qualified_Types
-                                                   .Reference
-                                                     (Global_QT.Apply (Subst));
-                                             Inst_Scheme :
-                                               constant
-                                               Leander.Core.Schemes.Reference :=
-                                                 Leander.Core.Schemes.Quantify
-                                                   (Inst_QT.all.Get_Tyvars,
-                                                    Inst_QT);
-                                          begin
-                                             Inst_Env :=
-                                               Inst_Env.Compose
-                                                 (Id, Inst_Scheme);
-                                          end;
-                                       end if;
-                                    end;
-                                    exit;
-                                 end if;
-                              end loop;
+                              if B /= null then
+                                 for P of Global_QT.Predicates loop
+                                    if P.Class_Name
+                                      = Core.To_String (Class.Id)
+                                    then
+                                       declare
+                                          Success : Boolean;
+                                          Subst   : constant
+                                            Leander.Core.Substitutions
+                                              .Instance :=
+                                                Leander.Core.Types.Match
+                                                  (P.Get_Type, Inst_Type,
+                                                   Success);
+                                       begin
+                                          if Success then
+                                             declare
+                                                Inst_QT : constant
+                                                  Leander.Core.Qualified_Types
+                                                    .Reference :=
+                                                    Leander.Core
+                                                      .Qualified_Types
+                                                        .Reference
+                                                          (Global_QT.Apply
+                                                             (Subst));
+                                                Inst_Scheme : constant
+                                                  Leander.Core.Schemes
+                                                    .Reference :=
+                                                    Leander.Core.Schemes
+                                                      .Quantify
+                                                        (Inst_QT.all
+                                                           .Get_Tyvars,
+                                                         Inst_QT);
+                                             begin
+                                                Explicit_Count :=
+                                                  Explicit_Count + 1;
+                                                Explicit_Array
+                                                  (Explicit_Count) :=
+                                                    Leander.Core.Bindings
+                                                      .Explicit_Binding
+                                                        (Id, B.Alts,
+                                                         Inst_Scheme);
+                                             end;
+                                          end if;
+                                       end;
+                                       exit;
+                                    end if;
+                                 end loop;
+                              end if;
                            end;
                         end loop;
-                        Inst_Context.Update_Type_Env (Inst_Env);
+
+                        if Explicit_Count > 0 then
+                           Builder.Add_Explicit_Bindings
+                             (Explicit_Array (1 .. Explicit_Count));
+                        end if;
+                        New_Bindings := Builder.Get_Binding_Group;
                      end;
 
                      Leander.Core.Binding_Groups.Inference.Infer
-                       (Inst_Context, Inst.Bindings);
+                       (Inst_Context, New_Bindings);
 
                      --  Existing: for concrete instances, unify stray
                      --  class predicates with the concrete type.
@@ -430,7 +464,7 @@ package body Leander.Environment is
                         declare
                            use type Leander.Core.Bindings.Reference;
                            B : constant Leander.Core.Bindings.Reference :=
-                                 Inst.Bindings.Lookup
+                                 New_Bindings.Lookup
                                    (Leander.Names.Leander_Name (Id));
                         begin
                            if B /= null then
@@ -447,7 +481,7 @@ package body Leander.Environment is
                            declare
                               use type Leander.Core.Bindings.Reference;
                               Binding : constant Leander.Core.Bindings.Reference
-                                := Inst.Bindings.Lookup
+                                := New_Bindings.Lookup
                                   (Leander.Names.Leander_Name (Id));
                            begin
                               if Binding = null then
