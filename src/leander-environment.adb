@@ -3,6 +3,9 @@ with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
 with Leander.Core.Inference;
+with Leander.Core.Qualified_Types;
+with Leander.Core.Qualifiers;
+with Leander.Core.Substitutions;
 with Leander.Core.Type_Instances;
 with Leander.Core.Types.Unification;
 with Leander.Environment.Prelude;
@@ -302,9 +305,68 @@ package body Leander.Environment is
                      Inst_Type    : constant Leander.Core.Types.Reference :=
                                       Inst.Element.Predicate.Get_Type;
                   begin
+                     --  Change 1: pre-populate Inst_Context with instance-
+                     --  specific schemes so cross-method calls within the
+                     --  instance body use the right predicate.
+                     declare
+                        Inst_Env : Leander.Core.Type_Env.Reference :=
+                                     Inst_Context.Type_Env;
+                     begin
+                        for Id of Methods loop
+                           declare
+                              Global_Scheme : constant
+                                Leander.Core.Schemes.Reference :=
+                                  Class.Method_Scheme (Id);
+                              Global_QT     : constant
+                                Leander.Core.Qualified_Types.Reference :=
+                                  Global_Scheme.Fresh_Instance;
+                           begin
+                              for P of Global_QT.Predicates loop
+                                 if P.Class_Name
+                                   = Core.To_String (Class.Id)
+                                 then
+                                    declare
+                                       Success : Boolean;
+                                       Subst   : constant
+                                         Leander.Core.Substitutions.Instance :=
+                                           Leander.Core.Types.Match
+                                             (P.Get_Type, Inst_Type, Success);
+                                    begin
+                                       if Success then
+                                          declare
+                                             Inst_QT :
+                                               constant
+                                               Leander.Core.Qualified_Types
+                                                 .Reference :=
+                                                 Leander.Core.Qualified_Types
+                                                   .Reference
+                                                     (Global_QT.Apply (Subst));
+                                             Inst_Scheme :
+                                               constant
+                                               Leander.Core.Schemes.Reference :=
+                                                 Leander.Core.Schemes.Quantify
+                                                   (Inst_QT.all.Get_Tyvars,
+                                                    Inst_QT);
+                                          begin
+                                             Inst_Env :=
+                                               Inst_Env.Compose
+                                                 (Id, Inst_Scheme);
+                                          end;
+                                       end if;
+                                    end;
+                                    exit;
+                                 end if;
+                              end loop;
+                           end;
+                        end loop;
+                        Inst_Context.Update_Type_Env (Inst_Env);
+                     end;
+
                      Leander.Core.Binding_Groups.Inference.Infer
                        (Inst_Context, Inst.Bindings);
 
+                     --  Existing: for concrete instances, unify stray
+                     --  class predicates with the concrete type.
                      if Inst_Type.Get_Tyvars'Length = 0 then
                         for P of Inst_Context.Current_Predicates loop
                            if P.Class_Name
@@ -314,6 +376,52 @@ package body Leander.Environment is
                               Leander.Core.Types.Unification.Unify
                                 (Inst_Context, P.Get_Type, Inst_Type);
                            end if;
+                        end loop;
+                     end if;
+
+                     --  Change 2: for constrained instances, unify the
+                     --  collected predicates so all element-type variables
+                     --  converge to the qualifier's type variable, and all
+                     --  recursive-instance predicates converge to Inst_Type.
+                     if Inst_Type.Get_Tyvars'Length > 0 then
+                        --  Case A: same-class, non-HNF predicates that
+                        --  structurally match Inst_Type → unify with Inst_Type.
+                        for P of Inst_Context.Current_Predicates loop
+                           if P.Class_Name
+                             = Inst.Element.Predicate.Class_Name
+                             and then not P.Get_Type.all.Head_Normal_Form
+                             and then not Leander.Core.Types.Equivalent
+                               (P.Get_Type, Inst_Type)
+                             and then P.Get_Type.all.Get_Tyvars'Length > 0
+                           then
+                              declare
+                                 Success : Boolean;
+                                 S       : constant
+                                   Leander.Core.Substitutions.Instance :=
+                                     Leander.Core.Types.Match
+                                       (P.Get_Type, Inst_Type, Success);
+                              begin
+                                 pragma Unreferenced (S);
+                                 if Success then
+                                    Leander.Core.Types.Unification.Unify
+                                      (Inst_Context, P.Get_Type, Inst_Type);
+                                 end if;
+                              end;
+                           end if;
+                        end loop;
+                        --  Case B: qualifier predicates → unify TVar
+                        --  element-type predicates with qualifier's type var.
+                        for Q of Inst.Element.Qualifier.Predicates loop
+                           for P of Inst_Context.Current_Predicates loop
+                              if P.Class_Name = Q.Class_Name
+                                and then P.Get_Type.all.Head_Normal_Form
+                                and then not Leander.Core.Types.Equivalent
+                                  (P.Get_Type, Inst_Type)
+                              then
+                                 Leander.Core.Types.Unification.Unify
+                                   (Inst_Context, P.Get_Type, Q.Get_Type);
+                              end if;
+                           end loop;
                         end loop;
                      end if;
 
@@ -374,7 +482,30 @@ package body Leander.Environment is
                         declare
                            Dict_Name : constant String :=
                              "<" & Inst.Element.Predicate.Show & ">";
+                           All_Ps    : constant
+                             Leander.Core.Predicates.Predicate_Array :=
+                               Inst_Context.Current_Predicates;
+
                         begin
+                           for P of reverse All_Ps loop
+                              declare
+                                 Dict_P : constant String :=
+                                   "<" & P.Show & ">";
+                              begin
+                                 --  Change 3: skip the instance-type
+                                 --  predicate itself; it is handled by Y.
+                                 if P.Get_Type.all.Get_Tyvars'Length > 0
+                                   and then not Leander.Core.Types.Equivalent
+                                     (P.Get_Type, Inst_Type)
+                                   and then
+                                     Leander.Calculus.Has_Reference
+                                       (D, Dict_P)
+                                 then
+                                    D := Leander.Calculus.Lambda
+                                      (Dict_P, D);
+                                 end if;
+                              end;
+                           end loop;
                            if Leander.Calculus.Has_Reference
                              (D, Dict_Name)
                            then
@@ -382,6 +513,9 @@ package body Leander.Environment is
                                 (Leander.Calculus.Symbol ("Y"),
                                  Leander.Calculus.Lambda (Dict_Name, D));
                            end if;
+                           Leander.Logging.Log
+                             ("INST", Dict_Name
+                              & " = " & Leander.Calculus.To_String (D));
                            This.Values.Insert
                              (Leander.Names.To_Leander_Name (Dict_Name), D);
                         end;
@@ -565,27 +699,49 @@ package body Leander.Environment is
       Id   : Leander.Core.Conid)
       return Leander.Core.Type_Instances.Reference_Array
    is
-   begin
-      if not This.Instances.Contains
-           (Leander.Names.Leander_Name (Id))
-      then
-         return [];
-      end if;
-      declare
-         Name renames Leander.Names.Leander_Name (Id);
-         List : constant Instance_Lists.List := This.Instances.Element (Name);
-         Last : Natural := 0;
+      use type Leander.Core.Type_Instances.Reference_Array;
+
+      function Local_Instances
+        return Leander.Core.Type_Instances.Reference_Array
+      is
       begin
-         return R : Leander.Core.Type_Instances.Reference_Array
-           (1 .. Natural (List.Length))
-         do
-            for Inst of List loop
-               Last := Last + 1;
-               R (Last) := Inst.Element;
-            end loop;
-            pragma Assert (Last = R'Last);
-         end return;
-      end;
+         if not This.Instances.Contains
+              (Leander.Names.Leander_Name (Id))
+         then
+            return [];
+         end if;
+         declare
+            Name renames Leander.Names.Leander_Name (Id);
+            List : constant Instance_Lists.List :=
+                     This.Instances.Element (Name);
+            Last : Natural := 0;
+         begin
+            return R : Leander.Core.Type_Instances.Reference_Array
+              (1 .. Natural (List.Length))
+            do
+               for Inst of List loop
+                  Last := Last + 1;
+                  R (Last) := Inst.Element;
+               end loop;
+               pragma Assert (Last = R'Last);
+            end return;
+         end;
+      end Local_Instances;
+
+      function Imported_Instances
+        (Cursor : Import_Lists.Cursor)
+         return Leander.Core.Type_Instances.Reference_Array
+      is
+      begin
+         if not Import_Lists.Has_Element (Cursor) then
+            return [];
+         end if;
+         return Import_Lists.Element (Cursor).Get_Instances (Id)
+           & Imported_Instances (Import_Lists.Next (Cursor));
+      end Imported_Instances;
+
+   begin
+      return Local_Instances & Imported_Instances (This.Imports.First);
    end Get_Instances;
 
    ----------------

@@ -27,7 +27,6 @@ infixl 6  +, -
 -- The (:) operator is built-in syntax, and cannot legally be given
 -- a fixity declaration; but its fixity is given by:
 --   infixr 5  :
-
 infix  4  ==, /=, <, <=, >=, >
 infixr 3  &&
 infixr 2  ||
@@ -80,7 +79,7 @@ instance (Eq a) => Eq [a] where
                     _  -> False
     (==) (x:xs) = \ys -> case ys of
                     [] -> False
-                    (y:ys') -> (x == y) && (xs == ys')
+                    (y:ys') -> equals x y && (xs == ys')
 
 data Ordering = LT | EQ | GT
 

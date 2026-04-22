@@ -3,6 +3,9 @@ with Ada.Exceptions;
 with Leander.Allocator;
 with Leander.Core.Binding_Groups;
 with Leander.Core.Predicates;
+with Leander.Core.Substitutions;
+with Leander.Core.Type_Instances;
+with Leander.Core.Types;
 with Leander.Environment;
 with Leander.Logging;
 
@@ -192,6 +195,47 @@ package body Leander.Core.Expressions is
       end case;
    end Show;
 
+   ---------------
+   -- Dict_Expr --
+   ---------------
+
+   function Dict_Expr
+     (Env : not null access constant Leander.Environment.Abstraction'Class;
+      P   : Leander.Core.Predicates.Instance)
+      return Leander.Calculus.Tree
+   is
+      use Leander.Calculus;
+      Instances : constant Leander.Core.Type_Instances.Reference_Array :=
+                    Env.All_Instances (P.Class_Id);
+   begin
+      if P.Get_Type.all.Head_Normal_Form then
+         return Symbol ("<" & P.Show & ">");
+      end if;
+      for Inst of Instances loop
+         declare
+            Success : Boolean;
+            Subst   : constant Leander.Core.Substitutions.Instance :=
+                        Leander.Core.Types.Match
+                          (Inst.Predicate.Get_Type, P.Get_Type, Success);
+         begin
+            if Success then
+               declare
+                  Sub_Ps : constant Leander.Core.Predicates.Predicate_Array :=
+                             Inst.Qualifier.all.Apply (Subst).all.Predicates;
+                  E      : Tree :=
+                             Symbol ("<" & Inst.Predicate.Show & ">");
+               begin
+                  for Sub_P of Sub_Ps loop
+                     E := Apply (E, Dict_Expr (Env, Sub_P));
+                  end loop;
+                  return E;
+               end;
+            end if;
+         end;
+      end loop;
+      return Symbol ("<" & P.Show & ">");
+   end Dict_Expr;
+
    -----------------
    -- To_Calculus --
    -----------------
@@ -222,7 +266,7 @@ package body Leander.Core.Expressions is
                         & " :: "
                         & This.Qualified_Type.Show);
                      for P of Ps loop
-                        E := Apply (E, Symbol ("<" & P.Show & ">"));
+                        E := Apply (E, Dict_Expr (Env, P));
                      end loop;
                      Types.Save_Predicates (Ps);
                   end;
