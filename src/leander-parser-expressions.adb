@@ -436,9 +436,9 @@ package body Leander.Parser.Expressions is
             begin
                Pop :=
                  (Op_Fixity.Associativity = Left
-                  and then Op_Fixity.Priority < Top_Fixity.Priority)
+                  and then Op_Fixity.Priority <= Top_Fixity.Priority)
                  or else (Op_Fixity.Associativity /= Left
-                          and then Op_Fixity.Priority >= Top_Fixity.Priority);
+                          and then Op_Fixity.Priority < Top_Fixity.Priority);
 
                if Pop then
                   Pop_Operator;
