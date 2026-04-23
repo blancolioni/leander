@@ -202,7 +202,7 @@ foldr f z (x:xs) =  f x (foldr f z xs)
 
 -- Maybe type
 
-data  Maybe a  =  Nothing | Just a
+data  Maybe a  =  Nothing | Just a deriving Eq
 
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe n f Nothing  =  n

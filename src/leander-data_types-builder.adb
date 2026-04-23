@@ -1,3 +1,4 @@
+with Leander.Core.Tycons;
 with Leander.Names;
 
 package body Leander.Data_Types.Builder is
@@ -139,16 +140,52 @@ package body Leander.Data_Types.Builder is
    is
       T : Leander.Core.Types.Reference := Ty;
       K : Leander.Core.Kinds.Kind := Leander.Core.Kinds.Star;
+
+      function Rebuild
+        (T         : Leander.Core.Types.Reference;
+         Head_Kind : Leander.Core.Kinds.Kind)
+         return Leander.Core.Types.Reference;
+
+      -------------
+      -- Rebuild --
+      -------------
+
+      function Rebuild
+        (T         : Leander.Core.Types.Reference;
+         Head_Kind : Leander.Core.Kinds.Kind)
+         return Leander.Core.Types.Reference
+      is
+      begin
+         if T.Is_Application then
+            return Leander.Core.Types.Application
+              (Rebuild (T.Left, Head_Kind), T.Right);
+         else
+            return Leander.Core.Types.TCon
+              (Leander.Core.Tycons.Tycon (T.Constructor.Id, Head_Kind));
+         end if;
+      end Rebuild;
+
    begin
       while T.Is_Application loop
          T := T.Left;
          K := Leander.Core.Kinds.Kind_Function (K, Leander.Core.Kinds.Star);
       end loop;
 
-      This.Id := T.Constructor.Id;
-      This.Kind := K;
-      This.Tycon := Nullable_Type_Reference (T);
-      This.Applied := Nullable_Type_Reference (Ty);
+      --  The parser gives every type constructor in a data declaration the
+      --  default kind *. Rebuild the head tycon (and the applied spine)
+      --  with the kind derived from the number of type arguments, so that
+      --  Applied_Type.Get_Kind succeeds on higher-kinded types like
+      --  Maybe a.
+      declare
+         Head : constant Leander.Core.Types.Reference :=
+                  Leander.Core.Types.TCon
+                    (Leander.Core.Tycons.Tycon (T.Constructor.Id, K));
+      begin
+         This.Id := T.Constructor.Id;
+         This.Kind := K;
+         This.Tycon := Nullable_Type_Reference (Head);
+         This.Applied := Nullable_Type_Reference (Rebuild (Ty, K));
+      end;
       This.Cons.Clear;
       This.DT := null;
    end Start;
