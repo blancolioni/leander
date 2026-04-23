@@ -283,6 +283,45 @@ package body Leander.Parser.Expressions is
             return Constructor (Loc, "()");
          end if;
 
+         if At_Operator then
+            declare
+               Name : constant String := Scan_Identifier;
+            begin
+               if Tok = Tok_Right_Paren then
+                  Scan;
+                  return Variable (Loc, Name);
+               elsif At_Expression then
+                  declare
+                     E : constant Reference := Parse_Expression (Context);
+                  begin
+                     if Tok = Tok_Right_Paren then
+                        Scan;
+                        declare
+                           X : constant string := "$x";
+                        begin
+                           return Leander.Syntax.Expressions.Lambda
+                                    (Loc,
+                                     Syntax.Patterns.Variable (Loc, X),
+                                     Syntax.Expressions.Application
+                                        (Loc,
+                                         Syntax.Expressions.Application
+                                            (Loc,
+                                             Syntax.Expressions.Variable (Loc, Name),
+                                             Syntax.Expressions.Variable (Loc, X)),
+                                         E));
+                        end;
+                     else
+                        Error ("expected ')'");
+                        return E;
+                     end if;
+                  end;
+               else
+                  Error ("syntax error in operator section");
+                  return Variable (Loc, Name);
+               end if;
+            end;
+         end if;
+
          declare
             First : constant Reference := Parse_Expression (Context);
          begin

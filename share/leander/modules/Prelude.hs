@@ -62,6 +62,13 @@ class Bounded a where
     minBound :: a
     maxBound :: a
 
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+
+class (Functor f) => Applicative f where
+    pure :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+
 instance Eq Bool where
     True == b = b
     False == b = not b
@@ -75,9 +82,6 @@ instance Eq Int where
 
 instance Ord Int where
     x <= y = #primIntLeq x y
-    x <  y = #primIntLeq x y && not (#primIntEq x y)
-    x >= y = not (#primIntLeq x y) || #primIntEq x y
-    x >  y = not (#primIntLeq x y)
 
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
@@ -148,6 +152,10 @@ take :: Int -> [a] -> [a]
 take 0 _ = []
 take _ [] = []
 take n (x:xs) = x : take (n - 1) xs
+
+filter :: (a -> Bool) -> [a] -> [a]
+filter p [] = []
+filter p (x:xs) = if p x then x : filter p xs else filter p xs
 
 sum :: [Int] -> Int
 sum [] = 0
