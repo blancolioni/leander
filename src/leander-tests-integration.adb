@@ -373,6 +373,21 @@ package body Leander.Tests.Integration is
          Test_Root & "test_16_deriving_eq.hs",
          "mixRdif", "K I",
          Context, Env);
+      Test_Module
+        ("module: deriving Eq recursive match",
+         Test_Root & "test_16_deriving_eq.hs",
+         "recEq", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq recursive mismatch",
+         Test_Root & "test_16_deriving_eq.hs",
+         "recNe", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq recursive minimal",
+         Test_Root & "test_16_deriving_eq.hs",
+         "recNil", "K",
+         Context, Env);
 
       --  Phase 3: IO module tests
       --  Minimal IO

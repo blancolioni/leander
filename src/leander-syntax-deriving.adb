@@ -126,23 +126,20 @@ package body Leander.Syntax.Deriving is
                      if I_Arity = 0 then
                         Body_E := Con_Expr ("True");
                      else
-                        Body_E := App
-                          (App (Var_Expr ("equals"),
-                                Var_Expr
-                                  (Leander.Names.To_String
-                                     (L_Names (I_Arity)))),
+                        Body_E := Op
+                          ("==",
+                           Var_Expr
+                             (Leander.Names.To_String (L_Names (I_Arity))),
                            Var_Expr
                              (Leander.Names.To_String (J_Names (I_Arity))));
                         for K in reverse 1 .. I_Arity - 1 loop
                            Body_E := Op
                              ("&&",
-                              App
-                                (App (Var_Expr ("equals"),
-                                      Var_Expr
-                                        (Leander.Names.To_String
-                                           (L_Names (K)))),
-                                 Var_Expr
-                                   (Leander.Names.To_String (J_Names (K)))),
+                              Op ("==",
+                                  Var_Expr
+                                    (Leander.Names.To_String (L_Names (K))),
+                                  Var_Expr
+                                    (Leander.Names.To_String (J_Names (K)))),
                               Body_E);
                         end loop;
                      end if;

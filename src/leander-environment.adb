@@ -2,7 +2,6 @@ with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Text_IO;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
-with Leander.Core.Expressions;
 with Leander.Core.Inference;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Qualifiers;
@@ -305,8 +304,14 @@ package body Leander.Environment is
         (Class : Leander.Core.Type_Classes.Reference;
          Inst  : Instance_Record)
       is
-         Methods : constant Core.Varid_Array := Class.Methods;
+         Methods        : constant Core.Varid_Array := Class.Methods;
+         Internal_Names : Core.Varid_Array (Methods'Range) :=
+                            [others => Methods (Methods'First)];
       begin
+         for I in Methods'Range loop
+            Internal_Names (I) := Core.Varid (Leander.Names.New_Name);
+         end loop;
+
          declare
                      Inst_Context : Leander.Core.Inference.Inference_Context :=
                                       Leander.Core.Inference.Initial_Context
@@ -333,9 +338,13 @@ package body Leander.Environment is
                         Builder        :
                           Leander.Core.Binding_Groups.Instance_Builder;
                      begin
-                        for Id of Methods loop
+                        for Idx in Methods'Range loop
                            declare
                               use type Leander.Core.Bindings.Reference;
+                              Id            : constant Core.Varid :=
+                                                Methods (Idx);
+                              Internal_Id   : constant Core.Varid :=
+                                                Internal_Names (Idx);
                               Global_Scheme : constant
                                 Leander.Core.Schemes.Reference :=
                                   Class.Method_Scheme (Id);
@@ -386,7 +395,8 @@ package body Leander.Environment is
                                                   (Explicit_Count) :=
                                                     Leander.Core.Bindings
                                                       .Explicit_Binding
-                                                        (Id, B.Alts,
+                                                        (Internal_Id,
+                                                         B.Alts,
                                                          Inst_Scheme);
                                              end;
                                           end if;
@@ -468,12 +478,13 @@ package body Leander.Environment is
                         end loop;
                      end if;
 
-                     for Id of Methods loop
+                     for Idx in Methods'Range loop
                         declare
                            use type Leander.Core.Bindings.Reference;
                            B : constant Leander.Core.Bindings.Reference :=
                                  New_Bindings.Lookup
-                                   (Leander.Names.Leander_Name (Id));
+                                   (Leander.Names.Leander_Name
+                                      (Internal_Names (Idx)));
                         begin
                            if B /= null then
                               B.Update_Type (Inst_Context);
@@ -485,12 +496,14 @@ package body Leander.Environment is
                         D : Leander.Calculus.Tree :=
                               Leander.Calculus.Symbol ("$class");
                      begin
-                        for Id of Methods loop
+                        for Idx in Methods'Range loop
                            declare
                               use type Leander.Core.Bindings.Reference;
+                              Id      : constant Core.Varid := Methods (Idx);
                               Binding : constant Leander.Core.Bindings.Reference
                                 := New_Bindings.Lookup
-                                  (Leander.Names.Leander_Name (Id));
+                                  (Leander.Names.Leander_Name
+                                     (Internal_Names (Idx)));
                            begin
                               if Binding = null then
                                  Error
@@ -505,16 +518,15 @@ package body Leander.Environment is
                                       (Leander.Names.Leander_Name (Id))
                                     & " found");
                               else
-                                 --  Strip self-referential predicates so
-                                 --  that Y-wrapped recursive methods don't
-                                 --  apply the dictionary to the fixpoint.
-                                 if Binding.Has_Reference (Id) then
-                                    for Alt of Binding.Alts loop
-                                       Leander.Core.Expressions
-                                         .Clear_Self_Predicates
-                                           (Alt.Expression, Id);
-                                    end loop;
-                                 end if;
+                                 --  With the rename above, the binding is
+                                 --  under an internal name and references
+                                 --  to the method name (e.g. "==") inside
+                                 --  the body resolve to the class method
+                                 --  polymorphically. Self-referential uses
+                                 --  keep their Eq<T> predicate, which
+                                 --  compiles to a <Eq T> dict reference;
+                                 --  the environment-level Y wrap below
+                                 --  ties the dictionary knot.
                                  Leander.Logging.Log
                                    ("INST", Binding.Show);
                                  declare
