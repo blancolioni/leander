@@ -3,6 +3,9 @@ module Prelude where
 foreign import skit "#eq" #primIntEq :: Int -> Int -> Bool
 foreign import skit "#eq" #primCharEq :: Char -> Char -> Bool
 
+foreign import skit "#id" #primIntToChar :: Int -> Char
+foreign import skit "#id" #primCharToInt :: Char -> Int
+
 foreign import skit "#le" #primIntLeq :: Int -> Int -> Bool
 
 foreign import skit "#add" #primIntAdd :: Int -> Int -> Int
@@ -123,7 +126,18 @@ instance Enum Int where
   enumFromThenTo n n' m = if n > m
                           then []
                           else n : enumFromThenTo n' (n' + n' - n) m
-                               
+
+
+instance Eq Char where
+  (==) = #primCharEq
+
+instance Ord Char where
+  (<=) c c' = fromEnum c <= fromEnum c'
+
+instance Enum Char where
+  toEnum = #primIntToChar
+  fromEnum = #primCharToInt
+  
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
                     [] -> True
@@ -220,6 +234,9 @@ small 1 = True
 small 2 = True
 small 3 = True
 small x = False
+
+subtract :: Int -> Int -> Int
+subtract x y = y - x
 
 -- component projections for pairs:
 -- (NB: not provided for triples, quadruples, etc.)
