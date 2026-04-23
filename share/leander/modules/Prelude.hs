@@ -58,6 +58,29 @@ class Eq a => Ord a where
 class Show a where
     show :: a -> [Char]
 
+class  Enum a  where  
+    succ, pred       :: a -> a  
+    toEnum           :: Int -> a  
+    fromEnum         :: a -> Int  
+    enumFrom         :: a -> [a]             -- [n..]  
+    enumFromThen     :: a -> a -> [a]        -- [n,n'..]  
+    enumFromTo       :: a -> a -> [a]        -- [n..m]  
+    enumFromThenTo   :: a -> a -> a -> [a]   -- [n,n'..m]  
+ 
+        -- Minimal complete definition:  
+        --      toEnum, fromEnum  
+        --  
+        -- NOTE: these default methods only make sense for types  
+        --       that map injectively into Int using fromEnum  
+        --       and toEnum.  
+   succ             =  toEnum . (+1) . fromEnum  
+   pred             =  toEnum . (subtract 1) . fromEnum  
+   enumFrom x       =  map toEnum [fromEnum x ..]  
+   enumFromTo x y   =  map toEnum [fromEnum x .. fromEnum y]  
+   enumFromThen x y =  map toEnum [fromEnum x, fromEnum y ..]  
+   enumFromThenTo x y z =  
+                       map toEnum [fromEnum x, fromEnum y .. fromEnum z]
+                        
 class Bounded a where
     minBound :: a
     maxBound :: a
@@ -83,6 +106,24 @@ instance Eq Int where
 instance Ord Int where
     x <= y = #primIntLeq x y
 
+instance Bounded Int where
+  minBound = #minInt
+  maxBound = #maxInt
+
+instance Enum Int where
+  succ = (+1)
+  pred = \x -> x - 1
+  toEnum = id
+  fromEnum = id
+  enumFrom x = x : enumFrom (x + 1)
+  enumFromThen x n = x : enumFromThen n (x + n)
+  enumFromTo lo hi = if lo > hi
+                     then []
+                     else lo : enumFromTo (lo + 1) hi
+  enumFromThenTo n n' m = if n > m
+                          then []
+                          else n : enumFromThenTo n' (n' + n' - n) m
+                               
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
                     [] -> True
@@ -140,9 +181,6 @@ length (x:xs) = #primIntAdd 1 (length xs)
 (+) = #primIntAdd
 (*) = #primIntMul
 (-) = #primIntSub
-
-succ :: Int -> Int
-succ x = x + 1
 
 map :: (a -> b) -> [a] -> [b]
 map f [] = []

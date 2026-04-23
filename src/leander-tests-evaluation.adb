@@ -60,7 +60,7 @@ package body Leander.Tests.Evaluation is
       Test ("2 - 3 * 4", "Int", "-10", Context, Env, Prelude);
       Test ("seq (#trace 42) 4", "Int", "4", Context, Env, Prelude);
       Test ("sum [1,2,3,4]", "Int", "10", Context, Env, Prelude);
-      Test ("sum (map succ [1,2,3])", "Int", "9", Context, Env, Prelude);
+      Test ("sum (map (+1) [1,2,3])", "Int", "9", Context, Env, Prelude);
       Test ("length (take 10 [1,2,3])", "Int", "3", Context, Env, Prelude);
       Test ("length (take 2 [1,2,3])", "Int", "2", Context, Env, Prelude);
     --  Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);

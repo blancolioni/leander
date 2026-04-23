@@ -62,14 +62,14 @@ package body Leander.Parser.Expressions is
 
    function Parse_Statement
      (Context : Parse_Context'Class)
-     return Statement_Record;
+      return Statement_Record;
 
    package Statement_Sequence_Parser is
      new Leander.Parser.Sequences
        (Element_Name => "statement",
         Element_Type => Statement_Record,
         At_Element   => At_Expression,
-        Parse      => Parse_Statement);
+        Parse        => Parse_Statement);
 
    type Case_Alt_Record is
       record
@@ -86,6 +86,24 @@ package body Leander.Parser.Expressions is
         Element_Type => Case_Alt_Record,
         At_Element   => At_Atomic_Expression,
         Parse        => Parse_Case_Alt);
+
+   package Expression_Lists is
+     new Ada.Containers.Doubly_Linked_Lists
+       (Syntax.Expressions.Reference,
+        Syntax.Expressions."=");
+
+   function Call
+     (F    : Syntax.Expressions.Reference;
+      Args : Expression_Lists.List)
+      return Syntax.Expressions.Reference;
+
+   function Call
+     (Name : String;
+      Args : Expression_Lists.List)
+      return Syntax.Expressions.Reference
+   is (Call
+       (Syntax.Expressions.Variable (Args.First_Element.Location, Name),
+          Args));
 
    ----------------
    -- Add_Fixity --
@@ -137,6 +155,24 @@ package body Leander.Parser.Expressions is
       return At_Atomic_Expression;
    end At_Pattern;
 
+   ----------
+   -- Call --
+   ----------
+
+   function Call
+     (F    : Syntax.Expressions.Reference;
+      Args : Expression_Lists.List)
+      return Syntax.Expressions.Reference
+   is
+      X : Syntax.Expressions.Reference := F;
+   begin
+      for Arg of Args loop
+         X := Syntax.Expressions.Application
+           (Arg.Location, X, Arg);
+      end loop;
+      return X;
+   end Call;
+
    -----------------------------
    -- Parse_Atomic_Expression --
    -----------------------------
@@ -165,42 +201,108 @@ package body Leander.Parser.Expressions is
       is
          Loc : constant Source.Source_Location := Current_Source_Location;
          X   : constant Reference := Parse_Expression (Context);
-         XS  : Reference;
+         XS  : Expression_Lists.List;
       begin
-         if Tok = Tok_Comma then
+         if Tok = Tok_Dot_Dot then
             Scan;
-            if At_Expression then
-               XS := Parse_Rest_Of_List;
+            if Tok = Tok_Right_Bracket then
+               Scan;
+               return Call ("enumFrom", [X]);
+            elsif At_Expression then
+               declare
+                  Y : constant Reference := Parse_Expression (Context);
+               begin
+                  if Tok = Tok_Right_Bracket then
+                     Scan;
+                  else
+                     Error ("missing ']'");
+                  end if;
+                  return Call ("enumFromTo", [X, Y]);
+               end;
             else
-               Error ("missing list element");
-               while Tok /= Tok_Right_Bracket
-                 and then Tok /= Tok_End_Of_File
-               loop
-                  Scan;
-               end loop;
-               XS := Constructor
-                 (Current_Source_Location, "[]");
-               if Tok = Tok_Right_Bracket then
-                  Scan;
-               end if;
+               Error ("syntax error in list expression");
+               return X;
             end if;
-         elsif Tok = Tok_Right_Bracket then
-            XS := Constructor
-              (Current_Source_Location, "[]");
+         elsif Tok = Tok_Comma then
             Scan;
-         else
-            Error ("missing ']'");
-            XS := Constructor
-              (Current_Source_Location, "[]");
-         end if;
 
-         return Syntax.Expressions.Application
-           (Loc,
-            Syntax.Expressions.Application
-              (Loc,
-               Constructor (Loc, ":"),
-               X),
-            Xs);
+            if not At_Expression then
+               Error ("expected an expression");
+               return X;
+            end if;
+
+            declare
+               Y : constant Reference := Parse_Expression (Context);
+               Z : Reference;
+            begin
+               if Tok = Tok_Comma or else Tok = Tok_Right_Bracket then
+                  Xs.Append (X);
+                  Xs.Append (Y);
+                  while Tok = Tok_Comma loop
+                     Scan;
+                     Z := Parse_Expression (Context);
+                     Xs.Append (Z);
+                  end loop;
+                  declare
+                     List : Reference :=
+                              Constructor
+                                (Current_Source_Location, "[]");
+                  begin
+                     for Element of reverse Xs loop
+                        List :=
+                          Syntax.Expressions.Application
+                            (Element.Location,
+                             Syntax.Expressions.Application
+                               (Loc,
+                                Constructor (Element.Location, ":"),
+                                Element),
+                             List);
+                     end loop;
+                     if Tok = Tok_Right_Bracket then
+                        Scan;
+                     else
+                        Error ("expected ']'");
+                     end if;
+                     return List;
+                  end;
+               elsif Tok = Tok_Dot_Dot then
+                  Scan;
+                  if Tok = Tok_Right_Bracket then
+                     Scan;
+                     return Call ("enumFromThen", [X, Y]);
+                  end if;
+
+                  declare
+                     Z : constant Reference := Parse_Expression (Context);
+                  begin
+                     if Tok = Tok_Right_Bracket then
+                        Scan;
+                     else
+                        Error ("expected ']'");
+                     end if;
+                     return Call ("enumFromThenTo",
+                                  [X, Y, Z]);
+                  end;
+               else
+                  Error ("expected ',', '..', or ']'");
+                  return X;
+               end if;
+            end;
+         elsif Tok = Tok_Right_Bracket then
+            Scan;
+            return Call (":", [X, Constructor (X.Location, "[]")]);
+         else
+            Error ("missing list element");
+            while Tok /= Tok_Right_Bracket
+              and then Tok /= Tok_End_Of_File
+            loop
+               Scan;
+            end loop;
+            if Tok = Tok_Right_Bracket then
+               Scan;
+            end if;
+            return X;
+         end if;
       end Parse_Rest_Of_List;
 
       -------------------------
@@ -209,7 +311,7 @@ package body Leander.Parser.Expressions is
 
       function Parse_Rest_Of_Tuple
         (First : Leander.Syntax.Expressions.Reference)
-         return Leander.Syntax.Expressions.Reference
+      return Leander.Syntax.Expressions.Reference
       is
 
          function Go return Leander.Syntax.Expressions.Reference_Array;
@@ -237,8 +339,8 @@ package body Leander.Parser.Expressions is
             end if;
          end Go;
 
-         Ts : constant Reference_Array := Go;
-         Count : constant Positive := Ts'Length;
+         Ts     : constant Reference_Array := Go;
+         Count  : constant Positive := Ts'Length;
          Commas : constant String (1 .. Count) := [others => ','];
          Con    : constant String := '(' & Commas & ')';
          T      : Reference :=
@@ -297,18 +399,18 @@ package body Leander.Parser.Expressions is
                      if Tok = Tok_Right_Paren then
                         Scan;
                         declare
-                           X : constant string := "$x";
+                           X : constant String := "$x";
                         begin
                            return Leander.Syntax.Expressions.Lambda
-                                    (Loc,
-                                     Syntax.Patterns.Variable (Loc, X),
-                                     Syntax.Expressions.Application
-                                        (Loc,
-                                         Syntax.Expressions.Application
-                                            (Loc,
-                                             Syntax.Expressions.Variable (Loc, Name),
-                                             Syntax.Expressions.Variable (Loc, X)),
-                                         E));
+                             (Loc,
+                              Syntax.Patterns.Variable (Loc, X),
+                              Syntax.Expressions.Application
+                                (Loc,
+                                 Syntax.Expressions.Application
+                                   (Loc,
+                                    Syntax.Expressions.Variable (Loc, Name),
+                                    Syntax.Expressions.Variable (Loc, X)),
+                                 E));
                         end;
                      else
                         Error ("expected ')'");
@@ -358,10 +460,10 @@ package body Leander.Parser.Expressions is
 
    function Parse_Atomic_Pattern
      (Context : Parse_Context'Class)
-      return Leander.Syntax.Patterns.Reference
+   return Leander.Syntax.Patterns.Reference
    is
       Expr : constant Syntax.Expressions.Reference :=
-        Parse_Atomic_Expression (Context);
+               Parse_Atomic_Expression (Context);
       Pat  : constant Syntax.Patterns.Reference := Expr.To_Pattern;
    begin
       return Pat;
@@ -373,7 +475,7 @@ package body Leander.Parser.Expressions is
 
    function Parse_Case_Alt
      (Context : Parse_Context'Class)
-      return Case_Alt_Record
+   return Case_Alt_Record
    is
       Pat : constant Leander.Syntax.Patterns.Reference :=
               Parse_Expression (Context).To_Pattern;
@@ -394,7 +496,7 @@ package body Leander.Parser.Expressions is
 
    function Parse_Expression
      (Context : Parse_Context'Class)
-     return Leander.Syntax.Expressions.Reference
+   return Leander.Syntax.Expressions.Reference
    is
       use Leander.Syntax.Expressions;
 
@@ -525,7 +627,7 @@ package body Leander.Parser.Expressions is
 
    function Parse_Left_Expression
      (Context : Parse_Context'Class)
-     return Leander.Syntax.Expressions.Reference
+   return Leander.Syntax.Expressions.Reference
    is
    begin
       if At_Atomic_Expression then
@@ -668,7 +770,7 @@ package body Leander.Parser.Expressions is
          end;
       elsif Tok = Tok_If then
          declare
-            Loc : constant Source.Source_Location := Current_Source_Location;
+            Loc        : constant Source.Source_Location := Current_Source_Location;
             Cond, T, F : Syntax.Expressions.Reference;
             Fn         : constant String :=
                            Leander.Names.To_String (Leander.Names.New_Name);
@@ -724,7 +826,7 @@ package body Leander.Parser.Expressions is
 
             function To_Expression
               (Position : Statement_Lists.Cursor)
-               return Syntax.Expressions.Reference;
+            return Syntax.Expressions.Reference;
 
             ------------------
             -- On_Statement --
@@ -741,7 +843,7 @@ package body Leander.Parser.Expressions is
 
             function To_Expression
               (Position : Statement_Lists.Cursor)
-               return Syntax.Expressions.Reference
+            return Syntax.Expressions.Reference
             is
                use Leander.Syntax.Expressions;
                use Statement_Lists;
@@ -751,61 +853,61 @@ package body Leander.Parser.Expressions is
                             Next (Position);
             begin
                case Stmt.Class is
-                  when Expression_Statement =>
-                     if Has_Element (Next_Pos) then
-                        return Application
+               when Expression_Statement =>
+                  if Has_Element (Next_Pos) then
+                     return Application
+                       (Stmt.Location,
+                        Application
                           (Stmt.Location,
-                           Application
+                           Variable
                              (Stmt.Location,
-                              Variable
-                                (Stmt.Location,
-                                 ">>"),
-                              Stmt.Expression),
-                           To_Expression (Next_Pos));
-                     else
-                        return Stmt.Expression;
-                     end if;
-                  when Binding_Statement =>
-                     if not Has_Element (Next_Pos) then
-                        Ada.Text_IO.Put_Line
-                          (Leander.Source.Show (Stmt.Location)
-                           & ": binding cannot be the last expression");
-                        return Stmt.Value;
-                     else
-                        declare
-                           Rest : constant Syntax.Expressions.Reference :=
-                                    To_Expression (Next_Pos);
-                           Ok   : constant String := "$ok";
-                           Bs   : constant Syntax.Bindings.Reference :=
-                                    Syntax.Bindings.Empty;
-                        begin
-                           Bs.Add_Binding
-                             (Stmt.Location, Ok, [Stmt.Pattern], Rest);
+                              ">>"),
+                           Stmt.Expression),
+                        To_Expression (Next_Pos));
+                  else
+                     return Stmt.Expression;
+                  end if;
+               when Binding_Statement =>
+                  if not Has_Element (Next_Pos) then
+                     Ada.Text_IO.Put_Line
+                       (Leander.Source.Show (Stmt.Location)
+                        & ": binding cannot be the last expression");
+                     return Stmt.Value;
+                  else
+                     declare
+                        Rest : constant Syntax.Expressions.Reference :=
+                                 To_Expression (Next_Pos);
+                        Ok   : constant String := "$ok";
+                        Bs   : constant Syntax.Bindings.Reference :=
+                                 Syntax.Bindings.Empty;
+                     begin
+                        Bs.Add_Binding
+                          (Stmt.Location, Ok, [Stmt.Pattern], Rest);
 
-                           declare
-                              E_Let : constant Syntax.Expressions.Reference :=
-                                        Syntax.Expressions.Let
+                        declare
+                           E_Let : constant Syntax.Expressions.Reference :=
+                                     Syntax.Expressions.Let
+                                       (Stmt.Location,
+                                        Bs,
+                                        Application
                                           (Stmt.Location,
-                                           Bs,
                                            Application
                                              (Stmt.Location,
-                                              Application
+                                              Variable
                                                 (Stmt.Location,
-                                                 Variable
-                                                   (Stmt.Location,
-                                                    ">>="),
-                                                 Stmt.Value),
-                                              Variable (Stmt.Location, Ok)));
-                           begin
-                              return E_Let;
-                           end;
+                                                 ">>="),
+                                              Stmt.Value),
+                                           Variable (Stmt.Location, Ok)));
+                        begin
+                           return E_Let;
                         end;
-                     end if;
-                  when Let_Statement =>
-                     return Syntax.Expressions.Let
-                       (Stmt.Location,
-                        Stmt.Bindings,
-                        To_Expression (Next_Pos));
+                     end;
+                  end if;
+               when Let_Statement =>
+                  return Syntax.Expressions.Let
+                    (Stmt.Location,
+                     Stmt.Bindings,
+                     To_Expression (Next_Pos));
                end case;
             end To_Expression;
 
@@ -826,7 +928,7 @@ package body Leander.Parser.Expressions is
 
    function Parse_Patterns
      (Context : Parse_Context'Class)
-      return Leander.Syntax.Patterns.Reference_Array
+   return Leander.Syntax.Patterns.Reference_Array
    is
       use type Leander.Syntax.Expressions.Reference;
       use type Leander.Syntax.Patterns.Reference_Array;
@@ -858,7 +960,7 @@ package body Leander.Parser.Expressions is
 
    function Parse_Statement
      (Context : Parse_Context'Class)
-      return Statement_Record
+   return Statement_Record
    is
       Loc : constant Source.Source_Location := Current_Source_Location;
    begin
@@ -902,7 +1004,7 @@ package body Leander.Parser.Expressions is
             if Tok = Tok_Left_Arrow then
                declare
                   Pat : constant Syntax.Patterns.Reference :=
-                        E.To_Pattern;
+                          E.To_Pattern;
                begin
                   Scan;
                   E := Parse_Expression (Context);
