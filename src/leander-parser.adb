@@ -28,20 +28,6 @@ package body Leander.Parser is
 
    Loaded_Module_Map : Loaded_Module_Maps.Map;
 
-   ---------------
-   -- Add_Class --
-   ---------------
-
-   procedure Add_Class
-     (This : in out Parse_Context'Class;
-      Name : String;
-      Bindings : Leander.Syntax.Bindings.Reference)
-   is
-      Rec : constant Class_Record := (Name'Length, Name, Bindings);
-   begin
-      This.Known_Classes.Append (Rec);
-   end Add_Class;
-
    --------------------
    -- At_Constructor --
    --------------------
@@ -105,25 +91,6 @@ package body Leander.Parser is
       return At_Identifier and then not At_Constructor;
    end At_Variable;
 
-   --------------------
-   -- Class_Bindings --
-   --------------------
-
-   function Class_Bindings
-     (This : Parse_Context'Class;
-      Name : String)
-      return Leander.Syntax.Bindings.Reference
-   is
-   begin
-      for Rec of This.Known_Classes loop
-         if Rec.Name = Name then
-            return Rec.Bindings;
-         end if;
-      end loop;
-      raise Constraint_Error with
-        "asked for bindings for unknown class: " & Name;
-   end Class_Bindings;
-
    -----------------------------
    -- Current_Source_Location --
    -----------------------------
@@ -148,24 +115,6 @@ package body Leander.Parser is
    end Get_Identifier;
 
    -----------------
-   -- Known_Class --
-   -----------------
-
-   function Known_Class
-     (This : Parse_Context'Class;
-      Name : String)
-      return Boolean
-   is
-   begin
-      for Rec of This.Known_Classes loop
-         if Rec.Name = Name then
-            return True;
-         end if;
-      end loop;
-      return False;
-   end Known_Class;
-
-   -----------------
    -- Load_Module --
    -----------------
 
@@ -179,23 +128,26 @@ package body Leander.Parser is
    begin
       if Loaded_Module_Map.Contains (Name) then
          return Loaded_Module_Map (Name);
-      else
+      end if;
+
+      --  Load Prelude first so the module's environment can see Prelude's
+      --  classes and constructors while its declarations are parsed.
+      declare
+         Prelude_Env : constant Leander.Environment.Reference :=
+           (if Name = "Prelude"
+            then null
+            else Context.Load_Module
+                   ("./share/leander/modules/Prelude.hs"));
+      begin
          Open (Path);
          return Env : constant Leander.Environment.Reference :=
-           Leander.Parser.Modules.Parse_Module (Context, Name)
+           Leander.Parser.Modules.Parse_Module (Context, Name, Prelude_Env)
          do
             Loaded_Module_Map.Insert (Name, Env);
             Close;
-
-            if Name /= "Prelude" then
-               Env.Import
-                 (Context.Load_Module ("./shared/leander/modules/Prelude.hs"));
-            end if;
-
             Env.Elaborate;
-            Leander.Syntax.Prune;
          end return;
-      end if;
+      end;
    end Load_Module;
 
    ---------------------

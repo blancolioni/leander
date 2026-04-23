@@ -7,6 +7,7 @@ with Leander.Core.Type_Env;
 with Leander.Core.Types;
 with Leander.Data_Types;
 with Leander.Names;
+with Leander.Syntax.Bindings;
 --  with Leander.Types.Bindings;
 
 package Leander.Environment is
@@ -84,6 +85,18 @@ package Leander.Environment is
    procedure Type_Class
      (This  : in out Abstraction;
       Class : Leander.Core.Type_Classes.Reference)
+   is abstract;
+
+   procedure Add_Class_Bindings
+     (This     : in out Abstraction;
+      Name     : String;
+      Bindings : Leander.Syntax.Bindings.Reference)
+   is abstract;
+
+   function Class_Bindings
+     (This : Abstraction;
+      Name : String)
+      return Leander.Syntax.Bindings.Reference
    is abstract;
 
    procedure Type_Instance

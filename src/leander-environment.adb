@@ -23,6 +23,27 @@ package body Leander.Environment is
      new WL.String_Maps (Leander.Core.Type_Classes.Reference,
                          Leander.Core.Type_Classes."=");
 
+   function Syntax_Bindings_Equal
+     (Left, Right : Leander.Syntax.Bindings.Reference)
+      return Boolean;
+
+   package Syntax_Binding_Maps is
+     new WL.String_Maps (Leander.Syntax.Bindings.Reference,
+                         Syntax_Bindings_Equal);
+
+   ---------------------------
+   -- Syntax_Bindings_Equal --
+   ---------------------------
+
+   function Syntax_Bindings_Equal
+     (Left, Right : Leander.Syntax.Bindings.Reference)
+      return Boolean
+   is
+      use type Leander.Syntax.Bindings.Reference;
+   begin
+      return Left = Right;
+   end Syntax_Bindings_Equal;
+
    type Con_Record is
       record
          Scheme : Leander.Core.Schemes.Reference;
@@ -57,16 +78,17 @@ package body Leander.Environment is
 
    type Instance is new Abstraction with
       record
-         Name      : Leander.Names.Leander_Name;
-         Imports   : Import_Lists.List;
-         Tycons    : Tycon_Maps.Map;
-         Cons      : Con_Maps.Map;
-         Bindings  : Leander.Core.Binding_Groups.Reference;
-         Values    : Value_Map_Reference;
-         Context   : Leander.Core.Inference.Inference_Context;
-         Type_Env  : Leander.Core.Type_Env.Reference;
-         Classes   : Type_Class_Maps.Map;
-         Instances : Instance_Maps.Map;
+         Name                  : Leander.Names.Leander_Name;
+         Imports               : Import_Lists.List;
+         Tycons                : Tycon_Maps.Map;
+         Cons                  : Con_Maps.Map;
+         Bindings              : Leander.Core.Binding_Groups.Reference;
+         Values                : Value_Map_Reference;
+         Context               : Leander.Core.Inference.Inference_Context;
+         Type_Env              : Leander.Core.Type_Env.Reference;
+         Classes               : Type_Class_Maps.Map;
+         Class_Syntax_Bindings : Syntax_Binding_Maps.Map;
+         Instances             : Instance_Maps.Map;
       end record;
 
    overriding function Name (This : Instance) return String
@@ -109,6 +131,16 @@ package body Leander.Environment is
    overriding procedure Type_Class
      (This  : in out Instance;
       Class : Leander.Core.Type_Classes.Reference);
+
+   overriding procedure Add_Class_Bindings
+     (This     : in out Instance;
+      Name     : String;
+      Bindings : Leander.Syntax.Bindings.Reference);
+
+   overriding function Class_Bindings
+     (This : Instance;
+      Name : String)
+      return Leander.Syntax.Bindings.Reference;
 
    overriding procedure Type_Instance
      (This          : in out Instance;
@@ -162,6 +194,24 @@ package body Leander.Environment is
    procedure Error
      (Message : String);
 
+   -----------------------
+   -- Add_Class_Bindings --
+   -----------------------
+
+   overriding procedure Add_Class_Bindings
+     (This     : in out Instance;
+      Name     : String;
+      Bindings : Leander.Syntax.Bindings.Reference)
+   is
+   begin
+      Leander.Syntax.Protect (Leander.Syntax.Reference (Bindings));
+      if This.Class_Syntax_Bindings.Contains (Name) then
+         This.Class_Syntax_Bindings.Replace (Name, Bindings);
+      else
+         This.Class_Syntax_Bindings.Insert (Name, Bindings);
+      end if;
+   end Add_Class_Bindings;
+
    --------------
    -- Bindings --
    --------------
@@ -173,6 +223,33 @@ package body Leander.Environment is
    begin
       This.Bindings := Groups;
    end Bindings;
+
+   --------------------
+   -- Class_Bindings --
+   --------------------
+
+   overriding function Class_Bindings
+     (This : Instance;
+      Name : String)
+      return Leander.Syntax.Bindings.Reference
+   is
+      use type Leander.Syntax.Bindings.Reference;
+   begin
+      if This.Class_Syntax_Bindings.Contains (Name) then
+         return This.Class_Syntax_Bindings.Element (Name);
+      end if;
+      for Import of This.Imports loop
+         declare
+            Result : constant Leander.Syntax.Bindings.Reference :=
+                       Import.Class_Bindings (Name);
+         begin
+            if Result /= null then
+               return Result;
+            end if;
+         end;
+      end loop;
+      return null;
+   end Class_Bindings;
 
    ----------------------
    -- Boot_Environment --
@@ -272,29 +349,6 @@ package body Leander.Environment is
       procedure Elaborate_Instance
         (Class : Leander.Core.Type_Classes.Reference;
          Inst  : Instance_Record);
-
-      function Find_Class_In_Imports
-        (Class_Id : Leander.Core.Conid)
-         return Leander.Core.Type_Classes.Reference;
-
-      ---------------------------
-      -- Find_Class_In_Imports --
-      ---------------------------
-
-      function Find_Class_In_Imports
-        (Class_Id : Leander.Core.Conid)
-         return Leander.Core.Type_Classes.Reference
-      is
-      begin
-         for Import of This.Imports loop
-            begin
-               return Import.Get_Class (Class_Id);
-            exception
-               when others => null;
-            end;
-         end loop;
-         return null;
-      end Find_Class_In_Imports;
 
       ------------------------
       -- Elaborate_Instance --
@@ -618,26 +672,6 @@ package body Leander.Environment is
             end loop;
          end if;
       end loop;
-
-      --  Process instances whose class is defined in an imported module.
-      for Class_Name of This.Instances.Get_Keys loop
-         if not This.Classes.Contains
-           (Leander.Names.To_String (Class_Name))
-         then
-            declare
-               use type Leander.Core.Type_Classes.Reference;
-               Class : constant Leander.Core.Type_Classes.Reference :=
-                         Find_Class_In_Imports
-                           (Leander.Core.Conid (Class_Name));
-            begin
-               if Class /= null then
-                  for Inst of This.Instances.Element (Class_Name) loop
-                     Elaborate_Instance (Class, Inst);
-                  end loop;
-               end if;
-            end;
-         end if;
-      end loop;
    end Elaborate;
 
    -----------
@@ -718,6 +752,21 @@ package body Leander.Environment is
          if not This.Cons.Contains (Con_Maps.Key (Position)) then
             This.Cons.Insert (Con_Maps.Key (Position),
                               Con_Maps.Element (Position));
+         end if;
+      end loop;
+      for Position in E.Classes.Iterate loop
+         if not This.Classes.Contains (Type_Class_Maps.Key (Position)) then
+            This.Classes.Insert (Type_Class_Maps.Key (Position),
+                                 Type_Class_Maps.Element (Position));
+         end if;
+      end loop;
+      for Position in E.Class_Syntax_Bindings.Iterate loop
+         if not This.Class_Syntax_Bindings.Contains
+           (Syntax_Binding_Maps.Key (Position))
+         then
+            This.Class_Syntax_Bindings.Insert
+              (Syntax_Binding_Maps.Key (Position),
+               Syntax_Binding_Maps.Element (Position));
          end if;
       end loop;
 

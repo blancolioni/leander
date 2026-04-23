@@ -142,8 +142,8 @@ package body Leander.Parser.Declarations is
             end loop;
 
             Builder.Add_Bindings (Bindings.To_Core);
-            Context.Add_Class (Name, Bindings);
             Context.Environment.Type_Class (Builder.Get_Class);
+            Context.Environment.Add_Class_Bindings (Name, Bindings);
          end;
       end;
    end Parse_Class_Declaration;
@@ -539,7 +539,10 @@ package body Leander.Parser.Declarations is
             return;
          end if;
 
-         if not Context.Known_Class (Tok_Text) then
+         if not Context.Environment.Exists
+           (Leander.Names.To_Leander_Name (Tok_Text),
+            Leander.Environment.Class_Binding)
+         then
             Error ("unknown class: " & Tok_Text);
          end if;
 
@@ -565,8 +568,19 @@ package body Leander.Parser.Declarations is
                   Leander.Parser.Bindings.Parse_Binding (Context, Bindings);
                end loop;
 
-               Bindings.Copy_Missing_Bindings
-                 (Context.Class_Bindings (Class_Name));
+               declare
+                  use type Leander.Syntax.Bindings.Reference;
+                  Class_Bindings : constant
+                    Leander.Syntax.Bindings.Reference :=
+                      Context.Environment.Class_Bindings (Class_Name);
+               begin
+                  if Class_Bindings = null then
+                     Error ("asked for bindings for unknown class: "
+                            & Class_Name);
+                  else
+                     Bindings.Copy_Missing_Bindings (Class_Bindings);
+                  end if;
+               end;
 
                Context.Environment.Type_Instance
                  (Class_Id      => Core.To_Conid (Class_Name),
