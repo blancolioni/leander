@@ -127,7 +127,19 @@ instance Enum Int where
                           then []
                           else n : enumFromThenTo n' (n' + n' - n) m
 
-
+instance Show Int where
+  show x = if x == 0
+           then "0"
+           else if x < 0
+           then '-' : reverse (showUnsignedInt (0 - x))
+           else reverse (showUnsignedInt x)
+                
+showUnsignedInt :: Int -> [Char]
+showUnsignedInt 0 = ""
+showUnsignedInt n = let units = mod n 10
+                        rest  = div n 10
+                    in toEnum (units + 48) : showUnsignedInt rest
+                       
 instance Eq Char where
   (==) = #primCharEq
 
@@ -196,9 +208,14 @@ length (x:xs) = #primIntAdd 1 (length xs)
 (*) = #primIntMul
 (-) = #primIntSub
 
+mod, div :: Int -> Int -> Int
+mod = #primIntMod
+div = #primIntDiv
+
 map :: (a -> b) -> [a] -> [b]
 map f [] = []
 map f (x:xs) = f x : map f xs
+
 
 take :: Int -> [a] -> [a]
 take 0 _ = []
@@ -220,6 +237,11 @@ concat :: [[a]] -> [a]
 concat [] = []
 concat (xs:xss) = xs ++ concat xss
 
+reverse :: [a] -> [a]
+reverse xs = let rev []     acc = acc
+                 rev (x:xs) acc = rev xs (x:acc)
+             in rev xs []
+                
 (++) :: [a] -> [a] -> [a]
 (++) [] ys = ys
 (++) (x:xs) ys = x : (xs ++ ys)
