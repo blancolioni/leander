@@ -11,5 +11,9 @@
 
 # Generated
 /log/
+trace.txt
+
+# Subprojects
 skit/
 gcs/
+
