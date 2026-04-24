@@ -11,12 +11,12 @@ runTest name result = do
 
 tests :: [([Char], Bool)]
 tests = [
-    ("succ 3 == 4", succ 3 == 4),
-    ("map (+1) [1,2,3] == [2,3,4]", sum (map succ [1,2,3]) == 9),
-    ("take 2 [1,2,3,4] == [1,2]", sum (take 2 [1,2,3,4]) == 3),
+    ("(+1) 3 == 4", (+1) 3 == 4),
+    ("map (+1) [1,2,3] == [2,3,4]", map (+1) [1,2,3] == [2,3,4]),
+    ("take 2 [1,2,3,4] == [1,2]", take 2 [1,2,3,4] == [1,2]),
     ("sum [1,2,3] == 6", sum [1,2,3] == 6),
-    ("concat [[1,2],[3,4]] == [1,2,3,4]", sum (concat [[1,2],[3,4]]) == 10),
-    ("[1,2] ++ [3,4] == [1,2,3,4]", sum ([1,2] ++ [3,4]) == 10),
+    ("concat [[1,2],[3,4]] == [1,2,3,4]", concat [[1,2],[3,4]] == [1,2,3,4]),
+    ("[1,2] ++ [3,4] == [1,2,3,4]", [1,2] ++ [3,4] == [1,2,3,4]),
     ("zero 0 == True", zero 0),
     ("zero 5 == False", not (zero 5)),
     ("small 2 == True", small 2),
@@ -28,8 +28,40 @@ tests = [
     ("case 3 of { 1 -> 10; 2 -> 20; _ -> 30 } == 30", (case 3 of { 1 -> 10; 2 -> 20; _ -> 30 }) == 30),
     ("if True then 5 else 10 == 5", (if True then 5 else 10) == 5),
     ("if False then 5 else 10 == 10", (if False then 5 else 10) == 10),
-    ("maxInt == 536870911", #maxInt == 536870911)
-]
+    ("maxInt == 536870911", #maxInt == 536870911),
+    ("True == True", True == True),
+    ("False == False", False == False),
+    ("True /= False", True /= False),
+    ("False /= True", False /= True),
+    ("not True == False", not True == False),
+    ("not False == True", not False == True),
+    ("True && True == True", True && True == True),
+    ("True && False == False", True && False == False),
+    ("False && True == False", (False && True) == False),
+    ("False && False == False", (False && False) == False),
+    ("True || True == True", True || True == True),
+    ("True || False == True", True || False == True),
+    ("False || True == True", False || True == True),
+    ("False || False == False", False || False == False),
+    ("1 == 1", 1 == 1),
+    ("1 /= 2", 1 /= 2),
+    ("1 < 2", 1 < 2),
+    ("2 > 1", 2 > 1),
+    ("1 <= 1", 1 <= 1),
+    ("1 >= 1", 1 >= 1),
+    ("0 < 0 == False", not (0 < 0)),
+    ("0 > 0 == False", not (0 > 0)),
+    ("0 <= 0 == True", 0 <= 0),
+    ("0 >= 0 == True", 0 >= 0),
+    ("[1] == [1]", [1] == [1]),
+    ("[1] /= [2]", [1] /= [2]),
+    ("max 1 2 == 2", max 1 2 == 2),
+    ("min 1 2 == 1", min 1 2 == 1),
+    ("filter (<3) [1,2,3,4] == [1,2]", filter (<3) [1,2,3,4] == [1,2]),
+    ("sum [1 .. 10] == 55", sum [1 .. 10] == 55),
+    ("[2, 4 .. 10]", [2, 4 .. 10] == [2, 4, 6, 8, 10]),
+    ("[1 ..]", sum (take 10 [1 .. ]) == 55)
+    ]
 
 main :: IO ()
 main = mapM_ (uncurry runTest) tests

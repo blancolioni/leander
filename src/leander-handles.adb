@@ -6,7 +6,6 @@ with Leander.Core.Inference;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Type_Classes;
-with Leander.Logging;
 with Leander.Syntax.Expressions;
 
 with Skit.Compiler;
@@ -96,16 +95,9 @@ package body Leander.Handles is
          begin
             Leander.Calculus.Compile
               (Tree, This.Env, This.Skit_Env);
-
             Skit.Compiler.Compile (This.Skit_Env.Machine);
-
-            Leander.Logging.Log
-              ("COMPILED",
-               Skit.Debug.Image
-                 (This.Skit_Env.Machine.Top,
-                  This.Skit_Env.Machine));
-
             This.Skit_Env.Machine.Evaluate;
+
             declare
                Value : constant String :=
                          Skit.Debug.Image

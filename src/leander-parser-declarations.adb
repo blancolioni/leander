@@ -11,8 +11,11 @@ with Leander.Parser.Expressions;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 with Leander.Parser.Types;
+with Leander.Source;
+
 with Leander.Syntax.Bindings;
 with Leander.Syntax.Classes;
+with Leander.Syntax.Deriving;
 with Leander.Syntax.Types;
 
 package body Leander.Parser.Declarations is
@@ -46,7 +49,8 @@ package body Leander.Parser.Declarations is
       return At_Variable or else At_Constructor or else
         Tok <= [Tok_Class, Tok_Data, Tok_Foreign,
                 Tok_Infix, Tok_Infixl, Tok_Infixr,
-                Tok_Instance];
+                Tok_Instance,
+                Tok_Left_Bracket, Tok_Left_Paren];
    end At_Declaration;
 
    -----------------------------
@@ -138,8 +142,8 @@ package body Leander.Parser.Declarations is
             end loop;
 
             Builder.Add_Bindings (Bindings.To_Core);
-            Context.Add_Class (Name);
             Context.Environment.Type_Class (Builder.Get_Class);
+            Context.Environment.Add_Class_Bindings (Name, Bindings);
          end;
       end;
    end Parse_Class_Declaration;
@@ -229,7 +233,12 @@ package body Leander.Parser.Declarations is
    procedure Parse_Data_Declaration
      (Context : Parse_Context'Class)
    is
-      Builder : Leander.Data_Types.Builder.Data_Type_Builder;
+      Builder         : Leander.Data_Types.Builder.Data_Type_Builder;
+      Derived_Max     : constant := 16;
+      Derived_Classes : Leander.Names.Name_Array (1 .. Derived_Max);
+      Derived_Count   : Natural := 0;
+      Derived_Loc     : Leander.Source.Source_Location :=
+                          Leander.Source.No_Location;
    begin
       pragma Assert (Tok = Tok_Data);
       Scan;
@@ -302,9 +311,72 @@ package body Leander.Parser.Declarations is
             end if;
          end loop;
 
+         if Tok = Tok_Deriving then
+            Derived_Loc := Current_Source_Location;
+            Scan;
+
+            declare
+               procedure Record_Class;
+
+               -------------------
+               -- Record_Class --
+               -------------------
+
+               procedure Record_Class is
+               begin
+                  if Derived_Count = Derived_Max then
+                     Error ("too many derived classes");
+                  else
+                     Derived_Count := Derived_Count + 1;
+                     Derived_Classes (Derived_Count) :=
+                       Leander.Names.To_Leander_Name (Tok_Text);
+                  end if;
+                  Scan;
+               end Record_Class;
+            begin
+               if Tok = Tok_Left_Paren then
+                  Scan;
+                  if Tok /= Tok_Right_Paren then
+                     loop
+                        if not At_Constructor_Name then
+                           Error ("expected a class name");
+                           exit;
+                        end if;
+                        Record_Class;
+                        exit when Tok /= Tok_Comma;
+                        Scan;
+                     end loop;
+                  end if;
+                  if Tok = Tok_Right_Paren then
+                     Scan;
+                  else
+                     Error ("missing ')'");
+                  end if;
+               elsif At_Constructor_Name then
+                  Record_Class;
+               else
+                  Error ("expected a class name or '('");
+               end if;
+            end;
+         end if;
+
          Builder.Build;
 
          Context.Environment.Data_Type (Builder.Data_Type);
+
+         for I in 1 .. Derived_Count loop
+            declare
+               Class_Name : constant String :=
+                              Leander.Names.To_String (Derived_Classes (I));
+            begin
+               if Class_Name = "Eq" then
+                  Leander.Syntax.Deriving.Derive_Eq
+                    (Context, Derived_Loc, Builder.Data_Type);
+               else
+                  Error ("cannot derive " & Class_Name);
+               end if;
+            end;
+         end loop;
       end;
 
    end Parse_Data_Declaration;
@@ -441,6 +513,10 @@ package body Leander.Parser.Declarations is
       end if;
    end Parse_Foreign_Import;
 
+   --------------------------------
+   -- Parse_Instance_Declaration --
+   --------------------------------
+
    procedure Parse_Instance_Declaration
      (Context : in out Parse_Context'Class)
    is
@@ -463,7 +539,10 @@ package body Leander.Parser.Declarations is
             return;
          end if;
 
-         if not Context.Known_Class (Tok_Text) then
+         if not Context.Environment.Exists
+           (Leander.Names.To_Leander_Name (Tok_Text),
+            Leander.Environment.Class_Binding)
+         then
             Error ("unknown class: " & Tok_Text);
          end if;
 
@@ -488,6 +567,20 @@ package body Leander.Parser.Declarations is
                while Tok_Indent > Indent loop
                   Leander.Parser.Bindings.Parse_Binding (Context, Bindings);
                end loop;
+
+               declare
+                  use type Leander.Syntax.Bindings.Reference;
+                  Class_Bindings : constant
+                    Leander.Syntax.Bindings.Reference :=
+                      Context.Environment.Class_Bindings (Class_Name);
+               begin
+                  if Class_Bindings = null then
+                     Error ("asked for bindings for unknown class: "
+                            & Class_Name);
+                  else
+                     Bindings.Copy_Missing_Bindings (Class_Bindings);
+                  end if;
+               end;
 
                Context.Environment.Type_Instance
                  (Class_Id      => Core.To_Conid (Class_Name),

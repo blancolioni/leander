@@ -28,18 +28,6 @@ package body Leander.Parser is
 
    Loaded_Module_Map : Loaded_Module_Maps.Map;
 
-   ---------------
-   -- Add_Class --
-   ---------------
-
-   procedure Add_Class
-     (This : in out Parse_Context'Class;
-      Name : String)
-   is
-   begin
-      This.Known_Classes.Append (Name);
-   end Add_Class;
-
    --------------------
    -- At_Constructor --
    --------------------
@@ -127,19 +115,6 @@ package body Leander.Parser is
    end Get_Identifier;
 
    -----------------
-   -- Known_Class --
-   -----------------
-
-   function Known_Class
-     (This : Parse_Context'Class;
-      Name : String)
-      return Boolean
-   is
-   begin
-      return This.Known_Classes.Contains (Name);
-   end Known_Class;
-
-   -----------------
    -- Load_Module --
    -----------------
 
@@ -149,27 +124,30 @@ package body Leander.Parser is
       return Leander.Environment.Reference
    is
       Name : constant String :=
-               Ada.Directories.Base_Name (Path);
+        Ada.Directories.Base_Name (Path);
    begin
       if Loaded_Module_Map.Contains (Name) then
          return Loaded_Module_Map (Name);
-      else
+      end if;
+
+      --  Load Prelude first so the module's environment can see Prelude's
+      --  classes and constructors while its declarations are parsed.
+      declare
+         Prelude_Env : constant Leander.Environment.Reference :=
+           (if Name = "Prelude"
+            then null
+            else Context.Load_Module
+                   ("./share/leander/modules/Prelude.hs"));
+      begin
          Open (Path);
          return Env : constant Leander.Environment.Reference :=
-           Leander.Parser.Modules.Parse_Module (Context, Name)
+           Leander.Parser.Modules.Parse_Module (Context, Name, Prelude_Env)
          do
             Loaded_Module_Map.Insert (Name, Env);
             Close;
-
-            if Name /= "Prelude" then
-               Env.Import
-                 (Context.Load_Module ("./shared/leander/modules/Prelude.hs"));
-            end if;
-
             Env.Elaborate;
-            Leander.Syntax.Prune;
          end return;
-      end if;
+      end;
    end Load_Module;
 
    ---------------------
@@ -208,9 +186,9 @@ package body Leander.Parser is
 
    function Scan_Identifier return String is
       Name : constant String :=
-               (if Tok = Tok_Identifier
-                then Tok_Text
-                else Tok_Text (1));
+        (if Tok = Tok_Identifier
+         then Tok_Text
+         else Tok_Text (1));
    begin
       if Tok = Tok_Identifier then
          Scan;

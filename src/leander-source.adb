@@ -52,7 +52,8 @@ package body Leander.Source is
       Message : String)
    is
    begin
-      Leander.Logging.Log
+      Leander.Logging.
+        Log
         (This.Show_Location, Message);
    end Error;
 

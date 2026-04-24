@@ -20,6 +20,15 @@ package body Leander.Syntax is
       return Reference (Allocator.Allocate (This));
    end Allocate;
 
+   -------------
+   -- Protect --
+   -------------
+
+   procedure Protect (This : not null Reference) is
+   begin
+      Allocator.Protect (Variable_Reference (This));
+   end Protect;
+
    -----------
    -- Prune --
    -----------

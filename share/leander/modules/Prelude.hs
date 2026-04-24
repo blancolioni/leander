@@ -3,6 +3,11 @@ module Prelude where
 foreign import skit "#eq" #primIntEq :: Int -> Int -> Bool
 foreign import skit "#eq" #primCharEq :: Char -> Char -> Bool
 
+foreign import skit "#id" #primIntToChar :: Int -> Char
+foreign import skit "#id" #primCharToInt :: Char -> Int
+
+foreign import skit "#le" #primIntLeq :: Int -> Int -> Bool
+
 foreign import skit "#add" #primIntAdd :: Int -> Int -> Int
 foreign import skit "#mul" #primIntMul :: Int -> Int -> Int
 foreign import skit "#sub" #primIntSub :: Int -> Int -> Int
@@ -25,7 +30,6 @@ infixl 6  +, -
 -- The (:) operator is built-in syntax, and cannot legally be given
 -- a fixity declaration; but its fixity is given by:
 --   infixr 5  :
-
 infix  4  ==, /=, <, <=, >=, >
 infixr 3  &&
 infixr 2  ||
@@ -35,27 +39,65 @@ infixr 0  $, $!, `seq`
 
 class Eq a where
     (==), (/=) :: a -> a -> Bool
-    (/=) x y = not (x == y)
-    (==) x y = not (x /= y)
+    x /= y = not (x == y)
+    x == y = not (x /= y)
 
 class Eq a => Ord a where
     (<), (<=), (>=), (>) :: a -> a -> Bool
+    compare :: a -> a -> Ordering
+    max, min :: a -> a -> a
+         
+    x <= y           =  compare x y /= GT  
+    x <  y           =  compare x y == LT  
+    x >= y           =  compare x y /= LT  
+    x >  y           =  compare x y == GT
 
+    compare x y       =  if x == y then EQ
+                         else if x <= y then LT
+                         else GT
+    max x y           =  if x <= y then y else x
+    min x y           =  if x <= y then x else y
+    
 class Show a where
     show :: a -> [Char]
 
+class  Enum a  where  
+    succ, pred       :: a -> a  
+    toEnum           :: Int -> a  
+    fromEnum         :: a -> Int  
+    enumFrom         :: a -> [a]             -- [n..]  
+    enumFromThen     :: a -> a -> [a]        -- [n,n'..]  
+    enumFromTo       :: a -> a -> [a]        -- [n..m]  
+    enumFromThenTo   :: a -> a -> a -> [a]   -- [n,n'..m]  
+ 
+        -- Minimal complete definition:  
+        --      toEnum, fromEnum  
+        --  
+        -- NOTE: these default methods only make sense for types  
+        --       that map injectively into Int using fromEnum  
+        --       and toEnum.  
+   succ             =  toEnum . (+1) . fromEnum  
+   pred             =  toEnum . (subtract 1) . fromEnum  
+   enumFrom x       =  map toEnum [fromEnum x ..]  
+   enumFromTo x y   =  map toEnum [fromEnum x .. fromEnum y]  
+   enumFromThen x y =  map toEnum [fromEnum x, fromEnum y ..]  
+   enumFromThenTo x y z =  
+                       map toEnum [fromEnum x, fromEnum y .. fromEnum z]
+                        
 class Bounded a where
     minBound :: a
     maxBound :: a
 
+class Functor f where
+    fmap :: (a -> b) -> f a -> f b
+
+class (Functor f) => Applicative f where
+    pure :: a -> f a
+    (<*>) :: f (a -> b) -> f a -> f b
+
 instance Eq Bool where
-    (==) True = \b -> case b of
-                    True  -> True
-                    False -> False
-    (==) False = \b -> case b of
-                    True  -> False
-                    False -> True
-    (/=) x y = not (x == y)
+    True == b = b
+    False == b = not b
 
 instance Show Bool where
     show True  = "True"
@@ -63,16 +105,51 @@ instance Show Bool where
 
 instance Eq Int where
     (==) = #primIntEq
-    (/=) = #primIntEq
 
+instance Ord Int where
+    x <= y = #primIntLeq x y
+
+instance Bounded Int where
+  minBound = #minInt
+  maxBound = #maxInt
+
+instance Enum Int where
+  succ = (+1)
+  pred = \x -> x - 1
+  toEnum = id
+  fromEnum = id
+  enumFrom x = x : enumFrom (x + 1)
+  enumFromThen x n = x : enumFromThen n (x + n)
+  enumFromTo lo hi = if lo > hi
+                     then []
+                     else lo : enumFromTo (lo + 1) hi
+  enumFromThenTo n n' m = if n > m
+                          then []
+                          else n : enumFromThenTo n' (n' + n' - n) m
+
+
+instance Eq Char where
+  (==) = #primCharEq
+
+instance Ord Char where
+  (<=) c c' = fromEnum c <= fromEnum c'
+
+instance Enum Char where
+  toEnum = #primIntToChar
+  fromEnum = #primCharToInt
+  
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
                     [] -> True
                     _  -> False
     (==) (x:xs) = \ys -> case ys of
                     [] -> False
-                    (y:ys') -> (x == y) && (xs == ys')
-    (/=) xs ys = not (xs == ys)
+                    (y:ys') -> x == y && xs == ys'
+
+data Ordering = LT | EQ | GT deriving (Eq)
+
+otherwise :: Bool
+otherwise = True
 
 id :: a -> a
 id x = x
@@ -81,7 +158,7 @@ const :: a -> b -> a
 const x y = x
 
 (.) :: (b -> c) -> (a -> b) -> (a -> c)
-(.) f g = \x -> f (g x)
+f . g = \x -> f (g x)
 
 flip :: (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
@@ -90,21 +167,21 @@ seq :: a -> b -> a
 seq = #primSeq
 
 ($) :: (a -> b) -> a -> b
-($) f x = f x
+f $ x = f x
 
 ($!) :: (a -> b) -> a -> b
-($!) f x = seq x (f x)
+f $! x = seq x (f x)
 
 not :: Bool -> Bool
 not True = False
 not False = True
 
 (&&), (||) :: Bool -> Bool -> Bool
-(&&) True b = b
-(&&) False _ = False
+True && b = b
+False && _ = False
 
-(||) True _ = True
-(||) False b = b
+True || _ = True
+False || b = b
 
 null :: [a] -> Bool
 null [] = True
@@ -119,9 +196,6 @@ length (x:xs) = #primIntAdd 1 (length xs)
 (*) = #primIntMul
 (-) = #primIntSub
 
-succ :: Int -> Int
-succ x = x + 1
-
 map :: (a -> b) -> [a] -> [b]
 map f [] = []
 map f (x:xs) = f x : map f xs
@@ -130,6 +204,10 @@ take :: Int -> [a] -> [a]
 take 0 _ = []
 take _ [] = []
 take n (x:xs) = x : take (n - 1) xs
+
+filter :: (a -> Bool) -> [a] -> [a]
+filter p [] = []
+filter p (x:xs) = if p x then x : filter p xs else filter p xs
 
 sum :: [Int] -> Int
 sum [] = 0
@@ -146,9 +224,6 @@ concat (xs:xss) = xs ++ concat xss
 (++) [] ys = ys
 (++) (x:xs) ys = x : (xs ++ ys)
 
-equals :: Eq a => a -> a -> Bool
-equals x y = x == y
-
 zero :: Int -> Bool
 zero 0 = True
 zero _ = False
@@ -159,6 +234,9 @@ small 1 = True
 small 2 = True
 small 3 = True
 small x = False
+
+subtract :: Int -> Int -> Int
+subtract x y = y - x
 
 -- component projections for pairs:
 -- (NB: not provided for triples, quadruples, etc.)
@@ -187,7 +265,7 @@ foldr f z (x:xs) =  f x (foldr f z xs)
 
 -- Maybe type
 
-data  Maybe a  =  Nothing | Just a
+data  Maybe a  =  Nothing | Just a deriving Eq
 
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe n f Nothing  =  n

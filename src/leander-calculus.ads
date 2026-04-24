@@ -63,6 +63,11 @@ package Leander.Calculus is
 
    procedure Dispose (This : in out Tree);
 
+   function Has_Reference
+     (This : Tree;
+      Name : String)
+      return Boolean;
+
    function To_String (This : Tree) return String;
 
 private

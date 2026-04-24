@@ -1,4 +1,3 @@
-with Leander.Logging;
 with Leander.Names;
 with Leander.Traverseable;
 
@@ -34,8 +33,6 @@ package body Leander.Core.Inference is
       To    : Leander.Core.Types.Reference)
    is
    begin
-      Leander.Logging.Log
-        ("BIND", Item.Show & " :: " & To.Show);
       This.Expr_Types.Insert (Item, Nullable_Type_Reference (To));
    end Bind;
 
@@ -195,9 +192,6 @@ package body Leander.Core.Inference is
                        HQT.Qualified_Type.all.Apply (This.Current_Substitution);
             begin
                HQT.Set_Qualified_Type (QT);
-               Leander.Logging.Log
-                 ("UPDATE",
-                  HQT.Show & " :: " & QT.Show);
             end;
          end if;
       end Update;

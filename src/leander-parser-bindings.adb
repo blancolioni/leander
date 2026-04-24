@@ -11,7 +11,13 @@ with Leander.Syntax.Qualified_Types;
 package body Leander.Parser.Bindings is
 
    function At_Binding return Boolean
-   is (At_Variable);
+   is (At_Variable
+       or else At_Constructor
+       or else Tok <= [Tok_Left_Bracket, Tok_Left_Paren]);
+
+   function Parse_LHS
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Bindings.Binding_LHS;
 
    -------------------
    -- Parse_Binding --
@@ -22,12 +28,7 @@ package body Leander.Parser.Bindings is
       To      : Leander.Syntax.Bindings.Reference)
    is
       Loc  : constant Source.Source_Location := Current_Source_Location;
-      pragma Assert (At_Identifier,
-                     Source.Show (Loc) & ": expected an Identifier");
-
-      Name : constant String := Scan_Identifier;
-      Pats : constant Leander.Syntax.Patterns.Reference_Array :=
-               Expressions.Parse_Patterns (Context);
+      LHS : constant Syntax.Bindings.Binding_LHS := Parse_LHS (Context);
 
       procedure Parse_Type_Bindings
         (Acc : Leander.Core.Varid_Array);
@@ -73,10 +74,10 @@ package body Leander.Parser.Bindings is
 
    begin
       if Tok = Tok_Comma or else Tok = Tok_Colon_Colon then
-         if Pats'Length /= 0 then
+         if Syntax.Bindings.Pats (LHS)'Length /= 0 then
             Error ("expect a single name in type Binding");
          end if;
-         Parse_Type_Bindings ([Core.To_Varid (Name)]);
+         Parse_Type_Bindings ([Core.To_Varid (Syntax.Bindings.Name (LHS))]);
       elsif Tok = Tok_Equal then
          Scan;
          declare
@@ -84,12 +85,46 @@ package body Leander.Parser.Bindings is
                      Leander.Parser.Expressions.Parse_Expression
                        (Context);
          begin
-            To.Add_Binding (Loc, Name, Pats, Expr);
+            To.Add_Binding (Loc, LHS, Expr);
          end;
       else
          Error ("expected '::' or '=' at " & Tok'Image);
          raise Parse_Error;
       end if;
    end Parse_Binding;
+
+   ---------------
+   -- Parse_LHS --
+   ---------------
+
+   function Parse_LHS
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Bindings.Binding_LHS
+   is
+      Pat : constant Syntax.Patterns.Reference :=
+        Parser.Expressions.Parse_Atomic_Pattern (Context);
+   begin
+      if At_Operator then
+         declare
+            use type Leander.Syntax.Patterns.Reference_Array;
+            Name : constant String := Scan_Identifier;
+            Pats : constant Leander.Syntax.Patterns.Reference_Array :=
+              Expressions.Parse_Patterns (Context);
+         begin
+            return Syntax.Bindings.Create_Binding_LHS (Name, Pat & Pats);
+         end;
+      elsif not Pat.Is_Variable then
+         Error ("syntax error");
+         raise Parse_Error;
+      else
+         declare
+            Name : constant String := Pat.Variable_Name;
+            Pats : constant Leander.Syntax.Patterns.Reference_Array :=
+              Expressions.Parse_Patterns (Context);
+         begin
+            return Syntax.Bindings.Create_Binding_LHS (Name, Pats);
+         end;
+      end if;
+   end Parse_LHS;
 
 end Leander.Parser.Bindings;

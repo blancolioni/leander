@@ -85,10 +85,6 @@ package body Leander.Core.Expressions.Inference is
          return Leander.Core.Substitutions.Instance'Class
       is
       begin
-         Leander.Logging.Log
-           ("INFER",
-            E.Show);
-
          case E.Tag is
             when EVar =>
                declare
@@ -109,6 +105,9 @@ package body Leander.Core.Expressions.Inference is
                         Q : constant Core.Qualified_Types.Reference :=
                               Sigma.Fresh_Instance;
                      begin
+                        Leander.Logging.Log
+                          ("INFER",
+                           E.Show & " :: " & Q.Show);
                         Bind (E, Q);
                         return Substitutions.Empty;
                      end;

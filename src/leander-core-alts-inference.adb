@@ -1,7 +1,6 @@
 with Leander.Core.Expressions.Inference;
 with Leander.Core.Patterns.Inference;
 with Leander.Core.Types;
-with Leander.Logging;
 
 package body Leander.Core.Alts.Inference is
 
@@ -38,11 +37,7 @@ package body Leander.Core.Alts.Inference is
             T     : Leander.Core.Types.Reference :=
                       Context.Binding (Alt.Expr);
          begin
-            Leander.Logging.Log
-              ("ALT", Alt.Show & " :: " & T.Show);
             T := Core.Types.Fn (Pat_T, T);
-            Leander.Logging.Log
-              ("ALT", Alt.Show & " :: " & T.Show);
             Context.Bind (Alt, T);
          end;
       else

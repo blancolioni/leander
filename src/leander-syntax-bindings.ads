@@ -14,12 +14,37 @@ package Leander.Syntax.Bindings is
    type Instance is new Parent with private;
    type Reference is access all Instance'Class;
 
+   type Binding_LHS (<>) is private;
+
+   function Create_Binding_LHS
+     (Name      : String;
+      Pats      : Patterns.Reference_Array)
+      return Binding_LHS;
+
+   function Name (Rec : Binding_LHS) return String;
+   function Pats (Rec : Binding_LHS) return Patterns.Reference_Array;
+
+   function Contains
+     (This : Instance;
+      Name : String)
+      return Boolean;
+
    procedure Add_Binding
      (This      : in out Instance;
       Loc       : Source.Source_Location;
       Name      : String;
       Pats      : Patterns.Reference_Array;
       Expr      : not null access constant Expressions.Instance'Class);
+
+   procedure Add_Binding
+     (This      : in out Instance;
+      Loc       : Source.Source_Location;
+      Bound     : Binding_LHS;
+      Expr      : not null access constant Expressions.Instance'Class);
+
+   procedure Copy_Missing_Bindings
+     (This      : in out Instance;
+      From      : not null access constant Instance'Class);
 
    procedure Add_Type
      (This      : in out Instance;
@@ -37,6 +62,22 @@ package Leander.Syntax.Bindings is
       return Reference;
 
 private
+
+   type Binding_LHS (Name_Length, Pat_Count : Natural) is
+      record
+         Name : String (1 .. Name_Length);
+         Pats : Patterns.Reference_Array (1 .. Pat_Count);
+      end record;
+
+   function Create_Binding_LHS
+     (Name      : String;
+      Pats      : Patterns.Reference_Array)
+      return Binding_LHS
+   is (Name'Length, Pats'Length, Name, Pats);
+
+   function Name (Rec : Binding_LHS) return String is (Rec.Name);
+   function Pats (Rec : Binding_LHS) return Patterns.Reference_Array
+   is (Rec.Pats);
 
    type Expression_Reference is
      access constant Leander.Syntax.Expressions.Instance'Class;

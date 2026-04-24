@@ -60,7 +60,7 @@ package body Leander.Tests.Evaluation is
       Test ("2 - 3 * 4", "Int", "-10", Context, Env, Prelude);
       Test ("seq (#trace 42) 4", "Int", "4", Context, Env, Prelude);
       Test ("sum [1,2,3,4]", "Int", "10", Context, Env, Prelude);
-      Test ("sum (map succ [1,2,3])", "Int", "9", Context, Env, Prelude);
+      Test ("sum (map (+1) [1,2,3])", "Int", "9", Context, Env, Prelude);
       Test ("length (take 10 [1,2,3])", "Int", "3", Context, Env, Prelude);
       Test ("length (take 2 [1,2,3])", "Int", "2", Context, Env, Prelude);
     --  Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);
@@ -69,6 +69,7 @@ package body Leander.Tests.Evaluation is
       Test ("maybe 0 sum (Just [1,2,3])", "Int", "6", Context, Env, Prelude);
       Test ("fst (123,456)", "Int", "123", Context, Env, Prelude);
       Test ("snd (123,456)", "Int", "456", Context, Env, Prelude);
+      Test ("(*2) 3", "Int", "6", Context, Env, Prelude);
       Test ("length ""Hello""", "Int", "5", Context, Env, Prelude);
       Test ("runIO (putChar 'A')", "()", "I", Context, Env, Prelude);
       Test ("runIO (putStr ""Hello, world!\n"")", "()", "I", Context, Env, Prelude);

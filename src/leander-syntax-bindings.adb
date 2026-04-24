@@ -32,6 +32,11 @@ package body Leander.Syntax.Bindings is
       Predicates    : Core.Predicates.Predicate_Array)
       return Leander.Core.Binding_Groups.Reference;
 
+   function Contains
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Boolean;
+
    type Graph_Vertex is
       record
          Index : Positive;
@@ -53,6 +58,20 @@ package body Leander.Syntax.Bindings is
      (This : Instance)
       return Reference
    is (Reference (Syntax.Allocate (This)));
+
+   -----------------
+   -- Add_Binding --
+   -----------------
+
+   procedure Add_Binding
+     (This      : in out Instance;
+      Loc       : Source.Source_Location;
+      Bound     : Binding_LHS;
+      Expr      : not null access constant Expressions.Instance'Class)
+   is
+   begin
+      Add_Binding (This, Loc, Bound.Name, Bound.Pats, Expr);
+   end Add_Binding;
 
    -----------------
    -- Add_Binding --
@@ -120,6 +139,54 @@ package body Leander.Syntax.Bindings is
         (Type_Binding'
            (Leander.Names.To_Leander_Name (Name), Bound_Type));
    end Add_Type;
+
+   --------------
+   -- Contains --
+   --------------
+
+   function Contains
+     (This : Instance;
+      Name : String)
+      return Boolean
+   is
+   begin
+      return This.Contains (Leander.Names.To_Leander_Name (Name));
+   end Contains;
+
+   --------------
+   -- Contains --
+   --------------
+
+   function Contains
+     (This : Instance;
+      Name : Leander.Names.Leander_Name)
+      return Boolean
+   is
+      use type Leander.Names.Leander_Name;
+   begin
+      for Item of This.Bindings loop
+         if Item.Name = Name then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Contains;
+
+   ---------------------------
+   -- Copy_Missing_Bindings --
+   ---------------------------
+
+   procedure Copy_Missing_Bindings
+     (This      : in out Instance;
+      From      : not null access constant Instance'Class)
+   is
+   begin
+      for Binding of From.Bindings loop
+         if not This.Contains (Binding.Name) then
+            This.Bindings.Append (Binding);
+         end if;
+      end loop;
+   end Copy_Missing_Bindings;
 
    -----------
    -- Empty --
@@ -245,8 +312,12 @@ package body Leander.Syntax.Bindings is
          for Other of Implicit loop
             if Binding.Index /= Other.Index
               and then not Graph.Connected (Other.Index, Binding.Index)
-              and then (References (Binding, Other.Name)
-                        or else References (Other, Binding.Name))
+              and then
+                (if Context = Instance_Context
+                 then References (Binding, Other.Name)
+                      and then References (Other, Binding.Name)
+                 else References (Binding, Other.Name)
+                      or else References (Other, Binding.Name))
             then
                Graph.Connect (Other.Index, Binding.Index);
                Graph.Connect (Binding.Index, Other.Index);

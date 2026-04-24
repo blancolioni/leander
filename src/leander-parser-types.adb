@@ -3,6 +3,8 @@ with Ada.Containers.Doubly_Linked_Lists;
 with Leander.Core.Kinds;
 with Leander.Core.Types;
 with Leander.Core.Tyvars;
+with Leander.Environment;
+with Leander.Names;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
@@ -139,7 +141,9 @@ package body Leander.Parser.Types is
       function At_Predicate return Boolean
       is (Tok = Tok_Identifier
           and then At_Constructor
-          and then Context.Known_Class (Tok_Text)
+          and then Context.Environment.Exists
+                     (Leander.Names.To_Leander_Name (Tok_Text),
+                      Leander.Environment.Class_Binding)
           and then Next_Tok = Tok_Identifier);
 
       function Parse_Predicate
@@ -170,7 +174,9 @@ package body Leander.Parser.Types is
          Expect (Tok_Double_Right_Arrow, [Tok_Left_Paren, Tok_Identifier]);
       elsif Tok = Tok_Left_Paren
         and then Next_Tok = Tok_Identifier
-        and then Context.Known_Class (Tok_Text (1))
+        and then Context.Environment.Exists
+                   (Leander.Names.To_Leander_Name (Tok_Text (1)),
+                    Leander.Environment.Class_Binding)
       then
          Scan;
          while At_Predicate loop

@@ -11,16 +11,21 @@ package body Leander.Parser.Modules is
    ------------------
 
    function Parse_Module
-     (Context : in out Parse_Context'Class;
-      Name    : String)
+     (Context     : in out Parse_Context'Class;
+      Name        : String;
+      Prelude_Env : Leander.Environment.Reference := null)
       return Leander.Environment.Reference
    is
+      use type Leander.Environment.Reference;
       Env : constant Leander.Environment.Reference :=
               (if Name = "Prelude"
                then Leander.Environment.Prelude.Create
                else Leander.Environment.New_Environment (Name));
    begin
       Context.New_Environment (Env);
+      if Prelude_Env /= null then
+         Env.Import (Prelude_Env);
+      end if;
       Expect (Tok_Module, [Tok_Identifier]);
 
       if Tok = Tok_Identifier then

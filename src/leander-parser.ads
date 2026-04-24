@@ -1,5 +1,3 @@
-with Ada.Containers.Doubly_Linked_Lists;
-with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 with Leander.Environment;
 with Leander.Syntax.Expressions;
 
@@ -19,15 +17,6 @@ package Leander.Parser is
      (This : Parse_Context'Class)
       return Leander.Environment.Reference;
 
-   function Known_Class
-     (This : Parse_Context'Class;
-      Name : String)
-      return Boolean;
-
-   procedure Add_Class
-     (This : in out Parse_Context'Class;
-      Name : String);
-
    function Parse_Expression
      (Context : Parse_Context'Class;
       Expr    : String)
@@ -42,6 +31,8 @@ package Leander.Parser is
 
 private
 
+   function Is_Alphanumeric_Identifier (Name : String) return Boolean;
+   function Is_Symbolic_Identifier (Name : String) return Boolean;
    function Is_Constructor (Name : String) return Boolean;
 
    function At_Constructor return Boolean;
@@ -71,18 +62,9 @@ private
    function Scan_Identifier return String
      with Pre => At_Identifier;
 
-   package String_Lists is
-     new Ada.Containers.Indefinite_Doubly_Linked_Lists (String);
-
-   package Environment_Lists is
-     new Ada.Containers.Doubly_Linked_Lists
-       (Leander.Environment.Reference,
-        Leander.Environment."=");
-
    type Parse_Context is tagged
       record
-         Env           : Leander.Environment.Reference;
-         Known_Classes : String_Lists.List;
+         Env : Leander.Environment.Reference;
       end record;
 
    function Environment

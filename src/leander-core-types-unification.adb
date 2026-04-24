@@ -1,5 +1,3 @@
-with Leander.Logging;
-
 package body Leander.Core.Types.Unification is
 
    function Bind_Variable
@@ -46,9 +44,6 @@ package body Leander.Core.Types.Unification is
       return Leander.Core.Substitutions.Instance
    is
    begin
-      Leander.Logging.Log
-        ("MGU",
-         Left.Show & " <> " & Right.Show);
       if Left.Tag = TVar then
          return Bind_Variable (Left.Tyvar.Name, Right);
       elsif Right.Tag = TVar then

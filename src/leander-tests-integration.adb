@@ -184,7 +184,7 @@ package body Leander.Tests.Integration is
       Module_Path : String)
    is
       H      : Leander.Handles.Handle :=
-                 Leander.Handles.Create (32 * 1024);
+                 Leander.Handles.Create (64 * 1024);
    begin
       H.Load_Module (Module_Path);
       declare
@@ -321,6 +321,74 @@ package body Leander.Tests.Integration is
          "same 3 3", "K",
          Context, Env);
 
+      --  Derived Eq instances
+
+      Test_Module
+        ("module: deriving Eq nullary match",
+         Test_Root & "test_16_deriving_eq.hs",
+         "colorEq", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq nullary mismatch",
+         Test_Root & "test_16_deriving_eq.hs",
+         "colorNe", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq nullary /=",
+         Test_Root & "test_16_deriving_eq.hs",
+         "colorBl", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq args match",
+         Test_Root & "test_16_deriving_eq.hs",
+         "pairEq", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq args mismatch last",
+         Test_Root & "test_16_deriving_eq.hs",
+         "pairNe1", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq args mismatch first",
+         Test_Root & "test_16_deriving_eq.hs",
+         "pairNe2", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq mixed nullary",
+         Test_Root & "test_16_deriving_eq.hs",
+         "mixLL", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq mixed arity",
+         Test_Root & "test_16_deriving_eq.hs",
+         "mixRR", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq cross constructor",
+         Test_Root & "test_16_deriving_eq.hs",
+         "mixLR", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq same constructor diff args",
+         Test_Root & "test_16_deriving_eq.hs",
+         "mixRdif", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq recursive match",
+         Test_Root & "test_16_deriving_eq.hs",
+         "recEq", "K",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq recursive mismatch",
+         Test_Root & "test_16_deriving_eq.hs",
+         "recNe", "K I",
+         Context, Env);
+      Test_Module
+        ("module: deriving Eq recursive minimal",
+         Test_Root & "test_16_deriving_eq.hs",
+         "recNil", "K",
+         Context, Env);
+
       --  Phase 3: IO module tests
       --  Minimal IO
 
@@ -418,6 +486,14 @@ package body Leander.Tests.Integration is
       Test_Main
         ("--main: x = 1 == 1",
          Test_Root & "test_13_minimal_crash.hs");
+
+      Test_Main
+        ("--main: operator declaration",
+         Test_Root & "Test14_Operators.hs");
+
+      Test_Main
+        ("--main: operator declaration",
+         Test_Root & "Test15_ConcatOp.hs");
 
       Leander.Syntax.Prune;
 

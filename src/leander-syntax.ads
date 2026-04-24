@@ -1,4 +1,3 @@
-with Leander.Environment;
 with Leander.Source;
 
 package Leander.Syntax is
@@ -10,14 +9,11 @@ package Leander.Syntax is
      (This : Instance'Class)
       return Leander.Source.Source_Location;
 
-   procedure Decorate
-     (This : in out Instance;
-      Env  : Leander.Environment.Reference)
-   is null;
-
    type Literal_Class is
      (Integer_Literal, Character_Literal,
       Float_Literal, String_Literal);
+
+   procedure Protect (This : not null Reference);
 
    procedure Prune;
 
