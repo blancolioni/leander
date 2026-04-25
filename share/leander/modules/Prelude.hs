@@ -150,6 +150,10 @@ instance Enum Char where
   toEnum = #primIntToChar
   fromEnum = #primCharToInt
   
+instance Functor [] where
+    fmap f [] = []
+    fmap f (x:xs) = f x : fmap f xs
+    
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
                     [] -> True
@@ -296,6 +300,10 @@ maybe n f (Just x) =  f x
 showMaybe :: Show a => Maybe a -> [Char]
 showMaybe Nothing  = "Nothing"
 showMaybe (Just x) = "Just " ++ show x
+
+instance Functor Maybe where
+    fmap f Nothing = Nothing
+    fmap f (Just x) = Just (f x)
 
 data IO a = IO (Int -> (a,Int))
 

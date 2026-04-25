@@ -62,7 +62,13 @@ tests = [
     ("[2, 4 .. 10]", [2, 4 .. 10] == [2, 4, 6, 8, 10]),
     ("[1 ..]", sum (take 10 [1 .. ]) == 55),
     ("reverse [] == []", null (reverse [])),
-    ("reverse [1,2,3] == [3,2,1]", reverse [1,2,3] == [3,2,1])
+    ("reverse [1,2,3] == [3,2,1]", reverse [1,2,3] == [3,2,1]),
+    ("fmap (+1) (Just 3) == Just 4", fmap (+1) (Just 3) == Just 4),
+    ("fmap (+1) Nothing == Nothing", fmap (+1) Nothing == Nothing),
+    ("Just 3 == Just 3", Just 3 == Just 3),
+    ("Just 3 /= Just 4", Just 3 /= Just 4),
+    ("Nothing /= Just 3", Nothing /= Just 3),
+    ("fmap (+1) [1,2,3] == [2,3,4]", fmap (+1) [1,2,3] == [2,3,4])
     ]
 
 main :: IO ()

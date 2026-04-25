@@ -184,7 +184,7 @@ package body Leander.Tests.Integration is
       Module_Path : String)
    is
       H      : Leander.Handles.Handle :=
-                 Leander.Handles.Create (64 * 1024);
+                 Leander.Handles.Create (256 * 1024);
    begin
       H.Load_Module (Module_Path);
       declare
@@ -214,7 +214,7 @@ package body Leander.Tests.Integration is
                   Context.Load_Module
                     ("./share/leander/modules/Prelude.hs");
       Machine : constant Skit.Machine.Reference :=
-                  Skit.Impl.Machine (64 * 1024);
+                  Skit.Impl.Machine (256 * 1024);
       Env     : constant Skit.Environment.Reference :=
                   Skit.Environment.Create
                     (Machine);

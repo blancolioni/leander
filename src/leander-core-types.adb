@@ -315,7 +315,6 @@ package body Leander.Core.Types is
       Success     : out Boolean)
       return Leander.Core.Substitutions.Instance
    is
-      use type Leander.Core.Kinds.Kind;
    begin
       if Left.Tag /= TVar and then Left.Tag /= Right.Tag then
          Success := False;
@@ -324,11 +323,9 @@ package body Leander.Core.Types is
 
       case Left.Tag is
          when TVar =>
-            Success := Left.Tyvar.Kind = Right.Get_Kind;
-            if Success then
-               return Leander.Core.Substitutions.Singleton
-                 (Leander.Names.Leander_Name (Left.Tyvar.Name), Right);
-            end if;
+            Success := True;
+            return Leander.Core.Substitutions.Singleton
+              (Leander.Names.Leander_Name (Left.Tyvar.Name), Right);
          when TCon =>
             Success := Left.Tycon.Id = Right.Tycon.Id;
             return Leander.Core.Substitutions.Empty;

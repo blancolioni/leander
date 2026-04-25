@@ -36,7 +36,7 @@ package body Leander.Tests.Evaluation is
                   Context.Load_Module
                     ("./share/leander/modules/Prelude.hs");
       Machine : constant Skit.Machine.Reference :=
-                  Skit.Impl.Machine (64 * 1024);
+                  Skit.Impl.Machine (256 * 1024);
       Env     : constant Skit.Environment.Reference :=
                   Skit.Environment.Create
                     (Machine);
