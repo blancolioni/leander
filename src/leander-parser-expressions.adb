@@ -986,9 +986,15 @@ package body Leander.Parser.Expressions is
                   Error ("missing '}'");
                end if;
             else
-               while Bindings.At_Binding loop
-                  Bindings.Parse_Binding (Context, Bs);
-               end loop;
+               declare
+                  Col : constant Natural := Tok_Column;
+               begin
+                  while Tok_Column >= Col
+                    and then Bindings.At_Binding
+                  loop
+                     Bindings.Parse_Binding (Context, Bs);
+                  end loop;
+               end;
             end if;
 
             return Statement_Record'

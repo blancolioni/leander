@@ -47,7 +47,13 @@ package body Leander.Repl is
                         end if;
                      end;
                   else
-                     Put_Line (Handle.Evaluate (Line));
+                     declare
+                        Result : constant String :=
+                                   Handle.Evaluate
+                                     ("runIO (print (" & Line & "))");
+                     begin
+                        pragma Unreferenced (Result);
+                     end;
                   end if;
                end;
             end if;

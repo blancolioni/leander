@@ -4,10 +4,10 @@ showResult :: Bool -> [Char]
 showResult True = "PASS"
 showResult False = "FAIL"
 
-runTest :: [Char] -> Bool -> IO ()
+runTest :: [Char] -> Bool -> IO Int
 runTest name result = do
     putStrLn $ showResult result ++ "    " ++ name
-    return ()
+    return (if result then 1 else 0)
 
 tests :: [([Char], Bool)]
 tests = [
@@ -66,4 +66,7 @@ tests = [
     ]
 
 main :: IO ()
-main = mapM_ (uncurry runTest) tests
+main = do results <- mapM (uncurry runTest) tests
+          putStrLn $ "Tests: " ++ show (length results)
+                          ++ "; passed " ++ show (sum results)
+                          ++ "; failed " ++ show (length results - sum results)
