@@ -16,6 +16,7 @@ foreign import skit "#mod" #primIntMod :: Int -> Int -> Int
 
 foreign import skit "#seq" #primSeq :: a -> b -> b
 foreign import skit "#trace" #trace :: a -> a
+foreign import skit "#error" #error :: [Char] -> a
 
 foreign import skit "#putChar" #primPutChar :: Int -> Int -> Char -> Int
 
@@ -95,6 +96,12 @@ class (Functor f) => Applicative f where
     pure :: a -> f a
     (<*>) :: f (a -> b) -> f a -> f b
 
+class Monad m where
+    return :: a -> m a
+    (>>=) :: m a -> (a -> m b) -> m b
+    (>>) :: m a -> m b -> m b
+    m >> k = m >>= \_ -> k
+
 instance Eq Bool where
     True == b = b
     False == b = not b
@@ -153,7 +160,11 @@ instance Enum Char where
 instance Functor [] where
     fmap f [] = []
     fmap f (x:xs) = f x : fmap f xs
-    
+
+instance Applicative [] where
+    pure x = [x]
+    fs <*> xs = concat (map (\f -> map f xs) fs)
+
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
                     [] -> True
@@ -284,6 +295,16 @@ curry f x y      =  f (x, y)
 uncurry          :: (a -> b -> c) -> ((a, b) -> c)
 uncurry f p      =  f (fst p) (snd p)
 
+error :: [Char] -> a
+error = #error
+
+head :: [a] -> a
+head (x:_) = x
+head [] = error "Prelude.head: empty list"
+
+tail :: [a] -> [a]
+tail (_:xs) = xs
+tail [] = error "Prelude.tail: empty list"
 
 foldr            :: (a -> b -> b) -> b -> [a] -> b
 foldr f z []     =  z
@@ -305,7 +326,33 @@ instance Functor Maybe where
     fmap f Nothing = Nothing
     fmap f (Just x) = Just (f x)
 
+instance Applicative Maybe where
+    pure = Just
+    Nothing <*> _ = Nothing
+    (Just f) <*> mx = fmap f mx
+
+instance Monad Maybe where
+    return = Just
+    Nothing >>= _ = Nothing
+    (Just x) >>= f = f x
+    
 data IO a = IO (Int -> (a,Int))
+
+instance Functor IO where
+    fmap f a = do
+        x <- a
+        return (f x)
+
+instance Applicative IO where
+    pure = return
+    mf <*> mx = do
+        f <- mf
+        x <- mx
+        return (f x)
+
+instance Monad IO where
+    return = returnIO
+    (>>=) = bindIO
 
 returnIO x = IO (\ w -> (x, w))
 bindIO (IO f) g = IO (\w -> let xw' = f w
@@ -313,21 +360,21 @@ bindIO (IO f) g = IO (\w -> let xw' = f w
                                 geth (IO h) = h
                             in geth ioh (snd xw'))
 
-return = returnIO
-(>>=) = bindIO
-(>>) a b = a >>= \x -> b
+--  return = returnIO
+--  (>>=) = bindIO
+--  (>>) a b = a >>= \x -> b
 
-sequence :: [IO a] -> IO [a]
+sequence :: (Monad m) => [m a] -> m [a]
 sequence = let mcons p q = p >>= \x -> q >>= \y -> return (x:y)
            in foldr mcons (return [])
 
-sequence_ :: [IO a] -> IO ()
+sequence_ :: (Monad m) => [m a] -> m ()
 sequence_ = foldr (>>) (return ())
 
-mapM :: (a -> IO b) -> [a] -> IO [b]
+mapM :: (Monad m) => (a -> m b) -> [a] -> m [b]
 mapM f as  = sequence (map f as)
 
-mapM_ :: (a -> IO b) -> [a] -> IO ()
+mapM_ :: (Monad m) => (a -> m b) -> [a] -> m ()
 mapM_ f as = sequence_ (map f as)
 
 putChar :: Char -> IO ()

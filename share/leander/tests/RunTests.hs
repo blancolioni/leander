@@ -10,69 +10,71 @@ runTest name result = do
     return (if result then 1 else 0)
 
 tests :: [([Char], Bool)]
-tests = [
-    ("(+1) 3 == 4", (+1) 3 == 4),
-    ("map (+1) [1,2,3] == [2,3,4]", map (+1) [1,2,3] == [2,3,4]),
-    ("take 2 [1,2,3,4] == [1,2]", take 2 [1,2,3,4] == [1,2]),
-    ("sum [1,2,3] == 6", sum [1,2,3] == 6),
-    ("concat [[1,2],[3,4]] == [1,2,3,4]", concat [[1,2],[3,4]] == [1,2,3,4]),
-    ("[1,2] ++ [3,4] == [1,2,3,4]", [1,2] ++ [3,4] == [1,2,3,4]),
-    ("zero 0 == True", zero 0),
-    ("zero 5 == False", not (zero 5)),
-    ("small 2 == True", small 2),
-    ("small 5 == False", not (small 5)),
-    ("fst (3,4) == 3", fst (3,4) == 3),
-    ("snd (3,4) == 4", snd (3,4) == 4),
-    ("foldr (+) 0 [1,2,3] == 6", foldr (+) 0 [1,2,3] == 6),
-    ("let x = 3 in x + 1 == 4", (let x = 3 in x + 1) == 4),
-    ("case 3 of { 1 -> 10; 2 -> 20; _ -> 30 } == 30", (case 3 of { 1 -> 10; 2 -> 20; _ -> 30 }) == 30),
-    ("if True then 5 else 10 == 5", (if True then 5 else 10) == 5),
-    ("if False then 5 else 10 == 10", (if False then 5 else 10) == 10),
-    ("maxInt == 536870911", #maxInt == 536870911),
-    ("True == True", True == True),
-    ("False == False", False == False),
-    ("True /= False", True /= False),
-    ("False /= True", False /= True),
-    ("not True == False", not True == False),
-    ("not False == True", not False == True),
-    ("True && True == True", True && True == True),
-    ("True && False == False", True && False == False),
-    ("False && True == False", (False && True) == False),
-    ("False && False == False", (False && False) == False),
-    ("True || True == True", True || True == True),
-    ("True || False == True", True || False == True),
-    ("False || True == True", False || True == True),
-    ("False || False == False", False || False == False),
-    ("1 == 1", 1 == 1),
-    ("1 /= 2", 1 /= 2),
-    ("1 < 2", 1 < 2),
-    ("2 > 1", 2 > 1),
-    ("1 <= 1", 1 <= 1),
-    ("1 >= 1", 1 >= 1),
-    ("0 < 0 == False", not (0 < 0)),
-    ("0 > 0 == False", not (0 > 0)),
-    ("0 <= 0 == True", 0 <= 0),
-    ("0 >= 0 == True", 0 >= 0),
-    ("[1] == [1]", [1] == [1]),
-    ("[1] /= [2]", [1] /= [2]),
-    ("max 1 2 == 2", max 1 2 == 2),
-    ("min 1 2 == 1", min 1 2 == 1),
-    ("filter (<3) [1,2,3,4] == [1,2]", filter (<3) [1,2,3,4] == [1,2]),
-    ("sum [1 .. 10] == 55", sum [1 .. 10] == 55),
-    ("[2, 4 .. 10]", [2, 4 .. 10] == [2, 4, 6, 8, 10]),
-    ("[1 ..]", sum (take 10 [1 .. ]) == 55),
-    ("reverse [] == []", null (reverse [])),
-    ("reverse [1,2,3] == [3,2,1]", reverse [1,2,3] == [3,2,1]),
-    ("fmap (+1) (Just 3) == Just 4", fmap (+1) (Just 3) == Just 4),
-    ("fmap (+1) Nothing == Nothing", fmap (+1) Nothing == Nothing),
-    ("Just 3 == Just 3", Just 3 == Just 3),
-    ("Just 3 /= Just 4", Just 3 /= Just 4),
-    ("Nothing /= Just 3", Nothing /= Just 3),
-    ("fmap (+1) [1,2,3] == [2,3,4]", fmap (+1) [1,2,3] == [2,3,4])
+tests = 
+    [  ("(+1) 3 == 4", (+1) 3 == 4)
+    , ("map (+1) [1,2,3] == [2,3,4]", map (+1) [1,2,3] == [2,3,4])
+    , ("take 2 [1,2,3,4] == [1,2]", take 2 [1,2,3,4] == [1,2])
+    , ("sum [1,2,3] == 6", sum [1,2,3] == 6)
+    , ("concat [[1,2],[3,4]] == [1,2,3,4]", concat [[1,2],[3,4]] == [1,2,3,4])
+    , ("[1,2] ++ [3,4] == [1,2,3,4]", [1,2] ++ [3,4] == [1,2,3,4])
+    , ("zero 0 == True", zero 0)
+    , ("zero 5 == False", not (zero 5))
+    , ("small 2 == True", small 2)
+    , ("small 5 == False", not (small 5))
+    , ("fst (3,4) == 3", fst (3,4) == 3)
+    , ("snd (3,4) == 4", snd (3,4) == 4)
+    , ("foldr (+) 0 [1,2,3] == 6", foldr (+) 0 [1,2,3] == 6)
+    , ("let x = 3 in x + 1 == 4", (let x = 3 in x + 1) == 4)
+    , ("case 3 of { 1 -> 10; 2 -> 20; _ -> 30 } == 30", (case 3 of { 1 -> 10; 2 -> 20; _ -> 30 }) == 30)
+    , ("if True then 5 else 10 == 5", (if True then 5 else 10) == 5)
+    , ("if False then 5 else 10 == 10", (if False then 5 else 10) == 10)
+    , ("maxInt == 536870911", #maxInt == 536870911)
+    , ("True == True", True == True)
+    , ("False == False", False == False)
+    , ("True /= False", True /= False)
+    , ("False /= True", False /= True)
+    , ("not True == False", not True == False)
+    , ("not False == True", not False == True)
+    , ("True && True == True", True && True == True)
+    , ("True && False == False", True && False == False)
+    , ("False && True == False", (False && True) == False)
+    , ("False && False == False", (False && False) == False)
+    , ("True || True == True", True || True == True)
+    , ("True || False == True", True || False == True)
+    , ("False || True == True", False || True == True)
+    , ("False || False == False", False || False == False)
+    , ("1 == 1", 1 == 1)
+    , ("1 /= 2", 1 /= 2)
+    , ("1 < 2", 1 < 2)
+    , ("2 > 1", 2 > 1)
+    , ("1 <= 1", 1 <= 1)
+    , ("1 >= 1", 1 >= 1)
+    , ("0 < 0 == False", not (0 < 0))
+    , ("0 > 0 == False", not (0 > 0))
+    , ("0 <= 0 == True", 0 <= 0)
+    , ("0 >= 0 == True", 0 >= 0)
+    , ("[1] == [1]", [1] == [1])
+    , ("[1] /= [2]", [1] /= [2])
+    , ("max 1 2 == 2", max 1 2 == 2)
+    , ("min 1 2 == 1", min 1 2 == 1)
+    , ("filter (<3) [1,2,3,4] == [1,2]", filter (<3) [1,2,3,4] == [1,2])
+    , ("sum [1 .. 10] == 55", sum [1 .. 10] == 55)
+    , ("[2, 4 .. 10]", [2, 4 .. 10] == [2, 4, 6, 8, 10])
+    , ("[1 ..]", sum (take 10 [1 .. ]) == 55)
+    , ("reverse [] == []", null (reverse []))
+    , ("reverse [1,2,3] == [3,2,1]", reverse [1,2,3] == [3,2,1])
+    , ("fmap (+1) (Just 3) == Just 4", fmap (+1) (Just 3) == Just 4)
+    , ("fmap (+1) Nothing == Nothing", fmap (+1) Nothing == Nothing)
+    , ("Just 3 == Just 3", Just 3 == Just 3)
+    , ("Just 3 /= Just 4", Just 3 /= Just 4)
+    , ("Nothing /= Just 3", Nothing /= Just 3)
+    , ("fmap (+1) [1,2,3] == [2,3,4]", fmap (+1) [1,2,3] == [2,3,4])
+    , ("pure 3 == [3]", pure 3 == [3])
+    , ("[(+1), (*2)] <*> [1,2] == [2,3,2,4]", [(+1), (*2)] <*> [1,2] == [2,3,2,4])
     ]
 
 main :: IO ()
-main = do results <- mapM (uncurry runTest) tests
-          putStrLn $ "Tests: " ++ show (length results)
-                          ++ "; passed " ++ show (sum results)
-                          ++ "; failed " ++ show (length results - sum results)
+main = mapM_ (uncurry runTest) tests
+        --   putStrLn $ "Tests: " ++ show (length results)
+        --                   ++ "; passed " ++ show (sum results)
+        --                   ++ "; failed " ++ show (length results - sum results)

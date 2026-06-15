@@ -12,6 +12,7 @@ with Leander.Environment.Prelude;
 with Leander.Logging;
 with Leander.Names.Maps;
 with WL.String_Maps;
+with WL.String_Sets;
 
 package body Leander.Environment is
 
@@ -804,6 +805,7 @@ package body Leander.Environment is
                declare
                   Tree : Leander.Calculus.Tree :=
                             Binding.To_Calculus (This.Context, This'Access);
+                  Seen : WL.String_Sets.Set;
                begin
                   for P of This.Context.Current_Predicates loop
                      if P.Get_Type.all.Get_Tyvars'Length > 0
@@ -812,9 +814,12 @@ package body Leander.Environment is
                            Dict : constant String :=
                              "<" & P.Show & ">";
                         begin
-                           Tree :=
-                             Leander.Calculus.Lambda
-                               (Dict, Tree);
+                           if not Seen.Contains (Dict) then
+                              Seen.Include (Dict);
+                              Tree :=
+                                Leander.Calculus.Lambda
+                                  (Dict, Tree);
+                           end if;
                         end;
                      end if;
                   end loop;
