@@ -364,9 +364,11 @@ bindIO (IO f) g = IO (\w -> let xw' = f w
 --  (>>=) = bindIO
 --  (>>) a b = a >>= \x -> b
 
+mcons :: (Monad m) => m a -> m [a] -> m [a]
+mcons p q = p >>= \x -> q >>= \y -> return (x:y)
+
 sequence :: (Monad m) => [m a] -> m [a]
-sequence = let mcons p q = p >>= \x -> q >>= \y -> return (x:y)
-           in foldr mcons (return [])
+sequence = foldr mcons (return [])
 
 sequence_ :: (Monad m) => [m a] -> m ()
 sequence_ = foldr (>>) (return ())
