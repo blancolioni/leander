@@ -22,7 +22,7 @@ begin
 
    if Command_Line.Evaluate /= "" then
       declare
-         H : Leander.Handles.Handle :=
+         H : Leander.Handles.Instance :=
                Leander.Handles.Create (Core_Size);
          Result : constant String :=
                     H.Evaluate (Command_Line.Evaluate);
@@ -36,7 +36,7 @@ begin
       Leander.Tests.Run_Tests;
    elsif Command_Line.Main /= "" then
       declare
-         H      : Leander.Handles.Handle :=
+         H      : Leander.Handles.Instance :=
                     Leander.Handles.Create (Core_Size);
       begin
          H.Load_Module (Command_Line.Main);

@@ -1,3 +1,4 @@
+with Ada.Exceptions;
 with Ada.Text_IO;
 with Leander.Calculus;
 
@@ -20,7 +21,7 @@ package body Leander.Handles is
    -- Close --
    -----------
 
-   procedure Close (This : in out Handle) is
+   procedure Close (This : in out Instance) is
    begin
       null;
    end Close;
@@ -31,7 +32,7 @@ package body Leander.Handles is
 
    function Create
      (Size : Natural)
-      return Handle
+      return Instance
    is
       Machine  : constant Skit.Machine.Reference :=
                    Skit.Impl.Machine (Size);
@@ -42,10 +43,11 @@ package body Leander.Handles is
                    new Leander.Parser.Parse_Context;
       Env      : constant Leander.Environment.Reference :=
                    Context.Load_Module
-                     ("./share/leander/modules/Prelude.hs");
+                    ("/home/fraser/git/leander"
+                     &  "/share/leander/modules/Prelude.hs");
    begin
       Skit.Library.Load_Primitives (Skit_Env);
-      return Handle'
+      return Instance'
         (Skit_Env, Env, Context);
    end Create;
 
@@ -54,7 +56,7 @@ package body Leander.Handles is
    -------------------------
 
    function Current_Environment
-     (This : Handle)
+     (This : Instance)
       return String
    is
    begin
@@ -66,7 +68,7 @@ package body Leander.Handles is
    --------------
 
    function Evaluate
-     (This       : in out Handle;
+     (This       : in out Instance;
       Expression : String)
       return String
    is
@@ -80,7 +82,27 @@ package body Leander.Handles is
                  Initial_Context (This.Env.Type_Env);
    begin
       Leander.Syntax.Prune;
-      Infer (Result, Core);
+      begin
+         Infer (Result, Core);
+      exception
+         when E : others =>
+            Ada.Text_IO.Put_Line
+              (Ada.Text_IO.Standard_Error,
+               "Unhandled: " & Ada.Exceptions.Exception_Message (E));
+            Ada.Text_IO.Put_Line
+              (Ada.Text_IO.Standard_Error,
+               Ada.Exceptions.Exception_Information (E));
+            if not Result.OK then
+               Ada.Text_IO.Put_Line
+                 (Ada.Text_IO.Standard_Error,
+                  "possibly triggered by the following");
+               Ada.Text_IO.Put_Line
+                 (Ada.Text_IO.Standard_Error,
+                  Result.Error_Message);
+            end if;
+            return "";
+      end;
+
       if not Result.OK then
          Ada.Text_IO.Put_Line
            (Ada.Text_IO.Standard_Error, Result.Error_Message);
@@ -114,7 +136,7 @@ package body Leander.Handles is
    ----------------
 
    function Infer_Type
-     (This       : in out Handle;
+     (This       : in out Instance;
       Expression : String)
       return String
    is
@@ -151,7 +173,7 @@ package body Leander.Handles is
    -----------------
 
    procedure Load_Module
-     (This : in out Handle;
+     (This : in out Instance;
       Path : String)
    is
    begin
@@ -163,7 +185,7 @@ package body Leander.Handles is
    ------------
 
    procedure Report
-     (This : in out Handle)
+     (This : in out Instance)
    is
    begin
       This.Skit_Env.Machine.Report;
@@ -174,7 +196,7 @@ package body Leander.Handles is
    -----------
 
    procedure Trace
-     (This    : in out Handle;
+     (This    : in out Instance;
       Enabled : Boolean)
    is
    begin
