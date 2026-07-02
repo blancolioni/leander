@@ -28,6 +28,11 @@ package body Leander.Repl is
                then
                   Put_Line
                     (Handle.Infer_Type (Line (Line'First + 6 .. Line'Last)));
+               elsif Line'Length > 9
+                 and then Line (Line'First .. Line'First + 8) = ":compile "
+               then
+                  Put_Line
+                    (Handle.Compile (Line (Line'First + 9 .. Line'Last)));
                elsif Line = ":trace" then
                   Handle.Trace (True);
                else

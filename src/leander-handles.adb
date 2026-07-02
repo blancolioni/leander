@@ -25,6 +25,43 @@ package body Leander.Handles is
       null;
    end Close;
 
+   function Compile
+     (This       : in out Handle;
+      Expression : String)
+      return String
+   is
+      use Leander.Core.Inference;
+      use Leander.Core.Expressions.Inference;
+      Syntax : constant Leander.Syntax.Expressions.Reference :=
+                 This.Context.Parse_Expression (Expression);
+      Core   : constant Leander.Core.Expressions.Reference :=
+                 Syntax.To_Core;
+      Result : Inference_Context :=
+                 Initial_Context (This.Env.Type_Env);
+   begin
+      Leander.Syntax.Prune;
+      Infer (Result, Core);
+      if not Result.OK then
+         Ada.Text_IO.Put_Line
+           (Ada.Text_IO.Standard_Error, Result.Error_Message);
+         return "";
+      else
+
+         Result.Update_Type (Core);
+
+         declare
+            Tree : constant Leander.Calculus.Tree :=
+                     Core.To_Calculus (Result, This.Env);
+         begin
+            Leander.Calculus.Compile
+              (Tree, This.Env, This.Skit_Env);
+            Skit.Compiler.Compile (This.Skit_Env.Machine);
+            return Skit.Debug.Image
+                     (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
+         end;
+      end if;
+   end Compile;
+
    ------------
    -- Create --
    ------------
