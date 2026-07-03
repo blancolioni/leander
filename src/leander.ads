@@ -114,11 +114,6 @@ private
          User_Data : User_Data_Reference;
       end record;
 
-   function User_Data
-     (This : Handle)
-      return access User_Data_Interface'Class
-   is (This.User_Data);
-
    type Foreign_Type_Class is
      (Unit_Type, Boolean_Type, Integer_Type, String_Type);
 

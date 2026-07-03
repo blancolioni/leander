@@ -59,6 +59,11 @@ package body Leander is
       return String
    is (This.H.Infer_Type (Expression));
 
+   function User_Data
+     (This : Handle)
+      return access User_Data_Interface'Class
+   is (This.User_Data);
+
    ----------
    -- Bind --
    ----------
@@ -137,7 +142,7 @@ package body Leander is
    is
    begin
       for I in 1 .. This.Argument_Count loop
-         This.Handle.H.Set_Slot
+         This.Handle.H.Send_Value
            (Slot_Index (I), This.Arg_Types (I),
             Slots.Get_Slot (Skit.Slots.Slot_Index (I)));
       end loop;
@@ -145,9 +150,8 @@ package body Leander is
       for I in 1 .. This.Result_Count loop
          Slots.Set_Slot
            (Skit.Slots.Slot_Index (I),
-            This.Handle.H.Get_Slot
-              (Slot_Index (I),
-               This.Res_Types (I)));
+            This.Handle.H.Receive_Value
+              (Slot_Index (I)));
       end loop;
    end Evaluate;
 

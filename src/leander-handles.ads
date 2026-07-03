@@ -1,3 +1,4 @@
+private with Ada.Strings.Unbounded;
 private with Leander.Environment;
 with Leander.Parser;
 private with Skit.Environment;
@@ -38,20 +39,19 @@ package Leander.Handles is
 
    procedure Close (This : in out Instance);
 
-   procedure Set_Slot
-     (This   : Instance;
+   procedure Send_Value
+     (This   : in out Instance;
       Index  : Slot_Index;
       F_Type : Foreign_Type;
       Value  : Skit.Object);
 
-   function Get_Slot
+   function Receive_Value
      (This   : Instance;
-      Index  : Slot_Index;
-      F_Type : Foreign_Type)
+      Index  : Slot_Index)
       return Skit.Object;
 
    procedure Set_Slot
-     (This  : Instance;
+     (This  : in out Instance;
       Slot  : Slot_Index;
       Value : Boolean);
 
@@ -61,7 +61,7 @@ package Leander.Handles is
       return Boolean;
 
    procedure Set_Slot
-     (This  : Instance;
+     (This  : in out Instance;
       Slot  : Slot_Index;
       Value : String);
 
@@ -71,7 +71,7 @@ package Leander.Handles is
       return String;
 
    procedure Set_Slot
-     (This  : Instance;
+     (This  : in out Instance;
       Slot  : Slot_Index;
       Value : Integer);
 
@@ -89,11 +89,28 @@ private
 
    type Context_Reference is access all Leander.Parser.Parse_Context;
 
+   type Foreign_Value (Class : Foreign_Type_Class := Unit_Type) is
+      record
+         case Class is
+            when Unit_Type =>
+               null;
+            when Boolean_Type =>
+               Boolean_Value : Boolean;
+            when Integer_Type =>
+               Integer_Value : Integer;
+            when String_Type =>
+               String_Value  : Ada.Strings.Unbounded.Unbounded_String;
+         end case;
+      end record;
+
+   type Foreign_Slots is array (Slot_Index) of Foreign_Value;
+
    type Instance is tagged
       record
          Skit_Env : Skit.Environment.Reference;
          Env      : Leander.Environment.Reference;
          Context  : Context_Reference;
+         Slots    : Foreign_Slots;
       end record;
 
 end Leander.Handles;

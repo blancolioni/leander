@@ -136,13 +136,6 @@ private
       return Leander.Core.Types.Reference
    is (Types.Reference (This.Expr_Types.Element (Typeable)));
 
-   function Binding
-     (This : Inference_Context;
-      Item : not null access constant Leander.Core.Typeable.Abstraction'Class)
-      return Core.Types.Reference
-   is (Leander.Core.Types.Reference
-       (This.Expr_Types.Element (Item)));
-
    function Type_Env
      (This : Inference_Context)
       return Core.Type_Env.Reference
