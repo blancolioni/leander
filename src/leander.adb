@@ -1,7 +1,7 @@
 with Ada.Unchecked_Deallocation;
 with Leander.Handles;
 with Skit.Primitives;
-with Skit.Slots;
+with Skit.Stacks;
 
 package body Leander is
 
@@ -22,7 +22,7 @@ package body Leander is
 
    overriding procedure Evaluate
      (This  : Binding_Instance;
-      Slots : in out Skit.Slots.Abstraction'Class);
+      Stack   : in out Skit.Stacks.Abstraction'Class);
 
    function Current_Environment
      (This : Handle)
@@ -138,19 +138,18 @@ package body Leander is
 
    overriding procedure Evaluate
      (This  : Binding_Instance;
-      Slots : in out Skit.Slots.Abstraction'Class)
+      Stack   : in out Skit.Stacks.Abstraction'Class)
    is
    begin
       for I in 1 .. This.Argument_Count loop
          This.Handle.H.Send_Value
            (Slot_Index (I), This.Arg_Types (I),
-            Slots.Get_Slot (Skit.Slots.Slot_Index (I)));
+            Stack.Pop);
       end loop;
       This.Eval (This.Handle);
       for I in 1 .. This.Result_Count loop
-         Slots.Set_Slot
-           (Skit.Slots.Slot_Index (I),
-            This.Handle.H.Receive_Value
+         Stack.Push
+           (This.Handle.H.Receive_Value
               (Slot_Index (I)));
       end loop;
    end Evaluate;
