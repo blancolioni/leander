@@ -42,8 +42,12 @@ package body Leander.Handles is
       null;
    end Close;
 
+   -------------
+   -- Compile --
+   -------------
+
    function Compile
-     (This       : in out Handle;
+     (This       : in out Instance;
       Expression : String)
       return String
    is
@@ -96,8 +100,7 @@ package body Leander.Handles is
                    new Leander.Parser.Parse_Context;
       Env      : constant Leander.Environment.Reference :=
                    Context.Load_Module
-                    ("/home/fraser/git/leander"
-                     &  "/share/leander/modules/Prelude.hs");
+                    ("./share/leander/modules/Prelude.hs");
    begin
       Skit.Library.Load_Primitives (Skit_Env);
       return Instance'

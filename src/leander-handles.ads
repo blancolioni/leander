@@ -22,7 +22,7 @@ package Leander.Handles is
       return String;
 
    function Compile
-     (This       : in out Handle;
+     (This       : in out Instance;
       Expression : String)
       return String;
 
