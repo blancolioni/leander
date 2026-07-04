@@ -1,3 +1,5 @@
+with Ada.Text_IO;
+
 with Leander.Names;
 with Leander.Traverseable;
 
@@ -20,6 +22,9 @@ package body Leander.Core.Inference is
            Leander.Names.To_Leander_Name
              (To_String (This.Error_Message) & Character'Val (10)
               & Context);
+         Ada.Text_IO.Put_Line
+           (Ada.Text_IO.Standard_Error,
+            Context);
       end if;
    end Add_Error_Context;
 
@@ -35,6 +40,25 @@ package body Leander.Core.Inference is
    begin
       This.Expr_Types.Insert (Item, Nullable_Type_Reference (To));
    end Bind;
+
+   -------------
+   -- Binding --
+   -------------
+
+   function Binding
+     (This : Inference_Context;
+      Item : not null access constant Leander.Core.Typeable.Abstraction'Class)
+      return Core.Types.Reference
+   is
+     begin
+      if This.Expr_Types.Contains (Item) then
+         return Leander.Core.Types.Reference
+           (This.Expr_Types.Element (Item));
+      else
+         raise Constraint_Error
+           with "no binding for expression: " & Item.Show;
+      end if;
+   end Binding;
 
    ----------------------
    -- Clear_Predicates --
@@ -89,6 +113,9 @@ package body Leander.Core.Inference is
    begin
       This.Success := False;
       This.Error_Message := Leander.Names.To_Leander_Name (Message);
+      Ada.Text_IO.Put_Line
+        (Ada.Text_IO.Standard_Error,
+         Message);
    end Error;
 
    ----------------------

@@ -10,7 +10,7 @@ package body Leander.Repl is
 
    procedure Start (Core_Size : Natural) is
       use Ada.Text_IO;
-      Handle : Leander.Handles.Handle :=
+      Handle : Leander.Handles.Instance :=
                  Leander.Handles.Create (Core_Size);
    begin
       while True loop
