@@ -873,6 +873,26 @@ package body Leander.Parser.Expressions is
                        (Leander.Source.Show (Stmt.Location)
                         & ": binding cannot be the last expression");
                      return Stmt.Value;
+                  elsif Stmt.Pattern.Is_Variable then
+                     --  x <- e ; rest  ==>  e >>= \x -> rest
+                     --
+                     --  A lambda keeps the continuation monomorphic at the
+                     --  point of use.  The equivalent named binding (below)
+                     --  is generalised as its own binding group, which turns
+                     --  a class constraint arising in the continuation into a
+                     --  dictionary parameter that the >>= call site never
+                     --  supplies -- e.g. `x <- act; print (show x)` then
+                     --  reduces to garbage.
+                     return Application
+                       (Stmt.Location,
+                        Application
+                          (Stmt.Location,
+                           Variable (Stmt.Location, ">>="),
+                           Stmt.Value),
+                        Syntax.Expressions.Lambda
+                          (Stmt.Location,
+                           Stmt.Pattern,
+                           To_Expression (Next_Pos)));
                   else
                      declare
                         Rest : constant Syntax.Expressions.Reference :=

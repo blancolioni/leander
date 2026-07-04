@@ -21,6 +21,11 @@ package Leander.Handles is
       Expression : String)
       return String;
 
+   function Compile
+     (This       : in out Handle;
+      Expression : String)
+      return String;
+
    function Infer_Type
      (This       : in out Instance;
       Expression : String)
