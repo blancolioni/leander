@@ -81,10 +81,50 @@ package body Leander.Parser.Bindings is
       elsif Tok = Tok_Equal then
          Scan;
          declare
-            Expr : constant Leander.Syntax.Expressions.Reference :=
+            Expr : Leander.Syntax.Expressions.Reference :=
                      Leander.Parser.Expressions.Parse_Expression
                        (Context);
          begin
+            if Tok = Tok_Where then
+               declare
+                  Loc : constant Source.Source_Location := Current_Source_Location;
+                  Bs  : constant Leander.Syntax.Bindings.Reference :=
+                    Leander.Syntax.Bindings.Empty;
+               begin
+                  Scan;
+                  if Tok = Tok_Left_Brace then
+                     Scan;
+                     loop
+                        Bindings.Parse_Binding (Context, Bs);
+                        if Tok = Tok_Semi then
+                           Scan;
+                        else
+                           exit;
+                        end if;
+                     end loop;
+                     if Tok = Tok_Right_Brace then
+                        Scan;
+                     else
+                        Error ("missing '}'");
+                     end if;
+                  else
+                     declare
+                        Indent : constant Positive := Tok_Indent;
+                     begin
+                        while Tok_Indent >= Indent loop
+                           if Bindings.At_Binding then
+                              Bindings.Parse_Binding (Context, Bs);
+                           else
+                              Error ("expected a binding");
+                              exit;
+                           end if;
+                        end loop;
+                     end;
+                  end if;
+
+                  Expr := Syntax.Expressions.Let (Loc, Bs, Expr);
+               end;
+            end if;
             To.Add_Binding (Loc, LHS, Expr);
          end;
       else
