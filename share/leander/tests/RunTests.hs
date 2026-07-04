@@ -66,7 +66,14 @@ tests =
     , ("fmap (+1) [1,2,3] == [2,3,4]", fmap (+1) [1,2,3] == [2,3,4])
     , ("pure 3 == [3]", pure 3 == [3])
     , ("([(+1), (*2)] <*> ([1,2]) == [2,3,2,4]", ([(+1), (*2)] <*> [1,2]) == [2,3,2,4])
+    , ("x where x = 3", test_where_1 == 3)
+    , ("x + 1 where x = 3", test_where_2 == 4)
     ]
+
+test_where_1 :: Int
+test_where_1 = x where x = 3
+test_where_2 :: Int
+test_where_2 = x + 1 where x = 3
 
 main :: IO ()
 -- main = mapM_ (uncurry runTest) tests
