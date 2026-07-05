@@ -25,6 +25,12 @@ package body Leander.Syntax.Expressions is
       return Reference
    is (Literals.Integer_Literal (Location, Image));
 
+   function Float_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference
+   is (Literals.Float_Literal (Location, Image));
+
    function Character_Literal
      (Location : Leander.Source.Source_Location;
       Index    : Natural)

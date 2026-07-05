@@ -33,6 +33,11 @@ package Leander.Syntax.Expressions is
       Image    : String)
       return Reference;
 
+   function Float_Literal
+     (Location : Leander.Source.Source_Location;
+      Image    : String)
+      return Reference;
+
    function Character_Literal
      (Location : Leander.Source.Source_Location;
       Index    : Natural)
