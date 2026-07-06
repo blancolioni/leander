@@ -3,10 +3,11 @@ private with Leander.Environment;
 with Leander.Parser;
 private with Skit.Environment;
 with Skit.Primitives;
+with Skit.Terms;
 
 package Leander.Handles is
 
-   type Instance is tagged private;
+   type Instance is new Skit.Terms.Resolver_Interface with private;
 
    function Create
      (Size : Natural)
@@ -110,12 +111,17 @@ private
 
    type Foreign_Slots is array (Slot_Index) of Foreign_Value;
 
-   type Instance is tagged
+   type Instance is new Skit.Terms.Resolver_Interface with
       record
          Skit_Env : Skit.Environment.Reference;
          Env      : Leander.Environment.Reference;
          Context  : Context_Reference;
          Slots    : Foreign_Slots;
       end record;
+
+   overriding function Resolve
+     (This : Instance;
+      Name : String)
+      return Skit.Object;
 
 end Leander.Handles;

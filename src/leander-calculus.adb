@@ -1,7 +1,4 @@
-with Ada.Containers;
-with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Unchecked_Deallocation;
-with Leander.Names.Maps;
 
 package body Leander.Calculus is
 
@@ -42,124 +39,23 @@ package body Leander.Calculus is
    -- Compile --
    -------------
 
-   procedure Compile
-     (This     : Tree;
-      Env      : not null access Calculus_Environment'Class;
-      Skit_Env : Skit.Environment.Reference)
+   function Compile
+     (This     : Tree)
+      return Skit.Terms.Term
    is
-      package Variable_Index_Maps is
-        new Leander.Names.Maps (Skit.Variable_Index, Skit."=");
-
-      type Lambda_Binding_Record is
-         record
-            Name : Leander.Names.Leander_Name;
-            Obj  : Skit.Object;
-         end record;
-
-      package Lambda_Binding_Lists is
-        new Ada.Containers.Doubly_Linked_Lists (Lambda_Binding_Record);
-
-      Index_Map : Variable_Index_Maps.Map;
-      Next_Index : Skit.Variable_Index :=
-                     Skit.Variable_Index'First;
-      Lambda_Bindings : Lambda_Binding_Lists.List;
-
-      function To_Object
-        (Name : Leander.Names.Leander_Name)
-         return Skit.Object;
-
-      procedure Go
-        (This : Tree);
-
-      --------
-      -- Go --
-      --------
-
-      procedure Go
-        (This : Tree)
-      is
-         use type Leander.Names.Leander_Name;
-         use type Skit.Object;
-      begin
-         case This.Class is
-            when Number =>
-               Skit_Env.Machine.Push (Skit.To_Object (This.Value));
-            when Reference =>
-               for Binding of reverse Lambda_Bindings loop
-                  if Binding.Name = This.Ref then
-                     Skit_Env.Machine.Push (Binding.Obj);
-                     return;
-                  end if;
-               end loop;
-
-               declare
-                  Binding : constant Skit.Object :=
-                              Skit_Env.Lookup
-                                (Leander.Names.To_String (This.Ref));
-               begin
-                  if Binding = Skit.Undefined then
-                     if not Env.Contains (This.Ref) then
-                        raise Program_Error with
-                          "undefined: "
-                          & Leander.Names.To_String (This.Ref);
-                     end if;
-
-                     declare
-                        T : constant Tree := Env.Lookup (This.Ref);
-                     begin
-                        Compile (T, Env, Skit_Env);
-                        Skit_Env.Bind (Leander.Names.To_String (This.Ref),
-                                       Skit_Env.Machine.Top);
-                     end;
-                  else
-                     Skit_Env.Machine.Push (Binding);
-                  end if;
-               end;
-
-            when Apply =>
-               Go (This.L);
-               Go (This.R);
-               Skit_Env.Machine.Apply;
-            when Lambda =>
-               Skit_Env.Machine.Push (Skit.Lambda);
-               declare
-                  X : constant Skit.Object := To_Object (This.X);
-               begin
-                  Skit_Env.Machine.Push (X);
-                  Lambda_Bindings.Append
-                    (Lambda_Binding_Record'
-                       (This.X, X));
-                  Go (This.E);
-                  Lambda_Bindings.Delete_Last;
-               end;
-               Skit_Env.Machine.Apply;
-               Skit_Env.Machine.Apply;
-         end case;
-      end Go;
-
-      ---------------
-      -- To_Object --
-      ---------------
-
-      function To_Object
-        (Name : Leander.Names.Leander_Name)
-         return Skit.Object
-      is
-         use type Skit.Variable_Index;
-         Index : Skit.Variable_Index;
-      begin
-         if not Index_Map.Contains (Name) then
-            Index_Map.Insert (Name, Next_Index);
-            Index := Next_Index;
-            Next_Index := @ + 1;
-         else
-            Index := Index_Map.Element (Name);
-         end if;
-         return Skit.To_Variable_Object (Index);
-      end To_Object;
-
    begin
-      Go (This);
+      case This.Class is
+         when Number =>
+            return Skit.Terms.Const (This.Value);
+         when Reference =>
+            return Skit.Terms.Symbol (Leander.Names.To_String (This.Ref));
+         when Apply =>
+            return Skit.Terms.Apply
+              (Compile (This.L), Compile (This.R));
+         when Lambda =>
+            return Skit.Terms.Lambda
+              (Leander.Names.To_String (This.X), Compile (This.E));
+      end case;
    end Compile;
 
    -------------

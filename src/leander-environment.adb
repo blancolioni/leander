@@ -175,20 +175,20 @@ package body Leander.Environment is
       Foreign_Name : String;
       Signature    : Leander.Core.Types.Reference);
 
-   overriding function Lookup
-     (This : in out Instance;
-      Name : Leander.Names.Leander_Name)
-      return Leander.Calculus.Tree;
-
-   overriding function Contains
-     (This : Instance;
-      Name : Leander.Names.Leander_Name)
-      return Boolean;
-
    overriding function Type_Env
      (This : Instance)
       return Leander.Core.Type_Env.Reference
    is (This.Type_Env);
+
+   overriding function Variable_Binding_Exists
+     (This : Instance;
+      Name : String)
+      return Boolean;
+
+   overriding function Get_Bound_Calculus
+     (This : in out Instance;
+      Name : String)
+      return Leander.Calculus.Tree;
 
    Local_Boot_Env : Reference := null;
 
@@ -290,21 +290,24 @@ package body Leander.Environment is
       return This.Cons.Element (Leander.Names.To_String (Name)).Defn;
    end Constructor;
 
-   --------------
-   -- Contains --
-   --------------
+   -----------------------------
+   -- Variable_Binding_Exists --
+   -----------------------------
 
-   overriding function Contains
+   overriding function Variable_Binding_Exists
      (This : Instance;
-      Name : Leander.Names.Leander_Name)
+      Name : String)
       return Boolean
    is
       use type Leander.Core.Bindings.Reference;
+      L : constant Leander.Names.Leander_Name :=
+            Leander.Names.To_Leander_Name (Name);
    begin
-      return This.Values.Contains (Name)
-        or else This.Bindings.Lookup (Name) /= null
-        or else (for some Import of This.Imports => Import.Contains (Name));
-   end Contains;
+      return This.Values.Contains (L)
+        or else This.Bindings.Lookup (L) /= null
+        or else (for some Import of This.Imports =>
+                   Import.Variable_Binding_Exists (Name));
+   end Variable_Binding_Exists;
 
    ---------------
    -- Data_Type --
@@ -778,28 +781,30 @@ package body Leander.Environment is
    -- Lookup --
    ------------
 
-   overriding function Lookup
+   overriding function Get_Bound_Calculus
      (This : in out Instance;
-      Name : Leander.Names.Leander_Name)
+      Name : String)
       return Leander.Calculus.Tree
    is
+      L : constant Leander.Names.Leander_Name :=
+            Leander.Names.To_Leander_Name (Name);
    begin
-      if This.Values.Contains (Name) then
-         return This.Values.Element (Name);
+      if This.Values.Contains (L) then
+         return This.Values.Element (L);
       else
          declare
             use type Leander.Core.Bindings.Reference;
             Binding : constant Leander.Core.Bindings.Reference :=
-                        This.Bindings.Lookup (Name);
+                        This.Bindings.Lookup (L);
          begin
             if Binding = null then
                for Import of This.Imports loop
-                  if Import.Contains (Name) then
-                     return Import.Lookup (Name);
+                  if Import.Variable_Binding_Exists (Name) then
+                     return Import.Get_Bound_Calculus (Name);
                   end if;
                end loop;
                raise Constraint_Error with
-                 "undefined: " & Leander.Names.To_String (Name);
+                 "undefined: " & Name;
             else
                This.Context.Clear_Predicates;
                declare
@@ -823,13 +828,13 @@ package body Leander.Environment is
                         end;
                      end if;
                   end loop;
-                  This.Values.Insert (Name, Tree);
+                  This.Values.Insert (L, Tree);
                   return Tree;
                end;
             end if;
          end;
       end if;
-   end Lookup;
+   end Get_Bound_Calculus;
 
    ---------------------
    -- New_Environment --
