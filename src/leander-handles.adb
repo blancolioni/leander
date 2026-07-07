@@ -6,6 +6,7 @@ with Leander.Core.Inference;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Type_Classes;
+with Leander.Resources;
 with Leander.Syntax.Expressions;
 
 with Skit.Compiler;
@@ -111,9 +112,11 @@ package body Leander.Handles is
                      (Machine);
       Context  : constant Context_Reference :=
                    new Leander.Parser.Parse_Context;
-      Env      : constant Leander.Environment.Reference :=
-                   Context.Load_Module
-                     ("./share/leander/modules/Prelude.hs");
+      Prelude_Path : constant String :=
+                       Leander.Resources.Resource_Path
+                       & "/modules/Prelude.hs";
+      Env          : constant Leander.Environment.Reference :=
+                   Context.Load_Module (Prelude_Path);
    begin
       Skit.Library.Load_Primitives (Skit_Env);
       return Instance'

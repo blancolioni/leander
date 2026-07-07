@@ -7,6 +7,8 @@ with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Expressions;
 with Leander.Parser.Modules;
 
+with Leander.Resources;
+
 with WL.String_Maps;
 
 package body Leander.Parser is
@@ -133,11 +135,13 @@ package body Leander.Parser is
       --  Load Prelude first so the module's environment can see Prelude's
       --  classes and constructors while its declarations are parsed.
       declare
+         Prelude_Path : constant String :=
+                          Leander.Resources.Resource_Path
+                          & "/modules/Prelude.hs";
          Prelude_Env : constant Leander.Environment.Reference :=
            (if Name = "Prelude"
             then null
-            else Context.Load_Module
-                   ("./share/leander/modules/Prelude.hs"));
+            else Context.Load_Module (Prelude_Path));
       begin
          Open (Path);
          return Env : constant Leander.Environment.Reference :=
