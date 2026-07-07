@@ -1,4 +1,3 @@
-with Ada.Exceptions;
 with Ada.Text_IO;
 with Leander.Calculus;
 
@@ -7,6 +6,7 @@ with Leander.Core.Inference;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Type_Classes;
+with Leander.Resources;
 with Leander.Syntax.Expressions;
 
 with Skit.Compiler;
@@ -59,6 +59,7 @@ package body Leander.Handles is
                  Syntax.To_Core;
       Result : Inference_Context :=
                  Initial_Context (This.Env.Type_Env);
+
    begin
       Leander.Syntax.Prune;
       Infer (Result, Core);
@@ -71,14 +72,27 @@ package body Leander.Handles is
          Result.Update_Type (Core);
 
          declare
-            Tree : constant Leander.Calculus.Tree :=
-                     Core.To_Calculus (Result, This.Env);
+            Tree          : constant Leander.Calculus.Tree :=
+                              Core.To_Calculus (Result, This.Env);
          begin
-            Leander.Calculus.Compile
-              (Tree, This.Env, This.Skit_Env);
-            Skit.Compiler.Compile (This.Skit_Env.Machine);
-            return Skit.Debug.Image
-                     (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
+            Ada.Text_IO.Put_Line
+              ("compiling: " & Leander.Calculus.To_String (Tree));
+
+            declare
+               Term          : constant Skit.Terms.Term :=
+                                 Leander.Calculus.Compile (Tree);
+               Compiled_Term : constant Skit.Terms.Term :=
+                                 Skit.Compiler.Compile (Term);
+               Value         : constant Skit.Object :=
+                                 Skit.Terms.Install
+                                   (compiled_Term, This'Access,
+                                    This.Skit_Env.Machine);
+            begin
+               This.Skit_Env.Machine.Push (Value);
+               Skit.Terms.Reset;
+               return Skit.Debug.Image
+                 (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
+            end;
          end;
       end if;
    end Compile;
@@ -98,9 +112,11 @@ package body Leander.Handles is
                      (Machine);
       Context  : constant Context_Reference :=
                    new Leander.Parser.Parse_Context;
-      Env      : constant Leander.Environment.Reference :=
-                   Context.Load_Module
-                    ("./share/leander/modules/Prelude.hs");
+      Prelude_Path : constant String :=
+                       Leander.Resources.Resource_Path
+                       & "/modules/Prelude.hs";
+      Env          : constant Leander.Environment.Reference :=
+                   Context.Load_Module (Prelude_Path);
    begin
       Skit.Library.Load_Primitives (Skit_Env);
       return Instance'
@@ -128,63 +144,18 @@ package body Leander.Handles is
       Expression : String)
       return String
    is
-      use Leander.Core.Inference;
-      use Leander.Core.Expressions.Inference;
-      Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 This.Context.Parse_Expression (Expression);
-      Core   : constant Leander.Core.Expressions.Reference :=
-                 Syntax.To_Core;
-      Result : Inference_Context :=
-                 Initial_Context (This.Env.Type_Env);
+      Unused : constant String := This.Compile (Expression);
    begin
-      Leander.Syntax.Prune;
+      pragma Unreferenced (Unused);
+      This.Skit_Env.Machine.Evaluate;
+
+      declare
+         Value : constant String :=
+                   Skit.Debug.Image
+                     (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
       begin
-         Infer (Result, Core);
-      exception
-         when E : others =>
-            Ada.Text_IO.Put_Line
-              (Ada.Text_IO.Standard_Error,
-               "Unhandled: " & Ada.Exceptions.Exception_Message (E));
-            Ada.Text_IO.Put_Line
-              (Ada.Text_IO.Standard_Error,
-               Ada.Exceptions.Exception_Information (E));
-            if not Result.OK then
-               Ada.Text_IO.Put_Line
-                 (Ada.Text_IO.Standard_Error,
-                  "possibly triggered by the following");
-               Ada.Text_IO.Put_Line
-                 (Ada.Text_IO.Standard_Error,
-                  Result.Error_Message);
-            end if;
-            return "";
+         return Value;
       end;
-
-      if not Result.OK then
-         Ada.Text_IO.Put_Line
-           (Ada.Text_IO.Standard_Error, Result.Error_Message);
-         return "";
-      else
-
-         Result.Update_Type (Core);
-
-         declare
-            Tree : constant Leander.Calculus.Tree :=
-                     Core.To_Calculus (Result, This.Env);
-         begin
-            Leander.Calculus.Compile
-              (Tree, This.Env, This.Skit_Env);
-            Skit.Compiler.Compile (This.Skit_Env.Machine);
-            This.Skit_Env.Machine.Evaluate;
-
-            declare
-               Value : constant String :=
-                         Skit.Debug.Image
-                           (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
-            begin
-               return Value;
-            end;
-         end;
-      end if;
    end Evaluate;
 
    --------------
@@ -258,8 +229,8 @@ package body Leander.Handles is
                           (This.Env.all).Reduce (Ps, Success);
          begin
             return Leander.Core.Qualified_Types.Qualified_Type
-                     ((if Success then Reduced else Ps),
-                      Result.Get_Type (Core)).Generate.Show;
+              ((if Success then Reduced else Ps),
+               Result.Get_Type (Core)).Generate.Show;
          end;
       end if;
    end Infer_Type;
@@ -332,6 +303,45 @@ package body Leander.Handles is
    begin
       This.Skit_Env.Machine.Report;
    end Report;
+
+   -------------
+   -- Resolve --
+   -------------
+
+   overriding function Resolve
+     (This : Instance;
+      Name : String)
+      return Skit.Object
+   is
+      use type Skit.Object;
+      Binding : constant Skit.Object :=
+                  This.Skit_Env.Lookup (Name);
+   begin
+      if Binding = Skit.Undefined then
+         if not This.Env.Variable_Binding_Exists (Name) then
+            raise Program_Error with
+              "undefined: " & Name;
+         end if;
+
+         declare
+            T             : constant Leander.Calculus.Tree :=
+                              This.Env.Get_Bound_Calculus (Name);
+            Term          : constant Skit.Terms.Term :=
+                              Leander.Calculus.Compile (T);
+            Compiled_Term : constant Skit.Terms.Term :=
+                              Skit.Compiler.Compile (Term);
+            Value         : constant Skit.Object :=
+                              Skit.Terms.Install
+                                (Compiled_Term, This'Access,
+                                 This.Skit_Env.Machine);
+         begin
+            This.Skit_Env.Bind (Name, Value);
+            return Value;
+         end;
+      else
+         return Binding;
+      end if;
+   end Resolve;
 
    ----------------
    -- Send_Value --

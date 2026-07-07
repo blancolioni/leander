@@ -31,3 +31,6 @@ development.contracts = "yes"
 
 [[depends-on]]
 wl_lib = "~0.1.2"
+
+[[depends-on]]
+resources = "~0.1.0"

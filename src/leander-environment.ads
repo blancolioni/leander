@@ -8,13 +8,11 @@ with Leander.Core.Types;
 with Leander.Data_Types;
 with Leander.Names;
 with Leander.Syntax.Bindings;
---  with Leander.Types.Bindings;
 
 package Leander.Environment is
 
    type Abstraction is interface
-     and Leander.Core.Type_Classes.Class_Environment
-     and Leander.Calculus.Calculus_Environment;
+     and Leander.Core.Type_Classes.Class_Environment;
 
    type Reference is access all Abstraction'Class;
 
@@ -97,7 +95,7 @@ package Leander.Environment is
      (This : Abstraction;
       Name : String)
       return Leander.Syntax.Bindings.Reference
-   is abstract;
+      is abstract;
 
    procedure Type_Instance
      (This          : in out Abstraction;
@@ -122,6 +120,19 @@ package Leander.Environment is
    procedure Elaborate
      (This : in out Abstraction)
    is abstract;
+
+   function Variable_Binding_Exists
+     (This : Abstraction;
+      Name : String)
+      return Boolean
+      is abstract;
+
+   function Get_Bound_Calculus
+     (This             : in out Abstraction;
+      Variable_Binding : String)
+      return Leander.Calculus.Tree
+      is abstract
+     with Pre'Class => This.Variable_Binding_Exists (Variable_Binding);
 
    function New_Environment (Name : String) return Reference;
    function Boot_Environment return Reference;

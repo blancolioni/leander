@@ -1,20 +1,6 @@
 with Ada.Exceptions;
 with Ada.Text_IO;
-with Leander.Calculus;
-with Leander.Core.Expressions;
-with Leander.Core.Expressions.Inference;
-with Leander.Core.Inference;
-with Leander.Environment;
-with Leander.Parser;
-with Leander.Syntax;
-with Leander.Syntax.Expressions;
-with Leander.Tests.Self;
-with Skit.Compiler;
-with Skit.Debug;
-with Skit.Environment;
-with Skit.Impl;
-with Skit.Library;
-with Skit.Machine;
+with Leander.Handles;
 
 package body Leander.Tests.Evaluation is
 
@@ -22,62 +8,49 @@ package body Leander.Tests.Evaluation is
      (Expression     : String;
       Expected_Type  : String;
       Expected_Value : String;
-      Context        : Leander.Parser.Parse_Context;
-      Skit_Env       : Skit.Environment.Reference;
-      Prelude        : Leander.Environment.Reference);
+      Handle         : in out Leander.Handles.Instance);
 
    ---------------
    -- Run_Tests --
    ---------------
 
    procedure Run_Tests is
-      Context : Leander.Parser.Parse_Context;
-      Prelude : constant Leander.Environment.Reference :=
-                  Context.Load_Module
-                    ("./share/leander/modules/Prelude.hs");
-      Machine : constant Skit.Machine.Reference :=
-                  Skit.Impl.Machine (256 * 1024);
-      Env     : constant Skit.Environment.Reference :=
-                  Skit.Environment.Create
-                    (Machine);
+      Handle : Leander.Handles.Instance :=
+                 Leander.Handles.Create (256 * 1024);
    begin
-      Skit.Library.Load_Primitives (Env);
-      Test ("1", "Int", "1", Context, Env, Prelude);
-      Test ("null []", "Bool", "K", Context, Env, Prelude);
-      Test ("null [1]", "Bool", "K I", Context, Env, Prelude);
-      Test ("length []", "Int", "0", Context, Env, Prelude);
-      Test ("length [1]", "Int", "1", Context, Env, Prelude);
-      Test ("length [1,2,3,4]", "Int", "4", Context, Env, Prelude);
-      Test ("zero 0", "Bool", "K", Context, Env, Prelude);
-      Test ("zero 1", "Bool", "K I", Context, Env, Prelude);
-      Test ("zero 100", "Bool", "K I", Context, Env, Prelude);
-      Test ("small 3", "Bool", "K", Context, Env, Prelude);
-      Test ("small 5", "Bool", "K I", Context, Env, Prelude);
-      Test ("id 123", "Int", "123", Context, Env, Prelude);
-      Test ("const 3 []", "Int", "3", Context, Env, Prelude);
-      Test ("2 * 3 + 4", "Int", "10", Context, Env, Prelude);
-      Test ("2 + 3 * 4", "Int", "14", Context, Env, Prelude);
-      Test ("2 - 3 * 4", "Int", "-10", Context, Env, Prelude);
-      Test ("seq (#trace 42) 4", "Int", "4", Context, Env, Prelude);
-      Test ("sum [1,2,3,4]", "Int", "10", Context, Env, Prelude);
-      Test ("sum (map (+1) [1,2,3])", "Int", "9", Context, Env, Prelude);
-      Test ("length (take 10 [1,2,3])", "Int", "3", Context, Env, Prelude);
-      Test ("length (take 2 [1,2,3])", "Int", "2", Context, Env, Prelude);
-    --  Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);
-    --  Test ("sum (do { let x = 42; return x })", "Int", "42", Env, Prelude);
-      Test ("maybe 42 id Nothing", "Int", "42", Context, Env, Prelude);
-      Test ("maybe 0 sum (Just [1,2,3])", "Int", "6", Context, Env, Prelude);
-      Test ("fst (123,456)", "Int", "123", Context, Env, Prelude);
-      Test ("snd (123,456)", "Int", "456", Context, Env, Prelude);
-      Test ("(*2) 3", "Int", "6", Context, Env, Prelude);
-      Test ("length ""Hello""", "Int", "5", Context, Env, Prelude);
-      Test ("runIO (putChar 'A')", "()", "I", Context, Env, Prelude);
-      Test ("runIO (putStr ""Hello, world!\n"")", "()", "I", Context, Env, Prelude);
+      Test ("1", "Int", "1", Handle);
+      Test ("null []", "Bool", "K", Handle);
+      Test ("null [1]", "Bool", "K I", Handle);
+      Test ("length []", "Int", "0", Handle);
+      Test ("length [1]", "Int", "1", Handle);
+      Test ("length [1,2,3,4]", "Int", "4", Handle);
+      Test ("zero 0", "Bool", "K", Handle);
+      Test ("zero 1", "Bool", "K I", Handle);
+      Test ("zero 100", "Bool", "K I", Handle);
+      Test ("small 3", "Bool", "K", Handle);
+      Test ("small 5", "Bool", "K I", Handle);
+      Test ("id 123", "Int", "123", Handle);
+      Test ("const 3 []", "Int", "3", Handle);
+      Test ("2 * 3 + 4", "Int", "10", Handle);
+      Test ("2 + 3 * 4", "Int", "14", Handle);
+      Test ("2 - 3 * 4", "Int", "-10", Handle);
+      Test ("seq (#trace 42) 4", "Int", "4", Handle);
+      Test ("sum [1,2,3,4]", "Int", "10", Handle);
+      Test ("sum (map (+1) [1,2,3])", "Int", "9", Handle);
+      Test ("length (take 10 [1,2,3])", "Int", "3", Handle);
+      Test ("length (take 2 [1,2,3])", "Int", "2", Handle);
+      --  Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);
+      --  Test ("sum (do { let x = 42; return x })", "Int", "42", Env, Prelude);
+      Test ("maybe 42 id Nothing", "Int", "42", Handle);
+      Test ("maybe 0 sum (Just [1,2,3])", "Int", "6", Handle);
+      Test ("fst (123,456)", "Int", "123", Handle);
+      Test ("snd (123,456)", "Int", "456", Handle);
+      Test ("(*2) 3", "Int", "6", Handle);
+      Test ("length ""Hello""", "Int", "5", Handle);
+      Test ("runIO (putChar 'A')", "()", "I", Handle);
+      Test ("runIO (putStr ""Hello, world!\n"")", "()", "I", Handle);
 
-      Leander.Tests.Self.Run_Tests
-        ("./share/leander/tests/RunTests.hs", Context, Env);
-
-      Machine.Report;
+      Handle.Report;
    end Run_Tests;
 
    ----------
@@ -88,54 +61,25 @@ package body Leander.Tests.Evaluation is
      (Expression     : String;
       Expected_Type  : String;
       Expected_Value : String;
-      Context        : Leander.Parser.Parse_Context;
-      Skit_Env       : Skit.Environment.Reference;
-      Prelude        : Leander.Environment.Reference)
+      Handle         : in out Leander.Handles.Instance)
    is
-      use Leander.Core.Inference;
-      use Leander.Core.Expressions.Inference;
-      Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 Context.Parse_Expression (Expression);
-      Core   : constant Leander.Core.Expressions.Reference :=
-                 Syntax.To_Core;
-      Result : Inference_Context :=
-                 Initial_Context (Prelude.Type_Env);
    begin
-      Infer (Result, Core);
-      if not Result.OK then
-         Fail (Core.Show, Expected_Type, "type inference failed");
-         Ada.Text_IO.Put_Line (Result.Error_Message);
-      else
-         declare
-            Inferred_Type : constant String :=
-                              Result.Get_Type (Core).Generate.Show;
-         begin
-            if Inferred_Type /= Expected_Type then
-               Fail (Core.Show, Expected_Type, Inferred_Type);
-            else
-               declare
-                  Tree : constant Leander.Calculus.Tree :=
-                           Core.To_Calculus (Result, Prelude);
-               begin
-                  Leander.Calculus.Compile
-                    (Tree, Prelude, Skit_Env);
-
-                  Skit.Compiler.Compile (Skit_Env.Machine);
-                  Skit_Env.Machine.Evaluate;
-                  declare
-                     Value : constant String :=
-                               Skit.Debug.Image
-                                 (Skit_Env.Machine.Top, Skit_Env.Machine);
-                  begin
-                     Test (Core.Show, Expected_Value, Value);
-                  end;
-               end;
-            end if;
-         end;
-      end if;
+      declare
+         Inferred_Type : constant String := Handle.Infer_Type (Expression);
+      begin
+         if Inferred_Type /= Expected_Type then
+            Fail (Expression, Expected_Type, Inferred_Type);
+         else
+            declare
+               Value : constant String := Handle.Evaluate (Expression);
+            begin
+               Test (Expression, Expected_Value, Value);
+            end;
+         end if;
+      end;
    exception
       when E : others =>
-         Error (Core.Show, Ada.Exceptions.Exception_Message (E));
+         Error (Expression, Ada.Exceptions.Exception_Message (E));
          Ada.Text_IO.Put_Line
            (Ada.Text_IO.Standard_Error,
             Ada.Exceptions.Exception_Information (E));

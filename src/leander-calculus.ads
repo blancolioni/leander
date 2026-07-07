@@ -1,6 +1,5 @@
 with Leander.Names;
-with Skit;
-with Skit.Environment;
+with Skit.Terms;
 
 package Leander.Calculus is
 
@@ -41,25 +40,9 @@ package Leander.Calculus is
      (Index : Natural)
       return Tree;
 
-   type Calculus_Environment is interface;
-
-   function Contains
-     (This : Calculus_Environment;
-      Name : Leander.Names.Leander_Name)
-      return Boolean
-      is abstract;
-
-   function Lookup
-     (This : in out Calculus_Environment;
-      Name : Leander.Names.Leander_Name)
-      return Tree
-      is abstract
-     with Pre'Class => Contains (This, Name);
-
-   procedure Compile
-     (This     : Tree;
-      Env      : not null access Calculus_Environment'Class;
-      Skit_Env : Skit.Environment.Reference);
+   function Compile
+     (This     : Tree)
+      return Skit.Terms.Term;
 
    procedure Dispose (This : in out Tree);
 
