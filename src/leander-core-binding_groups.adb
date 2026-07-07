@@ -7,12 +7,21 @@ package body Leander.Core.Binding_Groups is
    type Variable_Reference is access all Instance;
 
    package Allocator is
-     new Leander.Allocator ("bindings", Instance, Variable_Reference);
+     new Leander.Allocator ("binding_groups", Instance, Variable_Reference);
 
    function Allocate
      (This : Instance'Class)
       return Reference
    is (Reference (Allocator.Allocate (Instance (This))));
+
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report is
+   begin
+      Allocator.Report;
+   end Report;
 
    ---------------------------
    -- Add_Explicit_Bindings --

@@ -344,7 +344,8 @@ package body Leander.Handles is
    is
    begin
       This.Skit_Env.Machine.Report;
-      Leander.Core.Types.Report;
+      Leander.Core.Report;
+      Leander.Syntax.Report;
    end Report;
 
    -------------

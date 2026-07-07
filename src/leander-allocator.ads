@@ -8,4 +8,8 @@ package Leander.Allocator is
    procedure Protect (This : Reference);
    procedure Prune;
 
+   --  Print allocation statistics for this instantiation (live and all-time
+   --  allocation counts and byte totals) to standard output.
+   procedure Report;
+
 end Leander.Allocator;

@@ -1,5 +1,9 @@
 private with Leander.Allocator;
+with Leander.Core.Alts;
+with Leander.Core.Bindings;
+with Leander.Core.Binding_Groups;
 with Leander.Core.Expressions;
+with Leander.Core.Patterns;
 with Leander.Core.Schemes;
 with Leander.Core.Type_Env;
 with Leander.Core.Types;
@@ -41,5 +45,22 @@ package body Leander.Core is
       Leander.Core.Types.Prune;
       Leander.Core.Expressions.Prune;
    end Prune;
+
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report is
+   begin
+      Allocator.Report;
+      Leander.Core.Expressions.Report;
+      Leander.Core.Patterns.Report;
+      Leander.Core.Alts.Report;
+      Leander.Core.Bindings.Report;
+      Leander.Core.Binding_Groups.Report;
+      Leander.Core.Schemes.Report;
+      Leander.Core.Type_Env.Report;
+      Leander.Core.Types.Report;
+   end Report;
 
 end Leander.Core;

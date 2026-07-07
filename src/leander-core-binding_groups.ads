@@ -39,6 +39,8 @@ package Leander.Core.Binding_Groups is
      (This : Instance_Builder'Class)
       return Reference;
 
+   procedure Report;
+
 private
 
    type Nullable_Type_Reference is

@@ -70,6 +70,8 @@ package Leander.Core.Type_Env is
 
    procedure Prune;
 
+   procedure Report;
+
 private
 
    package Scheme_Maps is
