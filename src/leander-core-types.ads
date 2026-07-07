@@ -113,6 +113,21 @@ package Leander.Core.Types is
 
    procedure Prune;
 
+   --  Type-inference arena (ADR 0001).  Types are allocated into one of two
+   --  regions: a permanent region (the default) and a scratch region that is
+   --  reclaimed wholesale.  Bracket a one-off operation that allocates only
+   --  transient types with Begin_Scratch / End_Scratch; every type allocated
+   --  between the two calls is freed by End_Scratch.  Nesting is counted, so
+   --  the scratch region is reset only when the outermost bracket closes.
+   --  Do NOT bracket work whose result types must outlive the operation.
+
+   procedure Begin_Scratch;
+   procedure End_Scratch;
+
+   --  Print pool statistics (permanent size, peak scratch size, total and
+   --  permanent allocation counts) to standard output.
+   procedure Report;
+
 private
 
    type Instance_Tag is (TVar, TCon, TGen, TApp);

@@ -788,52 +788,77 @@ package body Leander.Environment is
    is
       L : constant Leander.Names.Leander_Name :=
             Leander.Names.To_Leander_Name (Name);
-   begin
-      if This.Values.Contains (L) then
-         return This.Values.Element (L);
-      else
-         declare
-            use type Leander.Core.Bindings.Reference;
-            Binding : constant Leander.Core.Bindings.Reference :=
-                        This.Bindings.Lookup (L);
-         begin
-            if Binding = null then
-               for Import of This.Imports loop
-                  if Import.Variable_Binding_Exists (Name) then
-                     return Import.Get_Bound_Calculus (Name);
-                  end if;
-               end loop;
-               raise Constraint_Error with
-                 "undefined: " & Name;
-            else
-               This.Context.Clear_Predicates;
-               declare
-                  Tree : Leander.Calculus.Tree :=
-                            Binding.To_Calculus (This.Context, This'Access);
-                  Seen : WL.String_Sets.Set;
-               begin
-                  for P of This.Context.Current_Predicates loop
-                     if P.Get_Type.all.Get_Tyvars'Length > 0
-                     then
-                        declare
-                           Dict : constant String :=
-                             "<" & P.Show & ">";
-                        begin
-                           if not Seen.Contains (Dict) then
-                              Seen.Include (Dict);
-                              Tree :=
-                                Leander.Calculus.Lambda
-                                  (Dict, Tree);
-                           end if;
-                        end;
+
+      function Do_Get return Leander.Calculus.Tree;
+
+      ------------
+      -- Do_Get --
+      ------------
+
+      function Do_Get return Leander.Calculus.Tree is
+      begin
+         if This.Values.Contains (L) then
+            return This.Values.Element (L);
+         else
+            declare
+               use type Leander.Core.Bindings.Reference;
+               Binding : constant Leander.Core.Bindings.Reference :=
+                           This.Bindings.Lookup (L);
+            begin
+               if Binding = null then
+                  for Import of This.Imports loop
+                     if Import.Variable_Binding_Exists (Name) then
+                        return Import.Get_Bound_Calculus (Name);
                      end if;
                   end loop;
-                  This.Values.Insert (L, Tree);
-                  return Tree;
-               end;
-            end if;
-         end;
-      end if;
+                  raise Constraint_Error with
+                    "undefined: " & Name;
+               else
+                  This.Context.Clear_Predicates;
+                  declare
+                     Tree : Leander.Calculus.Tree :=
+                               Binding.To_Calculus (This.Context, This'Access);
+                     Seen : WL.String_Sets.Set;
+                  begin
+                     for P of This.Context.Current_Predicates loop
+                        if P.Get_Type.all.Get_Tyvars'Length > 0
+                        then
+                           declare
+                              Dict : constant String :=
+                                "<" & P.Show & ">";
+                           begin
+                              if not Seen.Contains (Dict) then
+                                 Seen.Include (Dict);
+                                 Tree :=
+                                   Leander.Calculus.Lambda
+                                     (Dict, Tree);
+                              end if;
+                           end;
+                        end if;
+                     end loop;
+                     This.Values.Insert (L, Tree);
+                     return Tree;
+                  end;
+               end if;
+            end;
+         end if;
+      end Do_Get;
+
+   begin
+      --  Compiling a binding to calculus infers types that are transient
+      --  (ADR 0001): the surviving artifact is the off-arena Calculus.Tree
+      --  cached in This.Values.  Predicates left on the shared context
+      --  reference scratch types, so clear them before the reset.
+      Leander.Core.Types.Begin_Scratch;
+      return Result : constant Leander.Calculus.Tree := Do_Get do
+         This.Context.Clear_Predicates;
+         Leander.Core.Types.End_Scratch;
+      end return;
+   exception
+      when others =>
+         This.Context.Clear_Predicates;
+         Leander.Core.Types.End_Scratch;
+         raise;
    end Get_Bound_Calculus;
 
    ---------------------
