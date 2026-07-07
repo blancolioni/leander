@@ -50,6 +50,8 @@ package Leander.Core.Patterns is
 
    procedure Prune;
 
+   procedure Report;
+
 private
 
    type Instance_Tag is (PLit, PVar, PCon);

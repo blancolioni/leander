@@ -5,7 +5,7 @@ package body Leander.Core.Alts is
    type Variable_Reference is access all Instance;
 
    package Allocator is
-     new Leander.Allocator ("expressions", Instance, Variable_Reference);
+     new Leander.Allocator ("alts", Instance, Variable_Reference);
 
    --------------
    -- Allocate --
@@ -76,6 +76,15 @@ package body Leander.Core.Alts is
    begin
       Allocator.Prune;
    end Prune;
+
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report is
+   begin
+      Allocator.Report;
+   end Report;
 
    ------------------------
    -- Set_Qualified_Type --

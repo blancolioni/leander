@@ -6,6 +6,7 @@ with Leander.Core.Inference;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Type_Classes;
+with Leander.Core.Types;
 with Leander.Resources;
 with Leander.Syntax.Expressions;
 
@@ -51,50 +52,71 @@ package body Leander.Handles is
       Expression : String)
       return String
    is
-      use Leander.Core.Inference;
-      use Leander.Core.Expressions.Inference;
-      Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 This.Context.Parse_Expression (Expression);
-      Core   : constant Leander.Core.Expressions.Reference :=
-                 Syntax.To_Core;
-      Result : Inference_Context :=
-                 Initial_Context (This.Env.Type_Env);
 
-   begin
-      Leander.Syntax.Prune;
-      Infer (Result, Core);
-      if not Result.OK then
-         Ada.Text_IO.Put_Line
-           (Ada.Text_IO.Standard_Error, Result.Error_Message);
-         return "";
-      else
+      function Do_Compile return String;
 
-         Result.Update_Type (Core);
+      ----------------
+      -- Do_Compile --
+      ----------------
 
-         declare
-            Tree          : constant Leander.Calculus.Tree :=
-                              Core.To_Calculus (Result, This.Env);
-         begin
+      function Do_Compile return String is
+         use Leander.Core.Inference;
+         use Leander.Core.Expressions.Inference;
+         Syntax : constant Leander.Syntax.Expressions.Reference :=
+                    This.Context.Parse_Expression (Expression);
+         Core   : constant Leander.Core.Expressions.Reference :=
+                    Syntax.To_Core;
+         Result : Inference_Context :=
+                    Initial_Context (This.Env.Type_Env);
+
+      begin
+         Leander.Syntax.Prune;
+         Infer (Result, Core);
+         if not Result.OK then
             Ada.Text_IO.Put_Line
-              ("compiling: " & Leander.Calculus.To_String (Tree));
+              (Ada.Text_IO.Standard_Error, Result.Error_Message);
+            return "";
+         else
+
+            Result.Update_Type (Core);
 
             declare
-               Term          : constant Skit.Terms.Term :=
-                                 Leander.Calculus.Compile (Tree);
-               Compiled_Term : constant Skit.Terms.Term :=
-                                 Skit.Compiler.Compile (Term);
-               Value         : constant Skit.Object :=
-                                 Skit.Terms.Install
-                                   (compiled_Term, This'Access,
-                                    This.Skit_Env.Machine);
+               Tree          : constant Leander.Calculus.Tree :=
+                                 Core.To_Calculus (Result, This.Env);
             begin
-               This.Skit_Env.Machine.Push (Value);
-               Skit.Terms.Reset;
-               return Skit.Debug.Image
-                 (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
+               Ada.Text_IO.Put_Line
+                 ("compiling: " & Leander.Calculus.To_String (Tree));
+
+               declare
+                  Term          : constant Skit.Terms.Term :=
+                                    Leander.Calculus.Compile (Tree);
+                  Compiled_Term : constant Skit.Terms.Term :=
+                                    Skit.Compiler.Compile (Term);
+                  Value         : constant Skit.Object :=
+                                    Skit.Terms.Install
+                                      (compiled_Term, This'Access,
+                                       This.Skit_Env.Machine);
+               begin
+                  This.Skit_Env.Machine.Push (Value);
+                  Skit.Terms.Reset;
+                  return Skit.Debug.Image
+                    (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
+               end;
             end;
-         end;
-      end if;
+         end if;
+      end Do_Compile;
+
+   begin
+      --  All types inferred here are transient (ADR 0001): the surviving
+      --  artifact is the off-arena Calculus.Tree installed into the machine.
+      Leander.Core.Types.Begin_Scratch;
+      return Result : constant String := Do_Compile do
+         Leander.Core.Types.End_Scratch;
+      end return;
+   exception
+      when others =>
+         Leander.Core.Types.End_Scratch;
+         raise;
    end Compile;
 
    ------------
@@ -207,32 +229,52 @@ package body Leander.Handles is
       Expression : String)
       return String
    is
-      use Leander.Core.Inference;
-      use Leander.Core.Expressions.Inference;
-      Syntax : constant Leander.Syntax.Expressions.Reference :=
-                 This.Context.Parse_Expression (Expression);
-      Core   : constant Leander.Core.Expressions.Reference :=
-                 Syntax.To_Core;
-      Result : Inference_Context :=
-                 Initial_Context (This.Env.Type_Env);
+
+      function Do_Infer_Type return String;
+
+      -------------------
+      -- Do_Infer_Type --
+      -------------------
+
+      function Do_Infer_Type return String is
+         use Leander.Core.Inference;
+         use Leander.Core.Expressions.Inference;
+         Syntax : constant Leander.Syntax.Expressions.Reference :=
+                    This.Context.Parse_Expression (Expression);
+         Core   : constant Leander.Core.Expressions.Reference :=
+                    Syntax.To_Core;
+         Result : Inference_Context :=
+                    Initial_Context (This.Env.Type_Env);
+      begin
+         Infer (Result, Core);
+         if not Result.OK then
+            return Result.Error_Message;
+         else
+            declare
+               Ps      : constant Leander.Core.Predicates.Predicate_Array :=
+                           Result.Current_Predicates;
+               Success : Boolean;
+               Reduced : constant Leander.Core.Predicates.Predicate_Array :=
+                           Leander.Core.Type_Classes.Class_Environment'Class
+                             (This.Env.all).Reduce (Ps, Success);
+            begin
+               return Leander.Core.Qualified_Types.Qualified_Type
+                 ((if Success then Reduced else Ps),
+                  Result.Get_Type (Core)).Generate.Show;
+            end;
+         end if;
+      end Do_Infer_Type;
+
    begin
-      Infer (Result, Core);
-      if not Result.OK then
-         return Result.Error_Message;
-      else
-         declare
-            Ps      : constant Leander.Core.Predicates.Predicate_Array :=
-                        Result.Current_Predicates;
-            Success : Boolean;
-            Reduced : constant Leander.Core.Predicates.Predicate_Array :=
-                        Leander.Core.Type_Classes.Class_Environment'Class
-                          (This.Env.all).Reduce (Ps, Success);
-         begin
-            return Leander.Core.Qualified_Types.Qualified_Type
-              ((if Success then Reduced else Ps),
-               Result.Get_Type (Core)).Generate.Show;
-         end;
-      end if;
+      --  Transient types only; the result is a formatted string (ADR 0001).
+      Leander.Core.Types.Begin_Scratch;
+      return Result : constant String := Do_Infer_Type do
+         Leander.Core.Types.End_Scratch;
+      end return;
+   exception
+      when others =>
+         Leander.Core.Types.End_Scratch;
+         raise;
    end Infer_Type;
 
    -----------------
@@ -302,6 +344,8 @@ package body Leander.Handles is
    is
    begin
       This.Skit_Env.Machine.Report;
+      Leander.Core.Report;
+      Leander.Syntax.Report;
    end Report;
 
    -------------

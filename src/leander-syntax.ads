@@ -17,6 +17,9 @@ package Leander.Syntax is
 
    procedure Prune;
 
+   --  Print syntax-node allocation statistics to standard output.
+   procedure Report;
+
 private
 
    type Instance is abstract tagged

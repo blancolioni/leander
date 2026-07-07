@@ -43,6 +43,8 @@ package Leander.Core.Schemes is
 
    procedure Prune;
 
+   procedure Report;
+
 private
 
    type Kind_Array is array (Positive range <>) of Leander.Core.Kinds.Kind;

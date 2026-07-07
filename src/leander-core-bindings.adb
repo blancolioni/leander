@@ -66,6 +66,15 @@ package body Leander.Core.Bindings is
       Allocator.Prune;
    end Prune;
 
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report is
+   begin
+      Allocator.Report;
+   end Report;
+
    ----------
    -- Show --
    ----------

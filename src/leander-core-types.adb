@@ -1,12 +1,178 @@
-with Leander.Allocator;
+with Ada.Text_IO;
+with Ada.Unchecked_Deallocation;
+with System.Storage_Elements;
+with System.Storage_Pools;
+
 with Leander.Names;
 
 package body Leander.Core.Types is
 
-   type Variable_Reference is access all Instance;
+   --  Two-region bump arena backing all dynamically allocated types
+   --  (ADR 0001).  Allocation targets whichever region Mode selects; the
+   --  scratch region is reset in one operation, the permanent region never.
 
-   package Allocator is
-     new Leander.Allocator ("types", Instance, Variable_Reference);
+   Block_Size : constant := 2 ** 20;
+   Max_Blocks : constant := 4096;
+
+   type Storage_Array_Access is
+     access System.Storage_Elements.Storage_Array;
+
+   type Memory_Array is array (1 .. Max_Blocks) of Storage_Array_Access;
+
+   type Region is
+      record
+         Memory      : Memory_Array;
+         Top         : System.Storage_Elements.Storage_Offset := 0;
+         Next        : System.Storage_Elements.Storage_Offset := 0;
+         Start       : System.Storage_Elements.Storage_Offset := 0;
+         Block_Index : Natural := 0;
+      end record;
+
+   type Allocation_Mode is (Permanent, Scratch);
+
+   type Type_Pool is new System.Storage_Pools.Root_Storage_Pool with
+      record
+         Perm : Region;
+         Scr  : Region;
+         Mode : Allocation_Mode := Permanent;
+      end record;
+
+   overriding procedure Allocate
+     (Pool                     : in out Type_Pool;
+      Storage_Address          : out System.Address;
+      Size_In_Storage_Elements : System.Storage_Elements.Storage_Count;
+      Alignment                : System.Storage_Elements.Storage_Count);
+
+   overriding procedure Deallocate
+     (Pool                     : in out Type_Pool;
+      Storage_Address          : System.Address;
+      Size_In_Storage_Elements : System.Storage_Elements.Storage_Count;
+      Alignment                : System.Storage_Elements.Storage_Count)
+   is null;
+
+   overriding function Storage_Size
+     (Pool : Type_Pool)
+      return System.Storage_Elements.Storage_Count
+   is (System.Storage_Elements.Storage_Count'Last);
+
+   Arena         : Type_Pool;
+   Scratch_Depth : Natural := 0;
+
+   --  Pool statistics (reported by Report).  Byte counts sum requested
+   --  sizes; alignment padding and per-block slack are not included.
+   Perm_Allocs    : Natural := 0;
+   Scratch_Allocs : Natural := 0;
+   Perm_Bytes     : System.Storage_Elements.Storage_Count := 0;
+   Scratch_Cur    : System.Storage_Elements.Storage_Count := 0;
+   Scratch_Peak   : System.Storage_Elements.Storage_Count := 0;
+
+   type Variable_Reference is access all Instance'Class;
+   for Variable_Reference'Storage_Pool use Arena;
+
+   procedure Free is
+     new Ada.Unchecked_Deallocation
+       (System.Storage_Elements.Storage_Array, Storage_Array_Access);
+
+   --------------
+   -- Allocate --
+   --------------
+
+   overriding procedure Allocate
+     (Pool                     : in out Type_Pool;
+      Storage_Address          : out System.Address;
+      Size_In_Storage_Elements : System.Storage_Elements.Storage_Count;
+      Alignment                : System.Storage_Elements.Storage_Count)
+   is
+      use System.Storage_Elements;
+
+      procedure Allocate_From (R : in out Region);
+
+      -------------------
+      -- Allocate_From --
+      -------------------
+
+      procedure Allocate_From (R : in out Region) is
+      begin
+         if R.Next mod Alignment /= 0 then
+            R.Next := R.Next + Alignment - R.Next mod Alignment;
+         end if;
+
+         if R.Next + Size_In_Storage_Elements > R.Top then
+            R.Next := R.Top;
+            R.Start := R.Top;
+            R.Block_Index := @ + 1;
+            R.Memory (R.Block_Index) :=
+              new Storage_Array (0 .. Block_Size - 1);
+            R.Top := @ + Block_Size;
+         end if;
+
+         Storage_Address :=
+           R.Memory (R.Block_Index) (R.Next - R.Start)'Address;
+         R.Next := @ + Size_In_Storage_Elements;
+      end Allocate_From;
+
+   begin
+      case Pool.Mode is
+         when Permanent =>
+            Allocate_From (Pool.Perm);
+            Perm_Allocs := Perm_Allocs + 1;
+            Perm_Bytes := Perm_Bytes + Size_In_Storage_Elements;
+         when Scratch =>
+            Allocate_From (Pool.Scr);
+            Scratch_Allocs := Scratch_Allocs + 1;
+            Scratch_Cur := Scratch_Cur + Size_In_Storage_Elements;
+            if Scratch_Cur > Scratch_Peak then
+               Scratch_Peak := Scratch_Cur;
+            end if;
+      end case;
+   end Allocate;
+
+   -------------------
+   -- Begin_Scratch --
+   -------------------
+
+   procedure Begin_Scratch is
+   begin
+      Scratch_Depth := Scratch_Depth + 1;
+      Arena.Mode := Scratch;
+   end Begin_Scratch;
+
+   -----------------
+   -- End_Scratch --
+   -----------------
+
+   procedure End_Scratch is
+   begin
+      pragma Assert (Scratch_Depth > 0);
+      Scratch_Depth := Scratch_Depth - 1;
+      if Scratch_Depth = 0 then
+         for Item of Arena.Scr.Memory (1 .. Arena.Scr.Block_Index) loop
+            Free (Item);
+         end loop;
+         Arena.Scr := (others => <>);
+         Arena.Mode := Permanent;
+         Scratch_Cur := 0;
+      end if;
+   end End_Scratch;
+
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report is
+      use Ada.Text_IO;
+   begin
+      Put_Line ("type pool:");
+      Put_Line ("  permanent size      :"
+                & System.Storage_Elements.Storage_Count'Image (Perm_Bytes)
+                & " bytes");
+      Put_Line ("  max scratch size    :"
+                & System.Storage_Elements.Storage_Count'Image (Scratch_Peak)
+                & " bytes");
+      Put_Line ("  total allocations   :"
+                & Natural'Image (Perm_Allocs + Scratch_Allocs));
+      Put_Line ("  permanent allocs    :" & Natural'Image (Perm_Allocs));
+   end Report;
 
    overriding function Contains
      (This  : Instance;
@@ -95,7 +261,7 @@ package body Leander.Core.Types is
       return Reference
    is
    begin
-      return Reference (Allocator.Allocate (Instance (This)));
+      return Reference (Variable_Reference'(new Instance'Class'(This)));
    end Allocate;
 
    -----------------
@@ -369,7 +535,10 @@ package body Leander.Core.Types is
 
    procedure Prune is
    begin
-      Allocator.Prune;
+      --  Types now live in the ADR 0001 arena; permanent types are retained
+      --  for the life of the process and scratch types are reclaimed by
+      --  End_Scratch.  There is nothing to sweep here.
+      null;
    end Prune;
 
    ----------

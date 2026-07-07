@@ -143,6 +143,15 @@ package body Leander.Core.Expressions is
       Allocator.Prune;
    end Prune;
 
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report is
+   begin
+      Allocator.Report;
+   end Report;
+
    ------------------------
    -- Set_Qualified_Type --
    ------------------------

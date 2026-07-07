@@ -68,6 +68,8 @@ package Leander.Core.Expressions is
 
    procedure Prune;
 
+   procedure Report;
+
 private
 
    type Instance_Tag is (ELit, EVar, ECon, EApp, ELam, ELet);

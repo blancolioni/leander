@@ -38,4 +38,13 @@ package body Leander.Syntax is
       Allocator.Prune;
    end Prune;
 
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report is
+   begin
+      Allocator.Report;
+   end Report;
+
 end Leander.Syntax;

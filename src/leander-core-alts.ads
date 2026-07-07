@@ -46,6 +46,8 @@ package Leander.Core.Alts is
 
    procedure Prune;
 
+   procedure Report;
+
 private
 
    type Nullable_Pattern_Reference is

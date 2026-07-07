@@ -53,6 +53,8 @@ package Leander.Core.Bindings is
 
    procedure Prune;
 
+   procedure Report;
+
 private
 
    type Nullable_Scheme_Reference is

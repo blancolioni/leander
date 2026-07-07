@@ -16,6 +16,10 @@ package Leander.Core is
 
    procedure Prune;
 
+   --  Print allocation statistics for every Core allocator to standard
+   --  output.
+   procedure Report;
+
    type Declaration_Context is
      (Binding_Context,
       Class_Context,

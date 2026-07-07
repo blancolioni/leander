@@ -275,6 +275,15 @@ package body Leander.Core.Type_Env is
       Allocator.Prune;
    end Prune;
 
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report is
+   begin
+      Allocator.Report;
+   end Report;
+
    ----------
    -- Save --
    ----------
