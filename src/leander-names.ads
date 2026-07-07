@@ -2,8 +2,11 @@ package Leander.Names is
 
    type Leander_Name is private;
 
-   function To_Leander_Name (S : String) return Leander_Name;
-   function To_String (N : Leander_Name) return String;
+   function To_Leander_Name (S : String) return Leander_Name
+     with Inline_Always;
+
+   function To_String (N : Leander_Name) return String
+     with Inline_Always;
 
    type Name_Array is array (Positive range <>) of Leander_Name;
 
