@@ -366,6 +366,12 @@ package body Leander.Parser.Expressions is
          do
             Scan;
          end return;
+      elsif Tok = Tok_Float_Literal then
+         return Lit : constant Reference :=
+           Float_Literal (Loc, Tok_Text)
+         do
+            Scan;
+         end return;
       elsif Tok = Tok_Character_Literal then
          return Lit : constant Reference :=
            Character_Literal (Loc, Character'Pos (Tok_Character_Value))

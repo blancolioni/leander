@@ -28,6 +28,10 @@ package Leander.Calculus is
      (Value : Integer)
       return Tree;
 
+   function Number
+     (Value : Long_Float)
+      return Tree;
+
    function Symbol
      (Name : String)
       return Tree;

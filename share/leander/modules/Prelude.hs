@@ -89,6 +89,19 @@ class Bounded a where
     minBound :: a
     maxBound :: a
 
+-- Numeric classes  
+ 
+class  (Eq a, Show a) => Num a  where  
+    (+), (-), (*)    :: a -> a -> a  
+    negate           :: a -> a  
+    abs, signum      :: a -> a  
+    fromInteger      :: Integer -> a  
+ 
+        -- Minimal complete definition:  
+        --      All, except negate or (-)  
+    x - y            =  x + negate y  
+    negate x         =  0 - x 
+    
 class Functor f where
     fmap :: (a -> b) -> f a -> f b
 
@@ -109,12 +122,6 @@ instance Eq Bool where
 instance Show Bool where
     show True  = "True"
     show False = "False"
-
-instance Eq Int where
-    (==) = #primIntEq
-
-instance Ord Int where
-    x <= y = #primIntLeq x y
 
 instance Bounded Int where
   minBound = #minInt
@@ -143,9 +150,9 @@ instance Show Int where
                 
 showUnsignedInt :: Int -> [Char]
 showUnsignedInt 0 = ""
-showUnsignedInt n = let units = mod n 10
-                        rest  = div n 10
-                    in toEnum (units + 48) : showUnsignedInt rest
+showUnsignedInt n = toEnum (units + 48) : showUnsignedInt rest
+    where units = mod n 10
+          rest  = div n 10
                        
 instance Eq Char where
   (==) = #primCharEq
@@ -216,12 +223,7 @@ null (x:xs) = False
 
 length :: [a] -> Int
 length [] = 0
-length (x:xs) = #primIntAdd 1 (length xs)
-
-(+), (-), (*) :: Int -> Int -> Int
-(+) = #primIntAdd
-(*) = #primIntMul
-(-) = #primIntSub
+length (x:xs) = 1 + length xs
 
 mod, div :: Int -> Int -> Int
 mod = #primIntMod
@@ -336,6 +338,25 @@ instance Monad Maybe where
     Nothing >>= _ = Nothing
     (Just x) >>= f = f x
     
+-- Standard numeric types.  The data declarations for these types cannot  
+-- be expressed directly in Haskell since the constructor lists would be  
+-- far too large. 
+
+instance Eq Int where
+    (==) = #primIntEq
+
+instance Ord Int where
+    x <= y = #primIntLeq x y
+
+instance Num Int where
+    (+) = #primIntAdd
+    (*) = #primIntMul
+    (-) = #primIntSub
+    negate x = 0 - x
+    abs x = if x < 0 then 0 - x else x
+    signum x = if x < 0 then 0 - 1 else if x == 0 then 0 else 1
+    fromInteger n = 0
+
 data IO a = IO (Int -> (a,Int))
 
 instance Functor IO where
