@@ -3,13 +3,16 @@ with Ada.Unchecked_Deallocation;
 package body Leander.Calculus is
 
    type Node_Class is
-     (Number, Reference, Apply, Lambda);
+     (Integer_Constant, Long_Float_Constant,
+      Reference, Apply, Lambda);
 
    type Node_Record (Class : Node_Class) is
       record
          case Class is
-            when Number =>
-               Value : Integer;
+            when Integer_Constant =>
+               Integer_Value    : Integer;
+            when Long_Float_Constant =>
+               Long_Float_Value : Long_Float;
             when Reference =>
                Ref   : Leander.Names.Leander_Name;
             when Apply =>
@@ -45,8 +48,10 @@ package body Leander.Calculus is
    is
    begin
       case This.Class is
-         when Number =>
-            return Skit.Terms.Const (This.Value);
+         when Integer_Constant =>
+            return Skit.Terms.Const (This.Integer_Value);
+         when Long_Float_Constant =>
+            return Skit.Terms.Const (This.Long_Float_Value);
          when Reference =>
             return Skit.Terms.Symbol (Leander.Names.To_String (This.Ref));
          when Apply =>
@@ -66,7 +71,9 @@ package body Leander.Calculus is
 
    begin
       case This.Class is
-         when Number =>
+         when Integer_Constant =>
+            null;
+         when Long_Float_Constant =>
             null;
          when Reference =>
             null;
@@ -93,7 +100,9 @@ package body Leander.Calculus is
             Leander.Names.To_Leander_Name (Name);
    begin
       case This.Class is
-         when Number =>
+         when Integer_Constant =>
+            return False;
+         when Long_Float_Constant =>
             return False;
          when Reference =>
             return This.Ref = N;
@@ -155,7 +164,18 @@ package body Leander.Calculus is
       return Tree
    is
    begin
-      return new Node_Record'(Number, Value);
+      return new Node_Record'(Integer_Constant, Value);
+   end Number;
+
+   ------------
+   -- Number --
+   ------------
+   function Number
+     (Value : Long_Float)
+      return Tree
+   is
+   begin
+      return new Node_Record'(Long_Float_Constant, Value);
    end Number;
 
    ---------------
@@ -203,8 +223,10 @@ package body Leander.Calculus is
    function To_String (This : Tree) return String is
    begin
       case This.Class is
-         when Number =>
-            return This.Value'Image;
+         when Integer_Constant =>
+            return This.Integer_Value'Image;
+         when Long_Float_Constant =>
+            return This.Long_Float_Value'Image;
          when Reference =>
             return Leander.Names.To_String (This.Ref);
          when Apply =>
