@@ -1,5 +1,7 @@
 with Ada.Exceptions;
+with Leander.Handles;
 with Leander.Syntax;
+with Skit;
 
 package body Leander.Tests.Integration is
 
@@ -377,6 +379,43 @@ package body Leander.Tests.Integration is
       Test_Main
         ("--main: operator declaration",
          Test_Root & "Test15_ConcatOp.hs");
+
+      --  Phase 5: Foreign string marshalling roundtrip.
+      --  Set_Slot (String) -> Receive_Value (builds the SKI cons list)
+      --  -> Send_Value (walks the spine back) -> Get_Slot (String).
+      --  The Haskell-level suites never reach this FFI path, which is why
+      --  the off-by-one in Receive_Value's cons build went undetected.
+
+      declare
+         FH : constant Leander.Handles.Reference :=
+                Leander.Handles.Create (256 * 1024, null);
+
+         procedure Roundtrip (Label, S : String);
+
+         ---------------
+         -- Roundtrip --
+         ---------------
+
+         procedure Roundtrip (Label, S : String) is
+         begin
+            FH.Set_Slot (1, S);
+            declare
+               Marshalled : constant Skit.Object := FH.Receive_Value (1);
+            begin
+               FH.Send_Value (2, Leander.String_Type, Marshalled);
+            end;
+            Test (Label, S, FH.Get_Slot (2));
+         exception
+            when E : others =>
+               Error (Label, Ada.Exceptions.Exception_Message (E));
+         end Roundtrip;
+
+      begin
+         Roundtrip ("foreign string roundtrip (empty)", "");
+         Roundtrip ("foreign string roundtrip (one char)", "x");
+         Roundtrip ("foreign string roundtrip (hello)", "hello");
+         FH.Close;
+      end;
 
       Leander.Syntax.Prune;
 

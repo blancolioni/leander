@@ -222,6 +222,7 @@ package body Leander.Primitives is
       Exec ("!#id \x.x");
       Exec ("!#false \x.\y.y");
       Exec ("!#true \x.\y.x");
+      Exec ("!#cons B* (B K) C (C I)");
 
       Handle.Bind ("#choose",
                    Handle.Primitive

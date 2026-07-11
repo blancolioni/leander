@@ -326,7 +326,6 @@ package body Leander.Handles is
                   H.Apply;
                end loop;
                H.Push (SKit.Combinators.K);
-               H.Apply;
                for I in S'Range loop
                   H.Apply;
                end loop;
