@@ -6,6 +6,7 @@ with Leander.Core.Inference;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Type_Classes;
+with Leander.Core.Types;
 with Leander.Primitives;
 with Leander.Resources;
 with Leander.Syntax.Expressions;
@@ -50,15 +51,13 @@ package body Leander.Handles is
       Expression : String)
    is
 
-      function Do_Compile return String;
+      procedure Do_Compile;
 
-
-   
       ----------------
       -- Do_Compile --
       ----------------
 
-      function Do_Compile return String is
+      procedure Do_Compile is
          use Leander.Core.Inference;
          use Leander.Core.Expressions.Inference;
          Syntax : constant Leander.Syntax.Expressions.Reference :=
@@ -74,7 +73,6 @@ package body Leander.Handles is
          if not Result.OK then
             Ada.Text_IO.Put_Line
               (Ada.Text_IO.Standard_Error, Result.Error_Message);
-            return "";
          else
 
             Result.Update_Type (Core);
@@ -82,25 +80,18 @@ package body Leander.Handles is
             declare
                Tree          : constant Leander.Calculus.Tree :=
                                  Core.To_Calculus (Result, This.Env);
-            begin
-               Ada.Text_IO.Put_Line
-                 ("compiling: " & Leander.Calculus.To_String (Tree));
+               Term          : constant Skit.Terms.Term :=
+               Leander.Calculus.Compile (Tree);
+               Compiled_Term : constant Skit.Terms.Term :=
+               Skit.Compiler.Compile (Term);
 
-               declare
-                  Term          : constant Skit.Terms.Term :=
-                                    Leander.Calculus.Compile (Tree);
-                  Compiled_Term : constant Skit.Terms.Term :=
-                                    Skit.Compiler.Compile (Term);
-                  Value         : constant Skit.Object :=
-                                    Skit.Terms.Install
-                                      (compiled_Term, This'Access,
-                                       This.Skit_Env.Machine);
-               begin
-                  This.Skit_Env.Machine.Push (Value);
-                  Skit.Terms.Reset;
-                  return Skit.Debug.Image
-                    (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
-               end;
+               function Resolve (Name : String) return Skit.Object
+               is (This.Resolve (Name));
+
+            begin
+               This.Skit_Handle.Install
+                 (Compiled_Term, Resolve'Access);
+               Skit.Terms.Reset;
             end;
          end if;
       end Do_Compile;
@@ -109,30 +100,12 @@ package body Leander.Handles is
       --  All types inferred here are transient (ADR 0001): the surviving
       --  artifact is the off-arena Calculus.Tree installed into the machine.
       Leander.Core.Types.Begin_Scratch;
-      return Result : constant String := Do_Compile do
-         Leander.Core.Types.End_Scratch;
-      end return;
+      Do_Compile;
+      Leander.Core.Types.End_Scratch;
    exception
       when others =>
          Leander.Core.Types.End_Scratch;
          raise;
-         declare
-            Tree          : constant Leander.Calculus.Tree :=
-                              Core.To_Calculus (Result, This.Env);
-            Term          : constant Skit.Terms.Term :=
-              Leander.Calculus.Compile (Tree);
-            Compiled_Term : constant Skit.Terms.Term :=
-              Skit.Compiler.Compile (Term);
-
-            function Resolve (Name : String) return Skit.Object
-            is (This.Resolve (Name));
-
-         begin
-            This.Skit_Handle.Install
-              (Compiled_Term, Resolve'Access);
-            Skit.Terms.Reset;
-         end;
-      end if;
    end Compile;
 
    ------------
@@ -371,8 +344,10 @@ package body Leander.Handles is
    is
    begin
       This.Skit_Handle.Report;
-      Leander.Core.Report;
-      Leander.Syntax.Report;
+      if False then
+         Leander.Core.Report;
+         Leander.Syntax.Report;
+      end if;
    end Report;
 
    -------------
