@@ -1,6 +1,5 @@
 with Ada.Exceptions;
 with Ada.Text_IO;
-with Leander.Handles;
 
 package body Leander.Tests.Evaluation is
 
@@ -8,15 +7,15 @@ package body Leander.Tests.Evaluation is
      (Expression     : String;
       Expected_Type  : String;
       Expected_Value : String;
-      Handle         : in out Leander.Handles.Instance);
+      Handle         : Leander.Handle);
 
    ---------------
    -- Run_Tests --
    ---------------
 
    procedure Run_Tests is
-      Handle : Leander.Handles.Instance :=
-                 Leander.Handles.Create (256 * 1024);
+      Handle : Leander.Handle :=
+                 Leander.Create (256 * 1024);
    begin
       Test ("1", "Int", "1", Handle);
       Test ("null []", "Bool", "K", Handle);
@@ -51,6 +50,7 @@ package body Leander.Tests.Evaluation is
       Test ("runIO (putStr ""Hello, world!\n"")", "()", "I", Handle);
 
       Handle.Report;
+      Handle.Close;
    end Run_Tests;
 
    ----------
@@ -61,7 +61,7 @@ package body Leander.Tests.Evaluation is
      (Expression     : String;
       Expected_Type  : String;
       Expected_Value : String;
-      Handle         : in out Leander.Handles.Instance)
+      Handle         : Leander.Handle)
    is
    begin
       declare
