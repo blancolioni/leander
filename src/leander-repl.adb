@@ -1,6 +1,5 @@
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
-with Leander.Handles;
 
 package body Leander.Repl is
 
@@ -10,8 +9,8 @@ package body Leander.Repl is
 
    procedure Start (Core_Size : Natural) is
       use Ada.Text_IO;
-      Handle : Leander.Handles.Instance :=
-                 Leander.Handles.Create (Core_Size);
+      Handle : Leander.Handle :=
+                 Leander.Create (Core_Size);
    begin
       while True loop
          Put (Handle.Current_Environment & "> ");
@@ -33,8 +32,8 @@ package body Leander.Repl is
                then
                   Put_Line
                     (Handle.Compile (Line (Line'First + 9 .. Line'Last)));
-               elsif Line = ":trace" then
-                  Handle.Trace (True);
+               --  elsif Line = ":trace" then
+               --     Handle.Trace (True);
                else
                   Put_Line (Standard_Error, "Unimplemented");
                end if;
@@ -64,6 +63,8 @@ package body Leander.Repl is
             end if;
          end;
       end loop;
+      Handle.Close;
+
    end Start;
 
 end Leander.Repl;

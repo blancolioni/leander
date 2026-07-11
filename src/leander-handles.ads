@@ -1,99 +1,113 @@
 private with Ada.Strings.Unbounded;
 private with Leander.Environment;
+with Leander.IO;
 with Leander.Parser;
-private with Skit.Environment;
-with Skit.Primitives;
-with Skit.Terms;
+with Skit;
+private with Skit.Handles;
 
 package Leander.Handles is
 
-   type Instance is new Skit.Terms.Resolver_Interface with private;
+   type Instance is new Skit.User_Data_Interface with private;
+   type Reference is access all Instance'Class;
 
    function Create
-     (Size : Natural)
-      return Instance;
+     (Size      : Natural;
+      User_Data : access Leander.User_Data_Interface'Class)
+      return Reference;
 
    function Current_Environment
-     (This : Instance)
+     (This : Instance'Class)
       return String;
 
-   function Evaluate
-     (This       : in out Instance;
-      Expression : String)
-      return String;
+   procedure Evaluate
+     (This       : in out Instance'Class;
+      Expression : String);
 
-   function Compile
-     (This       : in out Instance;
-      Expression : String)
+   procedure Compile
+     (This       : in out Instance'Class;
+      Expression : String);
+
+   function Pop
+     (This : Instance'Class)
       return String;
 
    function Infer_Type
-     (This       : in out Instance;
+     (This       : in out Instance'Class;
       Expression : String)
       return String;
 
    procedure Load_Module
-     (This : in out Instance;
+     (This : in out Instance'Class;
       Path : String);
 
+   function User_Data
+     (This : Instance'Class)
+      return access User_Data_Interface'Class;
+
+   function IO
+     (This : Instance'Class)
+      return Leander.IO.Reference;
+
    procedure Report
-     (This : in out Instance);
+     (This : in out Instance'Class);
 
-   procedure Trace
-     (This    : in out Instance;
-      Enabled : Boolean);
+   procedure Close (This : in out Instance'Class);
 
-   procedure Close (This : in out Instance);
+   procedure Set_Slot
+     (This  : in out Instance'Class;
+      Slot  : Slot_Index;
+      Value : Boolean);
+
+   function Get_Slot
+     (This : Instance'Class;
+      Slot : Slot_Index)
+      return Boolean;
+
+   procedure Set_Slot
+     (This  : in out Instance'Class;
+      Slot  : Slot_Index;
+      Value : String);
+
+   function Get_Slot
+     (This : Instance'Class;
+      Slot : Slot_Index)
+      return String;
+
+   procedure Set_Slot
+     (This  : in out Instance'Class;
+      Slot  : Slot_Index;
+      Value : Integer);
+
+   function Get_Slot
+     (This : Instance'Class;
+      Slot : Slot_Index)
+      return Integer;
+
+   procedure Bind
+     (This      : in out Instance'Class;
+      Name      : String;
+      Evaluator : Skit.Primitive_Evaluator_Interface'Class);
 
    procedure Send_Value
-     (This   : in out Instance;
+     (This   : in out Instance'Class;
       Index  : Slot_Index;
       F_Type : Foreign_Type;
       Value  : Skit.Object);
 
    function Receive_Value
-     (This   : Instance;
+     (This   : Instance'Class;
       Index  : Slot_Index)
       return Skit.Object;
 
-   procedure Set_Slot
-     (This  : in out Instance;
-      Slot  : Slot_Index;
-      Value : Boolean);
-
-   function Get_Slot
-     (This : Instance;
-      Slot : Slot_Index)
-      return Boolean;
-
-   procedure Set_Slot
-     (This  : in out Instance;
-      Slot  : Slot_Index;
-      Value : String);
-
-   function Get_Slot
-     (This : Instance;
-      Slot : Slot_Index)
+   function Debug_Image
+     (This : Instance'Class;
+      Value : Skit.Object)
       return String;
-
-   procedure Set_Slot
-     (This  : in out Instance;
-      Slot  : Slot_Index;
-      Value : Integer);
-
-   function Get_Slot
-     (This : Instance;
-      Slot : Slot_Index)
-      return Integer;
-
-   procedure Bind
-     (This      : Instance;
-      Name      : String;
-      Primitive : Skit.Primitives.Abstraction'Class);
 
 private
 
    type Context_Reference is access all Leander.Parser.Parse_Context;
+   type User_Data_Reference is access all Leander.User_Data_Interface'Class;
 
    type Foreign_Value (Class : Foreign_Type_Class := Unit_Type) is
       record
@@ -111,17 +125,35 @@ private
 
    type Foreign_Slots is array (Slot_Index) of Foreign_Value;
 
-   type Instance is new Skit.Terms.Resolver_Interface with
+   type Instance is new Skit.User_Data_Interface with
       record
-         Skit_Env : Skit.Environment.Reference;
-         Env      : Leander.Environment.Reference;
-         Context  : Context_Reference;
-         Slots    : Foreign_Slots;
+         Skit_Handle : Skit.Handles.Handle;
+         Env         : Leander.Environment.Reference;
+         Context     : Context_Reference;
+         User_Data   : User_Data_Reference;
+         Slots       : Foreign_Slots;
+         IO          : Leander.IO.Reference;
       end record;
 
-   overriding function Resolve
-     (This : Instance;
+   function User_Data
+     (This : Instance'Class)
+      return access User_Data_Interface'Class
+   is (This.User_Data);
+
+   function Resolve
+     (This : Instance'Class;
       Name : String)
       return Skit.Object;
+
+   function IO
+     (This : Instance'Class)
+      return Leander.IO.Reference
+   is (This.IO);
+
+   function Debug_Image
+     (This : Instance'Class;
+      Value : Skit.Object)
+      return String
+   is (This.Skit_Handle.Image (Value));
 
 end Leander.Handles;

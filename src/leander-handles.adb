@@ -6,13 +6,13 @@ with Leander.Core.Inference;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Type_Classes;
+with Leander.Primitives;
+with Leander.Resources;
 with Leander.Syntax.Expressions;
 
+with Skit.Combinators;
 with Skit.Compiler;
-with Skit.Debug;
-with Skit.Impl;
-with Skit.Library;
-with Skit.Machine;
+with Skit.Terms;
 
 package body Leander.Handles is
 
@@ -21,22 +21,22 @@ package body Leander.Handles is
    ----------
 
    procedure Bind
-     (This      : Instance;
+     (This      : in out Instance'Class;
       Name      : String;
-      Primitive : Skit.Primitives.Abstraction'Class)
+      Evaluator : Skit.Primitive_Evaluator_Interface'Class)
    is
       X : constant Skit.Object :=
-            This.Skit_Env.Machine.Bind
-              (Primitive);
+            This.Skit_Handle.Primitive
+              (Evaluator);
    begin
-      This.Skit_Env.Bind (Name, X);
+      This.Skit_Handle.Bind (Name, X);
    end Bind;
 
    -----------
    -- Close --
    -----------
 
-   procedure Close (This : in out Instance) is
+   procedure Close (This : in out Instance'Class) is
    begin
       null;
    end Close;
@@ -45,10 +45,9 @@ package body Leander.Handles is
    -- Compile --
    -------------
 
-   function Compile
-     (This       : in out Instance;
+   procedure Compile
+     (This       : in out Instance'Class;
       Expression : String)
-      return String
    is
       use Leander.Core.Inference;
       use Leander.Core.Expressions.Inference;
@@ -65,7 +64,6 @@ package body Leander.Handles is
       if not Result.OK then
          Ada.Text_IO.Put_Line
            (Ada.Text_IO.Standard_Error, Result.Error_Message);
-         return "";
       else
 
          Result.Update_Type (Core);
@@ -73,25 +71,18 @@ package body Leander.Handles is
          declare
             Tree          : constant Leander.Calculus.Tree :=
                               Core.To_Calculus (Result, This.Env);
-         begin
-            Ada.Text_IO.Put_Line
-              ("compiling: " & Leander.Calculus.To_String (Tree));
+            Term          : constant Skit.Terms.Term :=
+              Leander.Calculus.Compile (Tree);
+            Compiled_Term : constant Skit.Terms.Term :=
+              Skit.Compiler.Compile (Term);
 
-            declare
-               Term          : constant Skit.Terms.Term :=
-                                 Leander.Calculus.Compile (Tree);
-               Compiled_Term : constant Skit.Terms.Term :=
-                                 Skit.Compiler.Compile (Term);
-               Value         : constant Skit.Object :=
-                                 Skit.Terms.Install
-                                   (compiled_Term, This'Access,
-                                    This.Skit_Env.Machine);
-            begin
-               This.Skit_Env.Machine.Push (Value);
-               Skit.Terms.Reset;
-               return Skit.Debug.Image
-                 (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
-            end;
+            function Resolve (Name : String) return Skit.Object
+            is (This.Resolve (Name));
+
+         begin
+            This.Skit_Handle.Install
+              (Compiled_Term, Resolve'Access);
+            Skit.Terms.Reset;
          end;
       end if;
    end Compile;
@@ -101,23 +92,32 @@ package body Leander.Handles is
    ------------
 
    function Create
-     (Size : Natural)
-      return Instance
+     (Size      : Natural;
+      User_Data : access Leander.User_Data_Interface'Class)
+      return Reference
    is
-      Machine  : constant Skit.Machine.Reference :=
-                   Skit.Impl.Machine (Size);
-      Skit_Env : constant Skit.Environment.Reference :=
-                   Skit.Environment.Create
-                     (Machine);
       Context  : constant Context_Reference :=
                    new Leander.Parser.Parse_Context;
-      Env      : constant Leander.Environment.Reference :=
-                   Context.Load_Module
-                     ("./share/leander/modules/Prelude.hs");
+      Prelude_Path : constant String :=
+                       Leander.Resources.Resource_Path
+                       & "/modules/Prelude.hs";
+      Env          : constant Leander.Environment.Reference :=
+                   Context.Load_Module (Prelude_Path);
+      This : constant Reference :=
+               new Instance'
+                     (Skit_Handle => <>,
+                      Env         => Env,
+                      Context     => Context,
+                      User_Data   => User_Data_Reference (User_Data),
+                      IO          => Leander.IO.Local_IO,
+                      Slots       => <>);
    begin
-      Skit.Library.Load_Primitives (Skit_Env);
-      return Instance'
-        (Skit_Env, Env, Context, others => <>);
+      This.Skit_Handle :=
+        Skit.Handles.New_Handle
+          (Core_Size => Size,
+           User_Data => This);
+      Leander.Primitives.Load_Primitives (This.Skit_Handle);
+      return This;
    end Create;
 
    -------------------------
@@ -125,7 +125,7 @@ package body Leander.Handles is
    -------------------------
 
    function Current_Environment
-     (This : Instance)
+     (This : Instance'Class)
       return String
    is
    begin
@@ -136,23 +136,13 @@ package body Leander.Handles is
    -- Evaluate --
    --------------
 
-   function Evaluate
-     (This       : in out Instance;
+   procedure Evaluate
+     (This       : in out Instance'Class;
       Expression : String)
-      return String
    is
-      Unused : constant String := This.Compile (Expression);
    begin
-      pragma Unreferenced (Unused);
-      This.Skit_Env.Machine.Evaluate;
-
-      declare
-         Value : constant String :=
-                   Skit.Debug.Image
-                     (This.Skit_Env.Machine.Top, This.Skit_Env.Machine);
-      begin
-         return Value;
-      end;
+      This.Compile (Expression);
+      This.Skit_Handle.Evaluate;
    end Evaluate;
 
    --------------
@@ -160,7 +150,7 @@ package body Leander.Handles is
    --------------
 
    function Get_Slot
-     (This : Instance;
+     (This : Instance'Class;
       Slot : Slot_Index)
       return Boolean
    is
@@ -173,7 +163,7 @@ package body Leander.Handles is
    --------------
 
    function Get_Slot
-     (This : Instance;
+     (This : Instance'Class;
       Slot : Slot_Index)
       return String
    is
@@ -187,7 +177,7 @@ package body Leander.Handles is
    --------------
 
    function Get_Slot
-     (This : Instance;
+     (This : Instance'Class;
       Slot : Slot_Index)
       return Integer
    is
@@ -200,7 +190,7 @@ package body Leander.Handles is
    ----------------
 
    function Infer_Type
-     (This       : in out Instance;
+     (This       : in out Instance'Class;
       Expression : String)
       return String
    is
@@ -237,37 +227,49 @@ package body Leander.Handles is
    -----------------
 
    procedure Load_Module
-     (This : in out Instance;
+     (This : in out Instance'Class;
       Path : String)
    is
    begin
       This.Env := This.Context.Load_Module (Path);
    end Load_Module;
 
+   ---------
+   -- Pop --
+   ---------
+
+   function Pop
+     (This : Instance'Class)
+      return String
+   is
+   begin
+      return This.Skit_Handle.Image
+        (This.Skit_Handle.Pop);
+   end Pop;
+
    -------------------
    -- Receive_Value --
    -------------------
 
    function Receive_Value
-     (This   : Instance;
+     (This   : Instance'Class;
       Index  : Slot_Index)
       return Skit.Object
    is
       Value : constant Foreign_Value := This.Slots (Index);
-      M     : constant Skit.Machine.Reference :=
-                This.Skit_Env.Machine;
+      H     : constant Skit.Handles.Handle := This.Skit_Handle;
    begin
       case Value.Class is
          when Unit_Type =>
-            return Skit.I;
+            return Skit.Combinators.I;
          when Boolean_Type =>
             if Value.Boolean_Value then
-               return Skit.K;
+               return Skit.Combinators.K;
             else
-               M.Push (Skit.K);
-               M.Push (Skit.I);
-               M.Apply;
-               return M.Pop;
+               H.Push (Skit.Combinators.K);
+               H.Push (Skit.Combinators.I);
+               H.Apply;
+               return H.Pop;
             end if;
          when Integer_Type =>
             return Skit.To_Object (Value.Integer_Value);
@@ -276,16 +278,18 @@ package body Leander.Handles is
                use Ada.Strings.Unbounded;
                S  : constant String :=
                       To_String (Value.String_Value);
-               E  : Unbounded_String := To_Unbounded_String ("K");
             begin
-               for Ch of reverse S loop
-                  E := "B* (B K) C (C I)"
-                    & Natural'Image (Character'Pos (Ch))
-                    & " ("
-                    & E & ")";
+               for Ch of S loop
+                  H.Push (H.Lookup ("#cons"));
+                  H.Push (Skit.To_Object (Character'Pos (Ch)));
+                  H.Apply;
                end loop;
-               This.Skit_Env.Parse (To_String (E));
-               return M.Pop;
+               H.Push (SKit.Combinators.K);
+               H.Apply;
+               for I in S'Range loop
+                  H.Apply;
+               end loop;
+               return H.Pop;
             end;
       end case;
    end Receive_Value;
@@ -295,26 +299,24 @@ package body Leander.Handles is
    ------------
 
    procedure Report
-     (This : in out Instance)
+     (This : in out Instance'Class)
    is
    begin
-      This.Skit_Env.Machine.Report;
+      This.Skit_Handle.Report;
    end Report;
 
    -------------
    -- Resolve --
    -------------
 
-   overriding function Resolve
-     (This : Instance;
+   function Resolve
+     (This : Instance'Class;
       Name : String)
       return Skit.Object
    is
-      use type Skit.Object;
-      Binding : constant Skit.Object :=
-                  This.Skit_Env.Lookup (Name);
+      Binding : constant Skit.Object := This.Skit_Handle.Lookup (Name);
    begin
-      if Binding = Skit.Undefined then
+      if Skit.Is_Undefined (Binding) then
          if not This.Env.Variable_Binding_Exists (Name) then
             raise Program_Error with
               "undefined: " & Name;
@@ -327,12 +329,14 @@ package body Leander.Handles is
                               Leander.Calculus.Compile (T);
             Compiled_Term : constant Skit.Terms.Term :=
                               Skit.Compiler.Compile (Term);
+            function Resolve (Name : String) return Skit.Object
+            is (This.Resolve (Name));
+
             Value         : constant Skit.Object :=
-                              Skit.Terms.Install
-                                (Compiled_Term, This'Access,
-                                 This.Skit_Env.Machine);
+                              This.Skit_Handle.Install
+                                (Compiled_Term, Resolve'Access);
          begin
-            This.Skit_Env.Bind (Name, Value);
+            This.Skit_Handle.Bind (Name, Value);
             return Value;
          end;
       else
@@ -345,7 +349,7 @@ package body Leander.Handles is
    ----------------
 
    procedure Send_Value
-     (This   : in out Instance;
+     (This   : in out Instance'Class;
       Index  : Slot_Index;
       F_Type : Foreign_Type;
       Value  : Skit.Object)
@@ -357,7 +361,7 @@ package body Leander.Handles is
          when Unit_Type =>
             F_Value := (Class => Unit_Type);
          when Boolean_Type =>
-            F_Value := (Boolean_Type, Value = Skit.K);
+            F_Value := (Boolean_Type, Value = Skit.Combinators.K);
          when Integer_Type =>
             F_Value := (Integer_Type, Skit.To_Integer (Value));
          when String_Type =>
@@ -366,17 +370,14 @@ package body Leander.Handles is
                It : Skit.Object := Value;
                S  : Unbounded_String;
             begin
-               while It /= Skit.K loop
+               while It /= Skit.Combinators.K loop
                   declare
                      Code : constant Skit.Object :=
-                              This.Skit_Env.Machine.Right
-                                (This.Skit_Env.Machine.Left
-                                   (It));
+                              This.Skit_Handle.Right
+                                (This.Skit_Handle.Left (It));
                   begin
-                     Ada.Text_IO.Put_Line
-                       (Skit.Debug.Image (Code));
                      Append (S, Character'Val (Skit.To_Integer (Code)));
-                     It := This.Skit_Env.Machine.Right (It);
+                     It := This.Skit_Handle.Right (It);
                   end;
                end loop;
                F_Value := (String_Type, S);
@@ -390,7 +391,7 @@ package body Leander.Handles is
    --------------
 
    procedure Set_Slot
-     (This  : in out Instance;
+     (This  : in out Instance'Class;
       Slot  : Slot_Index;
       Value : Boolean)
    is
@@ -403,7 +404,7 @@ package body Leander.Handles is
    --------------
 
    procedure Set_Slot
-     (This  : in out Instance;
+     (This  : in out Instance'Class;
       Slot  : Slot_Index;
       Value : String)
    is
@@ -417,26 +418,12 @@ package body Leander.Handles is
    --------------
 
    procedure Set_Slot
-     (This  : in out Instance;
+     (This  : in out Instance'Class;
       Slot  : Slot_Index;
       Value : Integer)
    is
    begin
       This.Slots (Slot) := (Integer_Type, Value);
    end Set_Slot;
-
-   -----------
-   -- Trace --
-   -----------
-
-   procedure Trace
-     (This    : in out Instance;
-      Enabled : Boolean)
-   is
-   begin
-      This.Skit_Env.Machine.Set
-        ("trace-eval",
-         (if Enabled then "true" else "false"));
-   end Trace;
 
 end Leander.Handles;

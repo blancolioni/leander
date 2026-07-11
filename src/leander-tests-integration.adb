@@ -1,5 +1,4 @@
 with Ada.Exceptions;
-with Leander.Handles;
 with Leander.Syntax;
 
 package body Leander.Tests.Integration is
@@ -11,14 +10,14 @@ package body Leander.Tests.Integration is
      (Expression     : String;
       Expected_Type  : String;
       Expected_Value : String;
-      Handle         : in out Leander.Handles.Instance);
+      Handle         : Leander.Handle);
 
    procedure Test_Module
      (Label          : String;
       Module_Path    : String;
       Expression     : String;
       Expected_Value : String;
-      Handle         : in out Leander.Handles.Instance);
+      Handle         : Leander.Handle);
 
    ---------------
    -- Test_Eval --
@@ -28,7 +27,7 @@ package body Leander.Tests.Integration is
      (Expression     : String;
       Expected_Type  : String;
       Expected_Value : String;
-      Handle         : in out Leander.Handles.Instance)
+      Handle         : Leander.Handle)
    is
       pragma Unreferenced (Expected_Type);
       Value : constant String := Handle.Evaluate (Expression);
@@ -51,7 +50,7 @@ package body Leander.Tests.Integration is
       Module_Path    : String;
       Expression     : String;
       Expected_Value : String;
-      Handle         : in out Leander.Handles.Instance)
+      Handle         : Leander.Handle)
    is
    begin
       Handle.Load_Module (Module_Path);
@@ -76,8 +75,8 @@ package body Leander.Tests.Integration is
      (Label       : String;
       Module_Path : String)
    is
-      H      : Leander.Handles.Instance :=
-                 Leander.Handles.Create (256 * 1024);
+      H      : Leander.Handle :=
+                 Leander.Create (256 * 1024);
    begin
       H.Load_Module (Module_Path);
       declare
@@ -102,7 +101,7 @@ package body Leander.Tests.Integration is
    ---------------
 
    procedure Run_Tests is
-      Handle : Leander.Handles.Instance := Leander.Handles.Create (256 * 1024);
+      Handle : Leander.Handle := Leander.Create (256 * 1024);
    begin
 
       --  Phase 1: Expression-level tests
@@ -380,6 +379,8 @@ package body Leander.Tests.Integration is
          Test_Root & "Test15_ConcatOp.hs");
 
       Leander.Syntax.Prune;
+
+      Handle.Close;
 
    end Run_Tests;
 

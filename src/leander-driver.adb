@@ -1,7 +1,6 @@
 with Ada.Text_IO;
 
 with Leander.Command_Line;
-with Leander.Handles;
 with Leander.Logging;
 with Leander.Repl;
 with Leander.Tests;
@@ -22,8 +21,7 @@ begin
 
    if Command_Line.Evaluate /= "" then
       declare
-         H : Leander.Handles.Instance :=
-               Leander.Handles.Create (Core_Size);
+         H : Leander.Handle := Leander.Create (Core_Size);
          Result : constant String :=
                     H.Evaluate (Command_Line.Evaluate);
       begin
@@ -36,8 +34,7 @@ begin
       Leander.Tests.Run_Tests;
    elsif Command_Line.Main /= "" then
       declare
-         H      : Leander.Handles.Instance :=
-                    Leander.Handles.Create (Core_Size);
+         H : Leander.Handle := Leander.Create (Core_Size);
       begin
          H.Load_Module (Command_Line.Main);
 

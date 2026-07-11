@@ -1,16 +1,14 @@
 with Ada.Unchecked_Deallocation;
 with Leander.Handles;
-with Skit.Primitives;
-with Skit.Stacks;
+with Skit;
 
 package body Leander is
 
    type Binding_Instance (Argument_Count : Natural;
                           Result_Count   : Positive)
-   is new Skit.Primitives.Abstraction with
+   is new Skit.Primitive_Evaluator_Interface with
       record
-         Handle    : Leander.Handle;
-         Eval      : Evaluator;
+         Eval      : Foreign_Function_Evaluator;
          Arg_Types : Foreign_Type_Array (1 .. Argument_Count);
          Res_Types : Foreign_Type_Array (1 .. Result_Count);
       end record;
@@ -20,60 +18,74 @@ package body Leander is
       return Natural
    is (This.Argument_Count);
 
-   overriding procedure Evaluate
-     (This  : Binding_Instance;
-      Stack   : in out Skit.Stacks.Abstraction'Class);
+   overriding function Argument_Modes
+     (This : Binding_Instance)
+      return Skit.Argument_Mode_Array;
+
+   overriding function Evaluate
+     (This      : Binding_Instance;
+      User_Data : access Skit.User_Data_Interface'Class;
+      Arguments : Skit.Object_Array)
+      return Skit.Object;
 
    function Current_Environment
-     (This : Handle)
+     (This : Handle'Class)
       return String
    is (This.H.Current_Environment);
 
-   function Evaluate
-     (This       : Handle;
-      Expression : String)
-      return String
-   is (This.H.Evaluate (Expression));
-
    function Get_Slot
-     (This : Handle;
+     (This : Handle'Class;
       Slot : Slot_Index)
       return Boolean
    is (This.H.Get_Slot (Slot));
 
    function Get_Slot
-     (This : Handle;
+     (This : Handle'Class;
       Slot : Slot_Index)
       return String
    is (This.H.Get_Slot (Slot));
 
    function Get_Slot
-     (This : Handle;
+     (This : Handle'Class;
       Slot : Slot_Index)
       return Integer
    is (This.H.Get_Slot (Slot));
 
    function Infer_Type
-     (This       : Handle;
+     (This       : Handle'Class;
       Expression : String)
       return String
    is (This.H.Infer_Type (Expression));
 
    function User_Data
-     (This : Handle)
+     (This : Handle'Class)
       return access User_Data_Interface'Class
-   is (This.User_Data);
+   is (This.H.User_Data);
+
+   --------------------
+   -- Argument_Modes --
+   --------------------
+
+   overriding function Argument_Modes
+     (This : Binding_Instance)
+      return Skit.Argument_Mode_Array
+   is
+   begin
+      return Modes : constant Skit.Argument_Mode_Array
+        (1 .. This.Argument_Count)
+        := [others => Skit.Strict];
+   end Argument_Modes;
 
    ----------
    -- Bind --
    ----------
 
    procedure Bind
-     (This           : Handle;
+     (This           : Handle'Class;
       Name           : String;
       Argument_Types : Foreign_Type_Array;
       Result_Type    : Foreign_Type;
-      Eval           : Evaluator)
+      Eval           : Foreign_Function_Evaluator)
    is
       Res_Types : constant Foreign_Type_Array := [Result_Type];
    begin
@@ -85,11 +97,11 @@ package body Leander is
    ----------
 
    procedure Bind
-     (This           : Handle;
+     (This           : Handle'Class;
       Name           : String;
       Argument_Types : Foreign_Type_Array;
       Result_Types   : Foreign_Type_Array;
-      Eval           : Evaluator)
+      Eval           : Foreign_Function_Evaluator)
    is
    begin
       This.H.Bind
@@ -97,7 +109,6 @@ package body Leander is
          Binding_Instance'
            (Argument_Count => Argument_Types'Length,
             Result_Count   => Result_Types'Length,
-            Handle         => This,
             Arg_Types      => Argument_Types,
             Res_Types      => Result_Types,
             Eval           => Eval));
@@ -107,7 +118,7 @@ package body Leander is
    -- Close --
    -----------
 
-   procedure Close (This : in out Handle) is
+   procedure Close (This : in out Handle'Class) is
       procedure Free is
         new Ada.Unchecked_Deallocation
           (Leander.Handles.Instance'Class,
@@ -116,42 +127,66 @@ package body Leander is
       Free (This.H);
    end Close;
 
+   -------------
+   -- Compile --
+   -------------
+
+   function Compile
+     (This       : Handle'Class;
+      Expression : String)
+      return String
+   is
+   begin
+      This.H.Compile (Expression);
+      return This.H.Pop;
+   end Compile;
+
    ------------
    -- Create --
    ------------
 
    function Create
      (Size      : Natural := 64 * 1024;
-      User_Data : access User_Data_Interface'Class)
+      User_Data : access User_Data_Interface'Class := null)
       return Handle
    is
    begin
       return Handle'
-        (H         => new Leander.Handles.Instance'
-           (Leander.Handles.Create (Size)),
-         User_Data => User_Data_Reference (User_Data));
+        (H => Handle_Reference (Leander.Handles.Create (Size, User_Data)));
    end Create;
 
    --------------
    -- Evaluate --
    --------------
 
-   overriding procedure Evaluate
-     (This  : Binding_Instance;
-      Stack   : in out Skit.Stacks.Abstraction'Class)
+   function Evaluate
+     (This       : Handle'Class;
+      Expression : String)
+      return String
    is
    begin
+      This.H.Evaluate (Expression);
+      return This.H.Pop;
+   end Evaluate;
+
+   --------------
+   -- Evaluate --
+   --------------
+
+   overriding function Evaluate
+     (This      : Binding_Instance;
+      User_Data : access Skit.User_Data_Interface'Class;
+      Arguments : Skit.Object_Array)
+      return Skit.Object
+   is
+      H : constant Handle_Reference := Handle_Reference (User_Data);
+   begin
       for I in 1 .. This.Argument_Count loop
-         This.Handle.H.Send_Value
-           (Slot_Index (I), This.Arg_Types (I),
-            Stack.Pop);
+         H.Send_Value
+           (Slot_Index (I), This.Arg_Types (I), Arguments (I));
       end loop;
-      This.Eval (This.Handle);
-      for I in 1 .. This.Result_Count loop
-         Stack.Push
-           (This.Handle.H.Receive_Value
-              (Slot_Index (I)));
-      end loop;
+      This.Eval (Handle'(H => H));
+      return H.Receive_Value (1);
    end Evaluate;
 
    -------------
@@ -159,7 +194,7 @@ package body Leander is
    -------------
 
    procedure Execute
-     (This      : Handle;
+     (This      : Handle'Class;
       Statement : String)
    is
       Result : constant String :=
@@ -173,7 +208,7 @@ package body Leander is
    -----------------
 
    procedure Load_Module
-     (This : in out Handle;
+     (This : Handle'Class;
       Path : String)
    is
    begin
@@ -185,7 +220,7 @@ package body Leander is
    ------------
 
    procedure Report
-     (This : in out Handle)
+     (This : Handle'Class)
    is
    begin
       This.H.Report;
@@ -196,7 +231,7 @@ package body Leander is
    --------------
 
    procedure Set_Slot
-     (This  : Handle;
+     (This  : Handle'Class;
       Slot  : Slot_Index;
       Value : Boolean)
    is
@@ -209,7 +244,7 @@ package body Leander is
    --------------
 
    procedure Set_Slot
-     (This  : Handle;
+     (This  : Handle'Class;
       Slot  : Slot_Index;
       Value : String)
    is
@@ -222,24 +257,12 @@ package body Leander is
    --------------
 
    procedure Set_Slot
-     (This  : Handle;
+     (This  : Handle'Class;
       Slot  : Slot_Index;
       Value : Integer)
    is
    begin
       This.H.Set_Slot (Slot, Value);
    end Set_Slot;
-
-   -----------
-   -- Trace --
-   -----------
-
-   procedure Trace
-     (This    : in out Handle;
-      Enabled : Boolean)
-   is
-   begin
-      This.H.Trace (Enabled);
-   end Trace;
 
 end Leander;
