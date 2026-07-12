@@ -225,9 +225,31 @@ length :: [a] -> Int
 length [] = 0
 length (x:xs) = 1 + length xs
 
-mod, div :: Int -> Int -> Int
-mod = #primIntMod
-div = #primIntDiv
+ -- List index (subscript) operator, 0-origin  
+(!!)                :: [a] -> Int -> a  
+[]     !! _         =  error "Prelude.!!: index too large"  
+(x:_)  !! 0         =  x  
+(_:xs) !! n         =  xs !! (n-1)
+
+-- foldl, applied to a binary operator, a starting value (typically the  
+-- left-identity of the operator), and a list, reduces the list using  
+-- the binary operator, from left to right:  
+--  foldl f z [x1, x2, ..., xn] == (...((z ‘f‘ x1) ‘f‘ x2) ‘f‘...) ‘f‘ xn  
+-- foldl1 is a variant that has no starting value argument, and  thus must  
+-- be applied to non-empty lists.  scanl is similar to foldl, but returns  
+-- a list of successive reduced values from the left:  
+--      scanl f z [x1, x2, ...] == [z, z ‘f‘ x1, (z ‘f‘ x1) ‘f‘ x2, ...]  
+-- Note that  last (scanl f z xs) == foldl f z xs.  
+-- scanl1 is similar, again without the starting element:  
+--      scanl1 f [x1, x2, ...] == [x1, x1 ‘f‘ x2, ...]  
+ 
+foldl            :: (a -> b -> a) -> a -> [b] -> a  
+foldl f z []     =  z  
+foldl f z (x:xs) =  foldl f (f z x) xs 
+
+foldr            :: (a -> b -> b) -> b -> [a] -> b
+foldr f z []     =  z
+foldr f z (x:xs) =  f x (foldr f z xs)
 
 map :: (a -> b) -> [a] -> [b]
 map f [] = []
@@ -239,16 +261,50 @@ take 0 _ = []
 take _ [] = []
 take n (x:xs) = x : take (n - 1) xs
 
+drop                   :: Int -> [a] -> [a]  
+drop 0 xs              =  xs
+drop _ []              =  []  
+drop n (x:xs)          =  drop (n - 1) xs 
+
+-- takeWhile, applied to a predicate p and a list xs, returns the longest  
+-- prefix (possibly empty) of xs of elements that satisfy p.  dropWhile p xs  
+-- returns the remaining suffix.  span p xs is equivalent to  
+-- (takeWhile p xs, dropWhile p xs), while break p uses the negation of p.  
+ 
+takeWhile               :: (a -> Bool) -> [a] -> [a]  
+takeWhile p []          =  []  
+takeWhile p (x:xs)      = if p x then x : takeWhile p xs else []  
+
+dropWhile               :: (a -> Bool) -> [a] -> [a]  
+dropWhile p []          =  []  
+dropWhile p (x:xs)      = if p x then dropWhile p xs else (x:xs)
+
+-- zip takes two lists and returns a list of corresponding pairs.  If one  
+-- input list is short, excess elements of the longer list are discarded.  
+-- zip3 takes three lists and returns a list of triples.  Zips for larger  
+-- tuples are in the List library  
+ 
+zip              :: [a] -> [b] -> [(a,b)]  
+zip x y = case x of
+            []     -> []
+            (x:xs) -> case y of
+                        []     -> []
+                        (y:ys) -> (x,y) : zip xs ys
+
+zipWith              :: (a->b->c) -> [a]->[b]->[c]  
+zipWith z as bs = case as of
+            []     -> []
+            (a:as) -> case bs of
+                        []     -> []
+                        (b:bs) -> z a b : zipWith z as bs
+
+
 filter :: (a -> Bool) -> [a] -> [a]
 filter p [] = []
 filter p (x:xs) = if p x then x : filter p xs else filter p xs
 
 sum :: [Int] -> Int
-sum [] = 0
-sum (x:xs) = x + sum xs
-
---  return x = [x]
---  (>>=) xs f = concat (map f xs)
+sum = foldr (+) 0
 
 concat :: [[a]] -> [a]
 concat [] = []
@@ -259,6 +315,31 @@ reverse xs = let rev []     acc = acc
                  rev (x:xs) acc = rev xs (x:acc)
              in rev xs []
                 
+ -- and returns the conjunction of a Boolean list.  For the result to be  
+-- True, the list must be finite; False, however, results from a False  
+-- value at a finite index of a finite or infinite list.  or is the  
+-- disjunctive dual of and.  
+and, or          :: [Bool] -> Bool  
+and              =  foldr (&&) True  
+or               =  foldr (||) False
+
+-- Applied to a predicate and a list, any determines if any element  
+-- of the list satisfies the predicate.  Similarly, for all.  
+any, all         :: (a -> Bool) -> [a] -> Bool  
+any p            =  or . map p  
+all p            =  and . map p
+
+-- elem is the list membership predicate, usually written in infix form,  
+-- e.g., x ‘elem‘ xs.  notElem is the negation.  
+elem, notElem    :: (Eq a) => a -> [a] -> Bool  
+elem x           =  any (== x)  
+notElem x        =  all (/= x) 
+
+-- lookup key assocs looks up a key in an association list.  
+lookup           :: (Eq a) => a -> [(a,b)] -> Maybe b  
+lookup key []    =  Nothing  
+lookup key (xy:xys) = if fst xy == key then Just (snd xy) else lookup key xys
+    
 (++) :: [a] -> [a] -> [a]
 (++) [] ys = ys
 (++) (x:xs) ys = x : (xs ++ ys)
@@ -308,10 +389,6 @@ tail :: [a] -> [a]
 tail (_:xs) = xs
 tail [] = error "Prelude.tail: empty list"
 
-foldr            :: (a -> b -> b) -> b -> [a] -> b
-foldr f z []     =  z
-foldr f z (x:xs) =  f x (foldr f z xs)
-
 -- Maybe type
 
 data  Maybe a  =  Nothing | Just a deriving Eq
@@ -356,6 +433,10 @@ instance Num Int where
     abs x = if x < 0 then 0 - x else x
     signum x = if x < 0 then 0 - 1 else if x == 0 then 0 else 1
     fromInteger n = 0
+
+mod, div :: Int -> Int -> Int
+mod = #primIntMod
+div = #primIntDiv
 
 data IO a = IO (Int -> (a,Int))
 

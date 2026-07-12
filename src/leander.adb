@@ -1,32 +1,7 @@
 with Ada.Unchecked_Deallocation;
 with Leander.Handles;
-with Skit;
 
 package body Leander is
-
-   type Binding_Instance (Argument_Count : Natural;
-                          Result_Count   : Positive)
-   is new Skit.Primitive_Evaluator_Interface with
-      record
-         Eval      : Foreign_Function_Evaluator;
-         Arg_Types : Foreign_Type_Array (1 .. Argument_Count);
-         Res_Types : Foreign_Type_Array (1 .. Result_Count);
-      end record;
-
-   overriding function Argument_Count
-     (This : Binding_Instance)
-      return Natural
-   is (This.Argument_Count);
-
-   overriding function Argument_Modes
-     (This : Binding_Instance)
-      return Skit.Argument_Mode_Array;
-
-   overriding function Evaluate
-     (This      : Binding_Instance;
-      User_Data : access Skit.User_Data_Interface'Class;
-      Arguments : Skit.Object_Array)
-      return Skit.Object;
 
    function Current_Environment
      (This : Handle'Class)

@@ -17,6 +17,8 @@ with Skit.Terms;
 
 package body Leander.Handles is
 
+   procedure Evaluate_Error (H : Handle'Class);
+
    ----------
    -- Bind --
    ----------
@@ -81,9 +83,9 @@ package body Leander.Handles is
                Tree          : constant Leander.Calculus.Tree :=
                                  Core.To_Calculus (Result, This.Env);
                Term          : constant Skit.Terms.Term :=
-               Leander.Calculus.Compile (Tree);
+                 Leander.Calculus.Compile (Tree);
                Compiled_Term : constant Skit.Terms.Term :=
-               Skit.Compiler.Compile (Term);
+                 Skit.Compiler.Compile (Term);
 
                function Resolve (Name : String) return Skit.Object
                is (This.Resolve (Name));
@@ -138,6 +140,15 @@ package body Leander.Handles is
           (Core_Size => Size,
            User_Data => This);
       Leander.Primitives.Load_Primitives (This.Skit_Handle);
+
+      This.Bind
+        ("#error",
+         Binding_Instance'
+           (Argument_Count => 1,
+            Result_Count   => 1,
+            Arg_Types      => [String_Type],
+            Res_Types      => [Boolean_Type],
+            Eval           => Evaluate_Error'Access));
       return This;
    end Create;
 
@@ -165,6 +176,19 @@ package body Leander.Handles is
       This.Compile (Expression);
       This.Skit_Handle.Evaluate;
    end Evaluate;
+
+   --------------------
+   -- Evaluate_Error --
+   --------------------
+
+   procedure Evaluate_Error (H : Handle'Class) is
+      Message : constant String :=
+        H.Get_Slot (1);
+   begin
+      Ada.Text_IO.Put_Line
+        (Ada.Text_IO.Standard_Error, Message);
+      raise Constraint_Error with Message;
+   end Evaluate_Error;
 
    --------------
    -- Get_Slot --
