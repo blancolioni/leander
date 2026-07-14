@@ -1,7 +1,6 @@
 with Ada.Text_IO;
 
 with Leander.Command_Line;
-with Leander.Logging;
 with Leander.Repl;
 with Leander.Tests;
 with Leander.Version;
@@ -13,10 +12,6 @@ begin
    if Command_Line.Version then
       Ada.Text_IO.Put_Line ("Leander " & Leander.Version.Version_String);
       return;
-   end if;
-
-   if Command_Line.Enable_Log then
-      Leander.Logging.Start_Logging;
    end if;
 
    if Command_Line.Evaluate /= "" then
@@ -37,15 +32,7 @@ begin
          H : Leander.Handle := Leander.Create (Core_Size);
       begin
          H.Load_Module (Command_Line.Main);
-
-         declare
-            Result : constant String := H.Evaluate ("runIO main");
-         begin
-            if Result /= "I" then
-               Ada.Text_IO.Put_Line (Result);
-            end if;
-         end;
-
+         H.Execute ("main");
          if Command_Line.Report then
             H.Report;
          end if;
@@ -55,15 +42,4 @@ begin
    else
       Leander.Repl.Start (Core_Size);
    end if;
-
-   if Command_Line.Enable_Log then
-      Leander.Logging.Stop_Logging;
-   end if;
-
-exception
-   when others =>
-      if Command_Line.Enable_Log then
-         Leander.Logging.Stop_Logging;
-      end if;
-      raise;
 end Leander.Driver;

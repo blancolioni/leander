@@ -197,10 +197,8 @@ package body Leander is
      (This      : Handle'Class;
       Statement : String)
    is
-      Result : constant String :=
-                 This.Evaluate ("runIO (" & Statement & ")");
    begin
-      pragma Unreferenced (Result);
+      This.H.Evaluate ("runIO (" & Statement & ")");
    end Execute;
 
    -----------------

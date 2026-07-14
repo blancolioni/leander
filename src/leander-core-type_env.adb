@@ -1,6 +1,5 @@
 with Ada.Strings.Unbounded;
 with Leander.Allocator;
-with Leander.Logging;
 
 package body Leander.Core.Type_Env is
 
@@ -67,18 +66,7 @@ package body Leander.Core.Type_Env is
       Scheme : Leander.Core.Schemes.Reference)
       return access constant Instance
    is
-      N : constant String :=
-        Leander.Names.To_String (Leander.Names.Leander_Name (Name));
-      S : constant String := Scheme.Show;
    begin
-      if N = "/=" and then S (S'First) = '$' then
-         Leander.Logging.Log
-           ("TYPE",
-            N
-            & " :: "
-            & S);
-         --  raise Program_Error with "definition of /=";
-      end if;
       return Allocate
         (Instance'
            (Map  => Scheme_Maps.Singleton

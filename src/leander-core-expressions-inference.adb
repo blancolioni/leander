@@ -5,7 +5,6 @@ with Leander.Core.Schemes;
 with Leander.Core.Substitutions;
 with Leander.Core.Type_Env;
 with Leander.Core.Types.Unification;
-with Leander.Logging;
 
 package body Leander.Core.Expressions.Inference is
 
@@ -105,9 +104,6 @@ package body Leander.Core.Expressions.Inference is
                         Q : constant Core.Qualified_Types.Reference :=
                               Sigma.Fresh_Instance;
                      begin
-                        Leander.Logging.Log
-                          ("INFER",
-                           E.Show & " :: " & Q.Show);
                         Bind (E, Q);
                         return Substitutions.Empty;
                      end;

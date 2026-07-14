@@ -2,32 +2,50 @@ with Ada.Exceptions;
 
 package Leander.Logging is
 
-   type Log_Level is range 1 .. 4;
+   type Log_Level is
+     (Fatal, Error, Warn, Info, Debug, Trace);
 
-   procedure Start_Logging (Path : String;
-                            Level : Log_Level := 3);
-   procedure Start_Logging (Level : Log_Level := 3);
+   type Log_Interface is limited interface;
+   type Reference is access all Log_Interface'Class;
 
-   procedure Stop_Logging;
+   procedure Log
+     (This     : in out Log_Interface;
+      Level    : Log_Level;
+      Message  : String)
+   is abstract;
 
-   procedure Log (Message : String);
-   procedure Log (Level   : Log_Level;
-                  Message : String);
+   procedure Close_Log (This : in out Log_Interface)
+   is abstract;
 
-   procedure Log (Category : String;
-                  Message  : String);
-
-   procedure Log (Level    : Log_Level;
-                  Category : String;
-                  Message  : String);
+   function Null_Logger return Reference;
 
    procedure Log_Exception
-     (Message : String;
-      E       : Ada.Exceptions.Exception_Occurrence);
+     (This       : in out Log_Interface'Class;
+      Level      : Log_Level;
+      Occurance  : Ada.Exceptions.Exception_Occurrence);
 
-   procedure Log_Exception
-     (Level   : Log_Level;
-      Message : String;
-      E       : Ada.Exceptions.Exception_Occurrence);
+   procedure Fatal
+     (This : in out Log_Interface'Class;
+      Message : String);
+
+   procedure Error
+     (This : in out Log_Interface'Class;
+      Message : String);
+
+   procedure Warn
+     (This : in out Log_Interface'Class;
+      Message : String);
+
+   procedure Info
+     (This : in out Log_Interface'Class;
+      Message : String);
+
+   procedure Debug
+     (This : in out Log_Interface'Class;
+      Message : String);
+
+   procedure Trace
+     (This : in out Log_Interface'Class;
+      Message : String);
 
 end Leander.Logging;

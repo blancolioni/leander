@@ -9,7 +9,6 @@ with Leander.Core.Substitutions;
 with Leander.Core.Type_Instances;
 with Leander.Core.Types.Unification;
 with Leander.Environment.Prelude;
-with Leander.Logging;
 with Leander.Names.Maps;
 with WL.String_Maps;
 with WL.String_Sets;
@@ -585,15 +584,11 @@ package body Leander.Environment is
                                  --  compiles to a <Eq T> dict reference;
                                  --  the environment-level Y wrap below
                                  --  ties the dictionary knot.
-                                 Leander.Logging.Log
-                                   ("INST", Binding.Show);
                                  declare
                                     Calc : constant Leander.Calculus.Tree :=
                                       Binding.To_Calculus
                                         (Inst_Context, This'Unchecked_Access);
                                  begin
-                                    Leander.Logging.Log
-                                      ("CALC", Leander.Calculus.To_String (Calc));
                                     D :=
                                       Leander.Calculus.Apply
                                         (D, Calc);
@@ -636,9 +631,6 @@ package body Leander.Environment is
                                 (Leander.Calculus.Symbol ("Y"),
                                  Leander.Calculus.Lambda (Dict_Name, D));
                            end if;
-                           Leander.Logging.Log
-                             ("INST", Dict_Name
-                              & " = " & Leander.Calculus.To_String (D));
                            This.Values.Insert
                              (Leander.Names.To_Leander_Name (Dict_Name), D);
                         end;
