@@ -1,5 +1,6 @@
 with Ada.Text_IO;
 with Leander.Handles;
+with Skit.Combinators;
 with Skit.Compiler;
 with Skit.Parser;
 with Skit.Terms;
@@ -218,7 +219,12 @@ package body Leander.Primitives is
       end Resolve;
 
    begin
-      Exec ("!Y S S I (C B (S I I))");
+      --  Y is the built-in knot-tying fixpoint combinator (see
+      --  Skit.Machines.Eval_Combinator).  It shares the recursive value in
+      --  one self-referential node, so recursion is O(1) per step; the old
+      --  combinator definition S S I (C B (S I I)) rebuilt the fixpoint each
+      --  unfold, making every recursive traversal quadratic.
+      Bind ("Y", Skit.Terms.Combinator (Skit.Combinators.Y));
       Exec ("!#id \x.x");
       Exec ("!#false \x.\y.y");
       Exec ("!#true \x.\y.x");
