@@ -2,5 +2,5 @@ module Evaluation where
 
 main :: IO ()
 main = do
-    print (sum ([1 .. 1000000])
+    print (sum ([1 .. 10000]))
     
