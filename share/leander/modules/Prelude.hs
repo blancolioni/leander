@@ -197,7 +197,7 @@ f . g = \x -> f (g x)
 flip :: (a -> b -> c) -> b -> a -> c
 flip f x y = f y x
 
-seq :: a -> b -> a
+seq :: a -> b -> b
 seq = #primSeq
 
 ($) :: (a -> b) -> a -> b
@@ -244,8 +244,7 @@ filter p [] = []
 filter p (x:xs) = if p x then x : filter p xs else filter p xs
 
 sum :: [Int] -> Int
-sum [] = 0
-sum (x:xs) = x + sum xs
+sum = foldl' (+) 0
 
 --  return x = [x]
 --  (>>=) xs f = concat (map f xs)
@@ -312,6 +311,26 @@ foldr            :: (a -> b -> b) -> b -> [a] -> b
 foldr f z []     =  z
 foldr f z (x:xs) =  f x (foldr f z xs)
 
+-- foldl, applied to a binary operator, a starting value (typically the  
+-- left-identity of the operator), and a list, reduces the list using  
+-- the binary operator, from left to right:  
+--  foldl f z [x1, x2, ..., xn] == (...((z ‘f‘ x1) ‘f‘ x2) ‘f‘...) ‘f‘ xn  
+-- foldl1 is a variant that has no starting value argument, and  thus must  
+-- be applied to non-empty lists.  scanl is similar to foldl, but returns  
+-- a list of successive reduced values from the left:  
+--      scanl f z [x1, x2, ...] == [z, z ‘f‘ x1, (z ‘f‘ x1) ‘f‘ x2, ...]  
+-- Note that  last (scanl f z xs) == foldl f z xs.  
+-- scanl1 is similar, again without the starting element:  
+--      scanl1 f [x1, x2, ...] == [x1, x1 ‘f‘ x2, ...]  
+ 
+foldl            :: (a -> b -> a) -> a -> [b] -> a  
+foldl f z []     =  z  
+foldl f z (x:xs) =  foldl f (f z x) xs
+
+foldl' f z [] = z
+foldl' f z (x:xs) = let z' = f z x
+                    in seq z' $ foldl' f z' xs
+                       
 -- Maybe type
 
 data  Maybe a  =  Nothing | Just a deriving Eq
