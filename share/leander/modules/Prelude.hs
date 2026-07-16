@@ -235,6 +235,26 @@ map :: (a -> b) -> [a] -> [b]
 map f [] = []
 map f (x:xs) = f x : map f xs
 
+ -- iterate f x returns an infinite list of repeated applications of f to x:  
+-- iterate f x == [x, f x, f (f x), ...]  
+iterate          :: (a -> a) -> a -> [a]  
+iterate f x      =  x : iterate f (f x)
+
+-- repeat x is an infinite list, with x the value of every element.  
+repeat           :: a -> [a]  
+repeat x         =  xs where xs = x:xs
+
+-- replicate n x is a list of length n with x the value of every element  
+replicate        :: Int -> a -> [a]  
+replicate n x    =  take n (repeat x)
+
+-- cycle ties a finite list into a circular one, or equivalently,  
+-- the infinite repetition of the original list.  It is the identity  
+-- on infinite lists.  
+ 
+cycle            :: [a] -> [a]  
+cycle []         =  error "Prelude.cycle: empty list"  
+cycle xs         =  xs' where xs' = xs ++ xs'
 
 take :: Int -> [a] -> [a]
 take 0 _ = []
@@ -259,6 +279,23 @@ dropWhile               :: (a -> Bool) -> [a] -> [a]
 dropWhile p []          =  []  
 dropWhile p (x:xs)      = if p x then dropWhile p xs else (x:xs)
 
+span, break             :: (a -> Bool) -> [a] -> ([a],[a])  
+span p []            = ([],[])  
+span p (x:xs) = if p x
+                then let ys = span p xs
+                     in (x:fst ys,snd ys)
+                else ([],xs)
+
+break p                 =  span (not . p)
+
+ -- maximum and minimum return the maximum or minimum value from a list,  
+-- which must be non-empty, finite, and of an ordered type.  
+maximum, minimum :: (Ord a) => [a] -> a  
+maximum []       =  error "Prelude.maximum: empty list"  
+maximum xs       =  foldl1 max xs
+
+minimum []       =  error "Prelude.minimum: empty list"  
+minimum xs       =  foldl1 min xs 
 -- zip takes two lists and returns a list of corresponding pairs.  If one  
 -- input list is short, excess elements of the longer list are discarded.  
 -- zip3 takes three lists and returns a list of triples.  Zips for larger  
@@ -283,8 +320,9 @@ filter :: (a -> Bool) -> [a] -> [a]
 filter p [] = []
 filter p (x:xs) = if p x then x : filter p xs else filter p xs
 
-sum :: [Int] -> Int
+sum, product :: [Int] -> Int
 sum = foldl' (+) 0
+product = foldl' (*) 1
 
 concat :: [[a]] -> [a]
 concat [] = []
@@ -369,6 +407,15 @@ tail :: [a] -> [a]
 tail (_:xs) = xs
 tail [] = error "Prelude.tail: empty list"
 
+last             :: [a] -> a  
+last (x:xs)      =  if null xs then [x] else last xs 
+last []          =  error "Prelude.last: empty list"
+
+init             :: [a] -> [a]  
+init (x:xs)      =  if null xs then [] else x : init xs  
+init []          =  error "Prelude.init: empty list"
+
+
 foldr            :: (a -> b -> b) -> b -> [a] -> b
 foldr f z []     =  z
 foldr f z (x:xs) =  f x (foldr f z xs)
@@ -388,6 +435,10 @@ foldr f z (x:xs) =  f x (foldr f z xs)
 foldl            :: (a -> b -> a) -> a -> [b] -> a  
 foldl f z []     =  z  
 foldl f z (x:xs) =  foldl f (f z x) xs
+
+foldl1           :: (a -> a -> a) -> [a] -> a  
+foldl1 f (x:xs)  =  foldl f x xs  
+foldl1 _ []      =  error "Prelude.foldl1: empty list"
 
 foldl' f z [] = z
 foldl' f z (x:xs) = let z' = f z x
@@ -418,7 +469,15 @@ instance Monad Maybe where
     return = Just
     Nothing >>= _ = Nothing
     (Just x) >>= f = f x
-    
+
+ -- Either type  
+ 
+data  Either a b  =  Left a | Right b   deriving (Eq)
+
+either               :: (a -> c) -> (b -> c) -> Either a b -> c  
+either f g (Left x)  =  f x  
+either f g (Right y) =  g y
+
 -- Standard numeric types.  The data declarations for these types cannot  
 -- be expressed directly in Haskell since the constructor lists would be  
 -- far too large. 

@@ -80,6 +80,8 @@ tests =
     , ("notElem", notElem 5 [1,2,3,4] == True)
     , ("all", all (< 5) [1,2,3,4] == True)
     , ("any", any (> 3) [1,2,3,4] == True)
+    , ("span", fst (span (< 5) [1 ..]) == [1,2,3,4])
+    , ("break", fst (break (> 5) [1 ..]) == [1,2,3,4,5])
     ]
 
 test_where_1 :: Int
