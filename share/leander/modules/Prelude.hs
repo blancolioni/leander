@@ -231,26 +231,6 @@ length (x:xs) = 1 + length xs
 (x:_)  !! 0         =  x  
 (_:xs) !! n         =  xs !! (n-1)
 
--- foldl, applied to a binary operator, a starting value (typically the  
--- left-identity of the operator), and a list, reduces the list using  
--- the binary operator, from left to right:  
---  foldl f z [x1, x2, ..., xn] == (...((z ‘f‘ x1) ‘f‘ x2) ‘f‘...) ‘f‘ xn  
--- foldl1 is a variant that has no starting value argument, and  thus must  
--- be applied to non-empty lists.  scanl is similar to foldl, but returns  
--- a list of successive reduced values from the left:  
---      scanl f z [x1, x2, ...] == [z, z ‘f‘ x1, (z ‘f‘ x1) ‘f‘ x2, ...]  
--- Note that  last (scanl f z xs) == foldl f z xs.  
--- scanl1 is similar, again without the starting element:  
---      scanl1 f [x1, x2, ...] == [x1, x1 ‘f‘ x2, ...]  
- 
-foldl            :: (a -> b -> a) -> a -> [b] -> a  
-foldl f z []     =  z  
-foldl f z (x:xs) =  foldl f (f z x) xs 
-
-foldr            :: (a -> b -> b) -> b -> [a] -> b
-foldr f z []     =  z
-foldr f z (x:xs) =  f x (foldr f z xs)
-
 map :: (a -> b) -> [a] -> [b]
 map f [] = []
 map f (x:xs) = f x : map f xs
@@ -304,7 +284,7 @@ filter p [] = []
 filter p (x:xs) = if p x then x : filter p xs else filter p xs
 
 sum :: [Int] -> Int
-sum = foldr' (+) 0
+sum = foldl' (+) 0
 
 concat :: [[a]] -> [a]
 concat [] = []
