@@ -1,4 +1,3 @@
-private with Ada.Containers.Doubly_Linked_Lists;
 with Leander.Core.Predicates;
 private with Leander.Core.Substitutions;
 with Leander.Core.Tyvars;
@@ -7,7 +6,7 @@ with Leander.Showable;
 
 package Leander.Core.Qualifiers is
 
-   type Instance is
+   type Instance (<>) is
      new Leander.Core.Abstraction
      and Leander.Showable.Abstraction
      and Leander.Core.Tyvars.Container_Abstraction
@@ -34,17 +33,12 @@ package Leander.Core.Qualifiers is
 
 private
 
-   package Predicate_Lists is
-     new Ada.Containers.Doubly_Linked_Lists
-       (Leander.Core.Predicates.Instance,
-        Leander.Core.Predicates."=");
-
-   type Instance is
+   type Instance (Count : Natural) is
      new Leander.Core.Abstraction
      and Leander.Showable.Abstraction
      and Leander.Core.Tyvars.Container_Abstraction with
       record
-         Predicates : Predicate_Lists.List;
+         Predicates : Leander.Core.Predicates.Predicate_Array (1 .. Count);
       end record;
 
    overriding function Contains
@@ -67,7 +61,7 @@ private
       return Leander.Core.Predicates.Predicate_Array
    is ([for P of This.Predicates => P]);
 
-   Local_Empty : aliased constant Instance := (Predicates => []);
+   Local_Empty : aliased constant Instance := (Count => 0, Predicates => []);
    function Empty return Reference is (Local_Empty'Access);
 
 end Leander.Core.Qualifiers;

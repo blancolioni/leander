@@ -7,7 +7,6 @@ with Leander.Core.Substitutions;
 with Leander.Core.Type_Instances;
 with Leander.Core.Types;
 with Leander.Environment;
-with Leander.Logging;
 
 package body Leander.Core.Expressions is
 
@@ -269,11 +268,6 @@ package body Leander.Core.Expressions is
                      Ps : constant Leander.Core.Predicates.Predicate_Array :=
                             This.Qualified_Type.Predicates;
                   begin
-                     Leander.Logging.Log
-                       ("COMP",
-                        This.Show
-                        & " :: "
-                        & This.Qualified_Type.Show);
                      for P of Ps loop
                         E := Apply (E, Dict_Expr (Env, P));
                      end loop;

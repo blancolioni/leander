@@ -14,15 +14,19 @@ package body Leander.Core.Qualifiers is
       Subst : Leander.Core.Substitutions.Instance'Class)
       return access constant Instance
    is
-      Ps : Predicate_Lists.List;
    begin
-      for P of This.Predicates loop
-         Ps.Append
-           (Core.Predicates.Predicate
-              (P.Class_Name,
-               P.Get_Type.all.Apply (Subst)));
-      end loop;
-      return Allocate (Instance'(Predicates => Ps));
+      if This.Count = 0 then
+         return This;
+      end if;
+      declare
+         New_Ps : constant Core.Predicates.Predicate_Array :=
+           [for P of This.Predicates =>
+              Core.Predicates.Predicate
+                (P.Class_Name,
+                 P.Get_Type.all.Apply (Subst))];
+      begin
+         return Allocate (Instance'(New_Ps'Length, New_Ps));
+      end;
    end Apply;
 
    ----------------
@@ -34,25 +38,16 @@ package body Leander.Core.Qualifiers is
       return Leander.Core.Tyvars.Tyvar_Array
    is
       function Get
-        (Position : Predicate_Lists.Cursor)
-         return Leander.Core.Tyvars.Tyvar_Array;
-
-      function Get
-        (Position : Predicate_Lists.Cursor)
+        (Index : Positive)
          return Leander.Core.Tyvars.Tyvar_Array
       is
-      begin
-         if not Predicate_Lists.Has_Element (Position) then
-            return [];
-         else
-            return Core.Tyvars.Union
-              (Predicate_Lists.Element (Position).Get_Type.all.Get_Tyvars,
-               Get (Predicate_Lists.Next (Position)));
-         end if;
-      end Get;
+        (if Index > This.Count then []
+         else Core.Tyvars.Union
+           (This.Predicates (Index).Get_Type.all.Get_Tyvars,
+            Get (Index + 1)));
 
    begin
-      return Get (This.Predicates.First);
+      return Get (1);
    end Get_Tyvars;
 
    -----------------
@@ -64,12 +59,13 @@ package body Leander.Core.Qualifiers is
       Refs : Leander.Core.Types.Type_Array)
       return Reference
    is
+      New_Ps : constant Core.Predicates.Predicate_Array :=
+        [for P of This.Predicates =>
+           Core.Predicates.Predicate
+             (P.Class_Name,
+              P.Get_Type.all.Instantiate (Refs))];
    begin
-      return Allocate (Instance'
-                         (Predicates => [for P of This.Predicates =>
-                                             Core.Predicates.Predicate
-                                           (P.Class_Name,
-                                            P.Get_Type.all.Instantiate (Refs))]));
+      return Allocate (Instance'(New_Ps'Length, New_Ps));
    end Instantiate;
 
    -------------
@@ -81,7 +77,7 @@ package body Leander.Core.Qualifiers is
       return Reference
    is
    begin
-      return Allocate (Instance'(Predicates => [for P of Predicates => P]));
+      return Allocate (Instance'(Predicates'Length, Predicates));
    end Qualify;
 
    ----------
@@ -90,30 +86,18 @@ package body Leander.Core.Qualifiers is
 
    overriding function Show (This : Instance) return String is
 
-      function Shw (Position : Predicate_Lists.Cursor) return String;
-
-      ---------
-      -- Shw --
-      ---------
-
-      function Shw (Position : Predicate_Lists.Cursor) return String is
-         use Predicate_Lists;
-      begin
-         if not Has_Element (Next (Position)) then
-            return Element (Position).Show;
-         else
-            return Element (Position).Show & "," & Shw (Next (Position));
-         end if;
-      end Shw;
+      function Shw (Index : Positive) return String
+      is (if Index = This.Count then This.Predicates (Index).Show
+          else This.Predicates (Index).Show & "," & Shw (Index + 1));
 
    begin
-      case Natural (This.Predicates.Length) is
+      case This.Count is
          when 0 =>
             return "";
          when 1 =>
-            return This.Predicates.First_Element.Show;
+            return This.Predicates (1).Show;
          when others =>
-            return "(" & Shw (This.Predicates.First) & ")";
+            return "(" & Shw (1) & ")";
       end case;
    end Show;
 
