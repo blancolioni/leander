@@ -130,6 +130,19 @@ package body Leander is
         (H => Handle_Reference (Leander.Handles.Create (Size, User_Data)));
    end Create;
 
+   -----------------
+   -- Dump_Module --
+   -----------------
+
+   procedure Dump_Module
+     (This        : Handle'Class;
+      Path        : String;
+      Module_Name : String := "module")
+   is
+   begin
+      This.H.Dump_Module (Path, Module_Name);
+   end Dump_Module;
+
    --------------
    -- Evaluate --
    --------------

@@ -127,6 +127,16 @@ package Leander.Environment is
       return Boolean
       is abstract;
 
+   function Value_Names
+     (This : Abstraction)
+      return Leander.Names.Name_Array
+      is abstract;
+   --  Every top-level name bound in This (Values), for module dumping. This
+   --  is deliberately narrower than Type_Env's Ids: Type_Env accumulates
+   --  every variable inference ever assigned a type -- including local
+   --  lambda- and pattern-bound names from within a binding's own body --
+   --  not just this module's public top-level bindings.
+
    function Get_Bound_Calculus
      (This             : in out Abstraction;
       Variable_Binding : String)

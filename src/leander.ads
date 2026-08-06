@@ -43,6 +43,11 @@ package Leander is
      (This : Handle'Class;
       Path : String);
 
+   procedure Dump_Module
+     (This        : Handle'Class;
+      Path        : String;
+      Module_Name : String := "module");
+
    procedure Report
      (This : Handle'Class);
 

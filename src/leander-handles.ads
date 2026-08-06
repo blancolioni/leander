@@ -40,6 +40,19 @@ package Leander.Handles is
      (This : in out Instance'Class;
       Path : String);
 
+   procedure Dump_Module
+     (This        : in out Instance'Class;
+      Path        : String;
+      Module_Name : String := "module");
+   --  Compile every top-level binding of the current environment (forcing
+   --  each through the same lazy Resolve path Evaluate/Compile already use,
+   --  so foreign imports, dictionaries and other transitively-referenced
+   --  values are compiled and bound as a side effect) and write a Skit
+   --  module image to Path.  Each export whose name has an inferred Scheme
+   --  carries it as an opaque Annotations-section payload (see
+   --  Leander.Core.Schemes.Serialize); an export without one (a name with
+   --  no Type_Env entry) is written with no annotation.
+
    function User_Data
      (This : Instance'Class)
       return access User_Data_Interface'Class;

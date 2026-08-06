@@ -184,6 +184,10 @@ package body Leander.Environment is
       Name : String)
       return Boolean;
 
+   overriding function Value_Names
+     (This : Instance)
+      return Leander.Names.Name_Array;
+
    overriding function Get_Bound_Calculus
      (This : in out Instance;
       Name : String)
@@ -307,6 +311,35 @@ package body Leander.Environment is
         or else (for some Import of This.Imports =>
                    Import.Variable_Binding_Exists (Name));
    end Variable_Binding_Exists;
+
+   -----------------
+   -- Value_Names --
+   -----------------
+
+   overriding function Value_Names
+     (This : Instance)
+      return Leander.Names.Name_Array
+   is
+      use type Leander.Core.Binding_Groups.Reference;
+      use type Leander.Names.Name_Array;
+   begin
+      --  This.Values starts out holding only what's been eagerly inserted
+      --  (foreign imports -- see Foreign_Import below) or already lazily
+      --  forced via Get_Bound_Calculus; ordinary top-level bindings are
+      --  compiled into it on first Get_Bound_Calculus call. This.Bindings
+      --  is the static declared set, so the union of both is every
+      --  top-level name regardless of whether it's been forced yet.
+      if This.Bindings = null then
+         return This.Values.Get_Keys;
+      else
+         declare
+            Declared : constant Leander.Names.Name_Array :=
+              [for V of This.Bindings.Varids => Leander.Names.Leander_Name (V)];
+         begin
+            return Declared & This.Values.Get_Keys;
+         end;
+      end if;
+   end Value_Names;
 
    ---------------
    -- Data_Type --

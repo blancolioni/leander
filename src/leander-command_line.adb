@@ -26,4 +26,7 @@ package body Leander.Command_Line is
    function Main return String
    is (WL.Command_Line.Find_Option ("main", 'm'));
 
+   function Precompile return String
+   is (WL.Command_Line.Find_Option ("precompile", ' '));
+
 end Leander.Command_Line;
