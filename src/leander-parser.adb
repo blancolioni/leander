@@ -30,6 +30,40 @@ package body Leander.Parser is
 
    Loaded_Module_Map : Loaded_Module_Maps.Map;
 
+   ------------------
+   -- Add_Fixity --
+   ------------------
+
+   procedure Add_Fixity
+     (Operator      : String;
+      Associativity : Natural;
+      Priority      : Natural)
+   is
+   begin
+      Leander.Parser.Expressions.Set_Fixity
+        (Operator,
+         Leander.Parser.Expressions.Associativity_Type'Val (Associativity),
+         Leander.Parser.Expressions.Priority_Range (Priority));
+   end Add_Fixity;
+
+   ------------------
+   -- All_Fixities --
+   ------------------
+
+   function All_Fixities return Fixity_Entry_Array is
+      Info : constant Leander.Parser.Expressions.Fixity_Info_Array :=
+               Leander.Parser.Expressions.All_Fixities;
+   begin
+      return
+        [for E of Info =>
+           Fixity_Entry'
+             (Operator      => E.Operator,
+              Associativity =>
+                Leander.Parser.Expressions.Associativity_Type'Pos
+                  (E.Associativity),
+              Priority      => Natural (E.Priority))];
+   end All_Fixities;
+
    --------------------
    -- At_Constructor --
    --------------------
@@ -153,6 +187,22 @@ package body Leander.Parser is
          end return;
       end;
    end Load_Module;
+
+   ----------------------------
+   -- Register_Loaded_Module --
+   ----------------------------
+
+   procedure Register_Loaded_Module
+     (Context : in out Parse_Context'Class;
+      Name    : String;
+      Env     : Leander.Environment.Reference)
+   is
+      pragma Unreferenced (Context);
+   begin
+      if not Loaded_Module_Map.Contains (Name) then
+         Loaded_Module_Map.Insert (Name, Env);
+      end if;
+   end Register_Loaded_Module;
 
    ---------------------
    -- New_Environment --

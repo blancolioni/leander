@@ -4,10 +4,10 @@ with Leander.Core.Predicates;
 with Leander.Core.Schemes;
 with Leander.Core.Type_Classes;
 with Leander.Core.Type_Env;
+with Leander.Core.Type_Instances;
 with Leander.Core.Types;
 with Leander.Data_Types;
 with Leander.Names;
-with Leander.Syntax.Bindings;
 
 package Leander.Environment is
 
@@ -15,6 +15,12 @@ package Leander.Environment is
      and Leander.Core.Type_Classes.Class_Environment;
 
    type Reference is access all Abstraction'Class;
+
+   type Type_Class_Array is
+     array (Positive range <>) of Leander.Core.Type_Classes.Reference;
+
+   type Data_Type_Array is
+     array (Positive range <>) of Leander.Data_Types.Reference;
 
    type Element_Class is
      (Type_Constructor, Constructor, Variable_Binding,
@@ -85,18 +91,6 @@ package Leander.Environment is
       Class : Leander.Core.Type_Classes.Reference)
    is abstract;
 
-   procedure Add_Class_Bindings
-     (This     : in out Abstraction;
-      Name     : String;
-      Bindings : Leander.Syntax.Bindings.Reference)
-   is abstract;
-
-   function Class_Bindings
-     (This : Abstraction;
-      Name : String)
-      return Leander.Syntax.Bindings.Reference
-      is abstract;
-
    procedure Type_Instance
      (This          : in out Abstraction;
       Class_Id      : Leander.Core.Conid;
@@ -148,6 +142,24 @@ package Leander.Environment is
    --  every variable inference ever assigned a type -- including local
    --  lambda- and pattern-bound names from within a binding's own body --
    --  not just this module's public top-level bindings.
+
+   function Own_Classes
+     (This : Abstraction)
+      return Type_Class_Array
+      is abstract;
+
+   function Own_Data_Types
+     (This : Abstraction)
+      return Data_Type_Array
+      is abstract;
+
+   function Own_Instances
+     (This : Abstraction)
+      return Leander.Core.Type_Instances.Reference_Array
+      is abstract;
+   --  This module's own classes/data types/instance facts (not ones
+   --  inherited via Import), for Dump_Module to encode into a module's
+   --  .skix image alongside its ordinary value exports.
 
    function Get_Bound_Calculus
      (This             : in out Abstraction;

@@ -122,6 +122,56 @@ package body Leander.Parser.Expressions is
       Fixities.Insert (Operator, (Associativity, Priority));
    end Add_Fixity;
 
+   -----------------
+   -- Set_Fixity --
+   -----------------
+
+   procedure Set_Fixity
+     (Operator      : String;
+      Associativity : Associativity_Type;
+      Priority      : Priority_Range)
+   is
+   begin
+      --  Unlike Add_Fixity, no "redefinition" Warning: this is called only
+      --  to restore a fixity table decoded from a .skix image (see
+      --  Leander.Parser.Add_Fixity), outside any active lexer session --
+      --  Warning ultimately calls Tok_Line, which requires one -- and
+      --  re-declaring the same operator here is expected/normal, not a
+      --  source-level mistake worth flagging.
+      if Fixities.Contains (Operator) then
+         Fixities.Delete (Operator);
+      end if;
+      Fixities.Insert (Operator, (Associativity, Priority));
+   end Set_Fixity;
+
+   -------------------
+   -- All_Fixities --
+   -------------------
+
+   function All_Fixities return Fixity_Info_Array is
+      Count : Natural := 0;
+   begin
+      for Position in Fixities.Iterate loop
+         Count := Count + 1;
+      end loop;
+
+      return R : Fixity_Info_Array (1 .. Count) do
+         declare
+            J : Positive := 1;
+         begin
+            for Position in Fixities.Iterate loop
+               R (J) :=
+                 (Operator      =>
+                    Ada.Strings.Unbounded.To_Unbounded_String
+                      (Fixity_Maps.Key (Position)),
+                  Associativity => Fixity_Maps.Element (Position).Associativity,
+                  Priority      => Fixity_Maps.Element (Position).Priority);
+               J := J + 1;
+            end loop;
+         end;
+      end return;
+   end All_Fixities;
+
    --------------------------
    -- At_Atomic_Expression --
    --------------------------

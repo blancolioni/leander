@@ -274,6 +274,25 @@ package body Leander.Tests.Integration is
          "recNil", "K",
          Handle);
 
+      --  A downstream module's own instance of a Prelude class (Eq),
+      --  providing only "==" and relying on the class's default "/="
+      --  (issue #65 follow-up: default methods compile once, generically,
+      --  per class -- rather than being spliced into each instance's own
+      --  AST -- so this works whether Prelude itself came from source or
+      --  from a .skix image; see leander-tests-images.adb for the .skix
+      --  case).
+
+      Test_Module
+        ("module: instance omits a defaulted method",
+         Test_Root & "test_17_default_method.hs",
+         "Foo 1 /= Foo 2", "K",
+         Handle);
+      Test_Module
+        ("module: instance omits a defaulted method (equal)",
+         Test_Root & "test_17_default_method.hs",
+         "Foo 1 /= Foo 1", "K I",
+         Handle);
+
       --  Phase 3: IO module tests
       --  Minimal IO
 

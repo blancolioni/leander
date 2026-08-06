@@ -1,6 +1,7 @@
 with Leander.Core.Kinds;
 with Leander.Core.Types;
 with Leander.Core.Tyvars;
+with Leander.Names;
 
 package body Leander.Syntax.Classes is
 
@@ -43,12 +44,39 @@ package body Leander.Syntax.Classes is
      (This : Builder_Instance'Class)
       return Leander.Core.Type_Classes.Reference
    is
+      Methods : constant Leander.Core.Varid_Array := This.Bindings.Varids;
+      Count   : Natural := 0;
    begin
-      return Leander.Core.Type_Classes.Type_Class
-        (Class_Name    => This.Class_Name,
-         Variable_Name => This.Variable_Name,
-         Predicates    => [for P of This.Constraints => P],
-         Bindings      => This.Bindings);
+      for M of Methods loop
+         if This.Bindings.Lookup (Leander.Names.Leander_Name (M)).Alts'Length
+           > 0
+         then
+            Count := Count + 1;
+         end if;
+      end loop;
+
+      return Result : Leander.Core.Type_Classes.Reference do
+         declare
+            Defaulted : Leander.Core.Varid_Array (1 .. Count);
+            J         : Positive := 1;
+         begin
+            for M of Methods loop
+               if This.Bindings.Lookup
+                 (Leander.Names.Leander_Name (M)).Alts'Length > 0
+               then
+                  Defaulted (J) := M;
+                  J := J + 1;
+               end if;
+            end loop;
+
+            Result := Leander.Core.Type_Classes.Type_Class
+              (Class_Name    => This.Class_Name,
+               Variable_Name => This.Variable_Name,
+               Predicates    => [for P of This.Constraints => P],
+               Bindings      => This.Bindings,
+               Defaulted     => Defaulted);
+         end;
+      end return;
    end Get_Class;
 
    -----------------

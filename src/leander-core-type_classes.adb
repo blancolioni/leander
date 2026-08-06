@@ -271,16 +271,19 @@ package body Leander.Core.Type_Classes is
      (Class_Name    : Conid;
       Variable_Name : Varid;
       Predicates    : Leander.Core.Predicates.Predicate_Array;
-      Bindings      : Leander.Core.Binding_Groups.Reference)
+      Bindings      : Leander.Core.Binding_Groups.Reference;
+      Defaulted     : Varid_Array)
       return Reference
    is
    begin
       return new Instance'
         (Predicate_Count  => Predicates'Length,
+         Defaulted_Count  => Defaulted'Length,
          Class_Id         => Class_Name,
          Var_Id           => Variable_Name,
          Predicates       => Predicates,
-         Bindings         => Bindings);
+         Bindings         => Bindings,
+         Defaulted        => Defaulted);
    end Type_Class;
 
 end Leander.Core.Type_Classes;

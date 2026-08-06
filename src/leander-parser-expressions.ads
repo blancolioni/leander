@@ -1,3 +1,5 @@
+with Ada.Strings.Unbounded;
+
 with Leander.Syntax.Patterns;
 
 private package Leander.Parser.Expressions is
@@ -24,5 +26,30 @@ private package Leander.Parser.Expressions is
      (Operator      : String;
       Associativity : Associativity_Type;
       Priority      : Priority_Range);
+
+   procedure Set_Fixity
+     (Operator      : String;
+      Associativity : Associativity_Type;
+      Priority      : Priority_Range);
+   --  Like Add_Fixity but without the "redefinition" Warning -- for
+   --  restoring a fixity table decoded from a .skix image (see
+   --  Leander.Parser.Add_Fixity), a context with no active lexer session
+   --  for Warning to report a source location against.
+
+   type Fixity_Info is
+      record
+         Operator      : Ada.Strings.Unbounded.Unbounded_String;
+         Associativity : Associativity_Type;
+         Priority      : Priority_Range;
+      end record;
+
+   type Fixity_Info_Array is array (Positive range <>) of Fixity_Info;
+
+   function All_Fixities return Fixity_Info_Array;
+   --  Every operator fixity declaration registered so far (the table is a
+   --  single process-global, not per-module -- see leander-handles.adb's
+   --  Dump_Module/Try_Load_Image for why that's fine here: a .skix that
+   --  fully covers a module also carries its fixity declarations, restored
+   --  by re-calling Add_Fixity on load rather than by re-parsing them).
 
 end Leander.Parser.Expressions;
