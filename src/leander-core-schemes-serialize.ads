@@ -1,4 +1,5 @@
 with Ada.Streams;
+with Leander.Byte_Buffers;
 
 package Leander.Core.Schemes.Serialize is
 
@@ -14,5 +15,18 @@ package Leander.Core.Schemes.Serialize is
    function Encode (This : Schemes.Reference) return Ada.Streams.Stream_Element_Array;
 
    function Decode (Bytes : Ada.Streams.Stream_Element_Array) return Schemes.Reference;
+
+   procedure Put
+     (W    : in out Leander.Byte_Buffers.Writer;
+      This : Schemes.Reference);
+   --  Composable form of Encode, sharing a cursor/buffer with surrounding
+   --  data -- for embedding a Scheme inline within a larger annotation (e.g.
+   --  a class's method schemes, a data type's constructor schemes) instead
+   --  of as its own self-contained, separately length-framed blob.
+
+   function Get
+     (D : Leander.Byte_Buffers.Byte_Array;
+      C : in out Leander.Byte_Buffers.Offset)
+      return Schemes.Reference;
 
 end Leander.Core.Schemes.Serialize;

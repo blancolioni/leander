@@ -6,7 +6,6 @@ with Leander.Core.Inference;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Qualifiers;
 with Leander.Core.Substitutions;
-with Leander.Core.Type_Instances;
 with Leander.Core.Types.Unification;
 with Leander.Environment.Prelude;
 with Leander.Names.Maps;
@@ -193,6 +192,18 @@ package body Leander.Environment is
      (This : Instance)
       return Leander.Names.Name_Array;
 
+   overriding function Own_Classes
+     (This : Instance)
+      return Type_Class_Array;
+
+   overriding function Own_Data_Types
+     (This : Instance)
+      return Data_Type_Array;
+
+   overriding function Own_Instances
+     (This : Instance)
+      return Leander.Core.Type_Instances.Reference_Array;
+
    overriding function Get_Bound_Calculus
      (This : in out Instance;
       Name : String)
@@ -345,6 +356,87 @@ package body Leander.Environment is
          end;
       end if;
    end Value_Names;
+
+   -----------------
+   -- Own_Classes --
+   -----------------
+
+   overriding function Own_Classes
+     (This : Instance)
+      return Type_Class_Array
+   is
+      Count : Natural := 0;
+   begin
+      for Position in This.Classes.Iterate loop
+         Count := Count + 1;
+      end loop;
+
+      return R : Type_Class_Array (1 .. Count) do
+         declare
+            J : Positive := 1;
+         begin
+            for Position in This.Classes.Iterate loop
+               R (J) := Type_Class_Maps.Element (Position);
+               J := J + 1;
+            end loop;
+         end;
+      end return;
+   end Own_Classes;
+
+   --------------------
+   -- Own_Data_Types --
+   --------------------
+
+   overriding function Own_Data_Types
+     (This : Instance)
+      return Data_Type_Array
+   is
+      Count : Natural := 0;
+   begin
+      for Position in This.Tycons.Iterate loop
+         Count := Count + 1;
+      end loop;
+
+      return R : Data_Type_Array (1 .. Count) do
+         declare
+            J : Positive := 1;
+         begin
+            for Position in This.Tycons.Iterate loop
+               R (J) := Tycon_Maps.Element (Position);
+               J := J + 1;
+            end loop;
+         end;
+      end return;
+   end Own_Data_Types;
+
+   -------------------
+   -- Own_Instances --
+   -------------------
+
+   overriding function Own_Instances
+     (This : Instance)
+      return Leander.Core.Type_Instances.Reference_Array
+   is
+      Keys  : constant Leander.Names.Name_Array := This.Instances.Get_Keys;
+      Count : Natural := 0;
+   begin
+      for Key of Keys loop
+         Count := Count + Natural (This.Instances.Element (Key).Length);
+      end loop;
+
+      return R : Leander.Core.Type_Instances.Reference_Array (1 .. Count) do
+         declare
+            J : Positive := 1;
+         begin
+            for Key of Keys loop
+               for Rec of This.Instances.Element (Key) loop
+                  R (J) := Rec.Element;
+                  J := J + 1;
+               end loop;
+            end loop;
+         end;
+      end return;
+   end Own_Instances;
 
    ---------------
    -- Data_Type --

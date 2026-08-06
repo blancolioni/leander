@@ -1,3 +1,5 @@
+with Ada.Strings.Unbounded;
+
 with Leander.Environment;
 with Leander.Syntax.Expressions;
 
@@ -26,6 +28,38 @@ package Leander.Parser is
      (Context : in out Parse_Context'Class;
       Path    : String)
       return Leander.Environment.Reference;
+
+   procedure Register_Loaded_Module
+     (Context : in out Parse_Context'Class;
+      Name    : String;
+      Env     : Leander.Environment.Reference);
+   --  Record Env as Name's already-loaded module, so a later Load_Module
+   --  (Context, Path) for a source file whose base name is Name returns Env
+   --  directly rather than parsing -- for a module reconstructed entirely
+   --  from a complete .skix image (see Leander.Handles.Create), so that
+   --  module's source is never opened at all, not even by a second,
+   --  unrelated Load_Module call that would otherwise re-parse it.
+
+   procedure Add_Fixity
+     (Operator      : String;
+      Associativity : Natural;
+      Priority      : Natural);
+   --  Restore a single decoded operator fixity declaration (Associativity:
+   --  0 = infixl, 1 = infixr, 2 = infix; Priority: 0 .. 9) without parsing
+   --  an "infixl"/"infixr"/"infix" declaration for it.
+
+   type Fixity_Entry is
+      record
+         Operator      : Ada.Strings.Unbounded.Unbounded_String;
+         Associativity : Natural;
+         Priority      : Natural;
+      end record;
+
+   type Fixity_Entry_Array is array (Positive range <>) of Fixity_Entry;
+
+   function All_Fixities return Fixity_Entry_Array;
+   --  Every operator fixity declaration registered so far, for Dump_Module
+   --  to encode into a module's .skix image.
 
    function Current_Source_Location return Leander.Source.Source_Location;
 

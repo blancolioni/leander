@@ -1,4 +1,3 @@
-with Leander.Byte_Buffers;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Types.Serialize;
@@ -13,10 +12,33 @@ package body Leander.Core.Schemes.Serialize is
    ------------
 
    function Encode (This : Schemes.Reference) return Ada.Streams.Stream_Element_Array is
+      W : BB.Writer;
+   begin
+      Put (W, This);
+      return W.To_Bytes;
+   end Encode;
+
+   ------------
+   -- Decode --
+   ------------
+
+   function Decode (Bytes : Ada.Streams.Stream_Element_Array) return Schemes.Reference is
+      C : BB.Offset := Bytes'First;
+   begin
+      return Get (Bytes, C);
+   end Decode;
+
+   ---------
+   -- Put --
+   ---------
+
+   procedure Put
+     (W    : in out Leander.Byte_Buffers.Writer;
+      This : Schemes.Reference)
+   is
       Node : Instance renames Instance (This.all);
       Ps   : constant Leander.Core.Predicates.Predicate_Array :=
                Node.QT.Predicates;
-      W    : BB.Writer;
    begin
       W.Put_U32 (Node.Ks'Length);
       for K of Node.Ks loop
@@ -30,38 +52,39 @@ package body Leander.Core.Schemes.Serialize is
       end loop;
 
       TS.Put (W, Node.QT.Get_Type);
+   end Put;
 
-      return W.To_Bytes;
-   end Encode;
+   ---------
+   -- Get --
+   ---------
 
-   ------------
-   -- Decode --
-   ------------
-
-   function Decode (Bytes : Ada.Streams.Stream_Element_Array) return Schemes.Reference is
-      C  : BB.Offset := Bytes'First;
-      Kn : constant Natural := BB.Get_U32 (Bytes, C);
+   function Get
+     (D : Leander.Byte_Buffers.Byte_Array;
+      C : in out Leander.Byte_Buffers.Offset)
+      return Schemes.Reference
+   is
+      Kn : constant Natural := BB.Get_U32 (D, C);
       Ks : Kind_Array (1 .. Kn);
    begin
       for I in Ks'Range loop
-         Ks (I) := TS.Get_Kind (Bytes, C);
+         Ks (I) := TS.Get_Kind (D, C);
       end loop;
 
       declare
-         Pn : constant Natural := BB.Get_U32 (Bytes, C);
+         Pn : constant Natural := BB.Get_U32 (D, C);
          Ps : Leander.Core.Predicates.Predicate_Array (1 .. Pn);
       begin
          for I in Ps'Range loop
             declare
-               Name : constant String := BB.Get_String (Bytes, C);
-               T    : constant Types.Reference := TS.Get (Bytes, C);
+               Name : constant String := BB.Get_String (D, C);
+               T    : constant Types.Reference := TS.Get (D, C);
             begin
                Ps (I) := Leander.Core.Predicates.Predicate (Name, T);
             end;
          end loop;
 
          declare
-            Body_T : constant Types.Reference := TS.Get (Bytes, C);
+            Body_T : constant Types.Reference := TS.Get (D, C);
             QT     : constant Qualified_Types.Reference :=
                        Leander.Core.Qualified_Types.Qualified_Type
                          (Ps, Body_T);
@@ -69,6 +92,6 @@ package body Leander.Core.Schemes.Serialize is
             return From_Parts (Ks, QT);
          end;
       end;
-   end Decode;
+   end Get;
 
 end Leander.Core.Schemes.Serialize;
