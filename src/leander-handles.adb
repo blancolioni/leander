@@ -1,3 +1,5 @@
+with Ada.Calendar;
+with Ada.Directories;
 with Ada.Streams;
 with Ada.Text_IO;
 with Leander.Calculus;
@@ -24,6 +26,20 @@ with Skit.Terms;
 package body Leander.Handles is
 
    procedure Evaluate_Error (H : Handle'Class);
+
+   function Try_Load_Image
+     (This        : in out Instance'Class;
+      Env         : Leander.Environment.Reference;
+      Source_Path : String)
+      return Boolean;
+   --  If a sibling "<basename>.skix" of Source_Path exists and is not older
+   --  than it, load it into This.Skit_Handle (priming Resolve's existing
+   --  Skit_Handle.Lookup fast path so covered bindings never reach
+   --  Get_Bound_Calculus) and record each annotated export's decoded Scheme
+   --  into Env (Set_Scheme). Returns whether the image was used; on any
+   --  failure (missing, stale, corrupt, an unresolved import) this returns
+   --  False and leaves This/Env exactly as they were -- the caller falls
+   --  back to ordinary from-source, lazy compilation, unchanged.
 
    ----------
    -- Bind --
@@ -155,6 +171,15 @@ package body Leander.Handles is
             Arg_Types      => [String_Type],
             Res_Types      => [Boolean_Type],
             Eval           => Evaluate_Error'Access));
+
+      --  A fresh sibling .skix primes Skit_Handle's own bindings and Env's
+      --  Type_Env for whatever it covers; anything it doesn't (or if it's
+      --  missing/stale/unusable) falls back to ordinary lazy compilation
+      --  via Resolve, exactly as before this existed.
+      if This.Try_Load_Image (Env, Prelude_Path) then
+         null;
+      end if;
+
       return This;
    end Create;
 
@@ -594,5 +619,57 @@ package body Leander.Handles is
    begin
       This.Slots (Slot) := (Integer_Type, Value);
    end Set_Slot;
+
+   ---------------------
+   -- Try_Load_Image --
+   ---------------------
+
+   function Try_Load_Image
+     (This        : in out Instance'Class;
+      Env         : Leander.Environment.Reference;
+      Source_Path : String)
+      return Boolean
+   is
+      use type Ada.Calendar.Time;
+
+      Image_Path : constant String :=
+                     Ada.Directories.Compose
+                       (Ada.Directories.Containing_Directory
+                          (Ada.Directories.Full_Name (Source_Path)),
+                        Ada.Directories.Base_Name (Source_Path),
+                        "skix");
+
+      procedure On_Annotation
+        (Export_Name : String;
+         Bytes       : Ada.Streams.Stream_Element_Array);
+
+      -------------------
+      -- On_Annotation --
+      -------------------
+
+      procedure On_Annotation
+        (Export_Name : String;
+         Bytes       : Ada.Streams.Stream_Element_Array)
+      is
+      begin
+         Env.Set_Scheme
+           (Export_Name, Leander.Core.Schemes.Serialize.Decode (Bytes));
+      end On_Annotation;
+
+   begin
+      if not Ada.Directories.Exists (Image_Path)
+        or else Ada.Directories.Modification_Time (Image_Path)
+                  < Ada.Directories.Modification_Time (Source_Path)
+      then
+         return False;
+      end if;
+
+      Skit.Handles.Images.Read
+        (This.Skit_Handle, Image_Path, On_Annotation'Access);
+      return True;
+   exception
+      when others =>
+         return False;
+   end Try_Load_Image;
 
 end Leander.Handles;

@@ -1,6 +1,7 @@
 with Ada.Directories;
 
 with Leander.Primitives;
+with Leander.Resources;
 
 with Skit;
 with Skit.Combinators;
@@ -50,6 +51,42 @@ package body Leander.Tests.Images is
       if Ada.Directories.Exists (Path) then
          Ada.Directories.Delete_File (Path);
       end if;
+
+      --  Phase 4 integration: Leander.Create looks for a sibling .skix next
+      --  to the real Prelude.hs it loads and, if fresh, primes Skit_Handle
+      --  and Type_Env from it transparently (Leander.Handles.Try_Load_Image).
+      --  This writes to that real resource path (not a scratch path) so a
+      --  second, independent Create actually exercises that lookup.
+      declare
+         Image_Path : constant String :=
+                        Leander.Resources.Resource_Path
+                        & "/modules/Prelude.skix";
+      begin
+         if Ada.Directories.Exists (Image_Path) then
+            Ada.Directories.Delete_File (Image_Path);
+         end if;
+
+         declare
+            H1 : Leander.Handle := Leander.Create;
+         begin
+            H1.Dump_Module (Image_Path, "Prelude");
+            H1.Close;
+         end;
+
+         declare
+            H2 : Leander.Handle := Leander.Create;
+         begin
+            Test ("Prelude.skix: Create uses a fresh image transparently",
+                  "12", H2.Evaluate ("sum (map (*2) [1,2,3])"));
+            Test ("Prelude.skix: dictionary resolution via a primed image",
+                  "K", H2.Evaluate ("1 == 1"));
+            H2.Close;
+         end;
+
+         if Ada.Directories.Exists (Image_Path) then
+            Ada.Directories.Delete_File (Image_Path);
+         end if;
+      end;
    end Run_Tests;
 
 end Leander.Tests.Images;

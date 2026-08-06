@@ -174,6 +174,11 @@ package body Leander.Environment is
       Foreign_Name : String;
       Signature    : Leander.Core.Types.Reference);
 
+   overriding procedure Set_Scheme
+     (This   : in out Instance;
+      Name   : String;
+      Scheme : Leander.Core.Schemes.Reference);
+
    overriding function Type_Env
      (This : Instance)
       return Leander.Core.Type_Env.Reference
@@ -759,6 +764,19 @@ package body Leander.Environment is
           (Core.To_Varid (Name),
            Leander.Core.Schemes.To_Scheme (Signature));
    end Foreign_Import;
+
+   -----------------
+   -- Set_Scheme --
+   -----------------
+
+   overriding procedure Set_Scheme
+     (This   : in out Instance;
+      Name   : String;
+      Scheme : Leander.Core.Schemes.Reference)
+   is
+   begin
+      This.Type_Env := This.Type_Env.Compose (Name, Scheme);
+   end Set_Scheme;
 
    ------------
    -- Import --
