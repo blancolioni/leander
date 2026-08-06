@@ -143,7 +143,6 @@ package body Leander.Parser.Declarations is
 
             Builder.Add_Bindings (Bindings.To_Core);
             Context.Environment.Type_Class (Builder.Get_Class);
-            Context.Environment.Add_Class_Bindings (Name, Bindings);
          end;
       end;
    end Parse_Class_Declaration;
@@ -568,19 +567,12 @@ package body Leander.Parser.Declarations is
                   Leander.Parser.Bindings.Parse_Binding (Context, Bindings);
                end loop;
 
-               declare
-                  use type Leander.Syntax.Bindings.Reference;
-                  Class_Bindings : constant
-                    Leander.Syntax.Bindings.Reference :=
-                      Context.Environment.Class_Bindings (Class_Name);
-               begin
-                  if Class_Bindings = null then
-                     Error ("asked for bindings for unknown class: "
-                            & Class_Name);
-                  else
-                     Bindings.Copy_Missing_Bindings (Class_Bindings);
-                  end if;
-               end;
+               --  Any method this instance omits falls back, at
+               --  elaboration time, to the class's own generically
+               --  compiled default (Leander.Environment.Type_Class /
+               --  Elaborate_Instance) if it has one -- no AST splicing
+               --  needed here, so this works identically whether the
+               --  class came from source or from a .skix image.
 
                Context.Environment.Type_Instance
                  (Class_Id      => Core.To_Conid (Class_Name),

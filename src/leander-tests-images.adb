@@ -134,6 +134,22 @@ package body Leander.Tests.Images is
             Test ("Prelude.skix: operator fixity restored without parsing "
                   & "(2 + 3 * 4, * binds tighter)",
                   "14", H2.Evaluate ("2 + 3 * 4"));
+
+            --  The scenario that motivated generic (dictionary-parameterized)
+            --  default methods: a downstream module declares its own
+            --  instance of a .skix-loaded class (Eq) and omits a method
+            --  with a default ("/="). Before that change, Class_Bindings
+            --  was never reconstructed from a .skix image, so this
+            --  unconditionally failed to parse; now the default is resolved
+            --  from the class's own precompiled generic implementation
+            --  (Leander.Environment.Elaborate / Elaborate_Instance), not
+            --  from source, so it works here exactly as it does when
+            --  Prelude is loaded normally (see leander-tests-integration.adb).
+            H2.Load_Module
+              ("./share/leander/tests/integration/test_17_default_method.hs");
+            Test ("Prelude.skix: a downstream instance omitting a "
+                  & "defaulted method still works",
+                  "K", H2.Evaluate ("Foo 1 /= Foo 2"));
             H2.Close;
          end;
 

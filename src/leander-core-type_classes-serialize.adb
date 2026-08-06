@@ -34,6 +34,7 @@ package body Leander.Core.Type_Classes.Serialize is
       W.Put_U32 (Methods'Length);
       for M of Methods loop
          W.Put_String (Core.To_String (M));
+         W.Put_U8 (Boolean'Pos (This.Has_Default (M)));
          SS.Put (W, This.Method_Scheme (M));
       end loop;
 
@@ -61,15 +62,24 @@ package body Leander.Core.Type_Classes.Serialize is
       end loop;
 
       declare
-         Mn      : constant Natural := BB.Get_U32 (Bytes, C);
-         Methods : Leander.Core.Bindings.Reference_Array (1 .. Mn);
-         Builder : Leander.Core.Binding_Groups.Instance_Builder;
+         Mn           : constant Natural := BB.Get_U32 (Bytes, C);
+         Methods      : Leander.Core.Bindings.Reference_Array (1 .. Mn);
+         Names        : Varid_Array (1 .. Mn);
+         Has_Default  : array (1 .. Mn) of Boolean;
+         Default_Count : Natural := 0;
+         Builder      : Leander.Core.Binding_Groups.Instance_Builder;
       begin
          for I in Methods'Range loop
             declare
                Name   : constant Varid := Core.To_Varid (BB.Get_String (Bytes, C));
+               Is_Default : constant Boolean := BB.Get_U8 (Bytes, C) /= 0;
                Scheme : constant Core.Schemes.Reference := SS.Get (Bytes, C);
             begin
+               Names (I) := Name;
+               Has_Default (I) := Is_Default;
+               if Is_Default then
+                  Default_Count := Default_Count + 1;
+               end if;
                Methods (I) :=
                  Leander.Core.Bindings.Explicit_Binding
                    (Name, Leander.Core.Alts.Reference_Array'(1 .. 0 => <>), Scheme);
@@ -80,8 +90,20 @@ package body Leander.Core.Type_Classes.Serialize is
             Builder.Add_Explicit_Bindings (Methods);
          end if;
 
-         return Type_Class
-           (Class_Id, Var_Id, Ps, Builder.Get_Binding_Group);
+         declare
+            Defaulted : Varid_Array (1 .. Default_Count);
+            J         : Positive := 1;
+         begin
+            for I in Methods'Range loop
+               if Has_Default (I) then
+                  Defaulted (J) := Names (I);
+                  J := J + 1;
+               end if;
+            end loop;
+
+            return Type_Class
+              (Class_Id, Var_Id, Ps, Builder.Get_Binding_Group, Defaulted);
+         end;
       end;
    end Decode;
 

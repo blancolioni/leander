@@ -15,8 +15,22 @@ package Leander.Core.Type_Classes is
      (Class_Name    : Conid;
       Variable_Name : Varid;
       Predicates    : Leander.Core.Predicates.Predicate_Array;
-      Bindings      : Leander.Core.Binding_Groups.Reference)
+      Bindings      : Leander.Core.Binding_Groups.Reference;
+      Defaulted     : Varid_Array)
       return Reference;
+   --  Defaulted is the subset of Bindings' methods that have some default
+   --  implementation available -- either a real body in Bindings itself
+   --  (the normal, freshly-parsed case), or one compiled independently and
+   --  reachable under "default:<Class_Name>:<Method>" (a class decoded from
+   --  a .skix image, whose Bindings only ever carry schemes -- see
+   --  Leander.Core.Type_Classes.Serialize). Callers state this explicitly
+   --  rather than having it derived automatically, since an empty array is
+   --  also the correct answer for a class with no defaults at all.
+
+   function Has_Default
+     (This : Instance'Class;
+      Id   : Varid)
+      return Boolean;
 
    function Methods
      (This : Instance'Class)
@@ -89,16 +103,23 @@ package Leander.Core.Type_Classes is
 
 private
 
-   type Instance (Predicate_Count : Natural) is tagged
+   type Instance (Predicate_Count, Defaulted_Count : Natural) is tagged
       record
          Class_Id    : Conid;
          Var_Id      : Varid;
          Predicates  : Core.Predicates.Predicate_Array (1 .. Predicate_Count);
          Bindings    : Leander.Core.Binding_Groups.Reference;
+         Defaulted   : Varid_Array (1 .. Defaulted_Count);
       end record;
 
    function Id (This : Instance'Class) return Conid
    is (This.Class_Id);
+
+   function Has_Default
+     (This : Instance'Class;
+      Id   : Varid)
+      return Boolean
+   is (for some M of This.Defaulted => M = Id);
 
    function Bindings
      (This : Instance'Class)

@@ -1,7 +1,9 @@
 with Ada.Containers.Doubly_Linked_Lists;
 with Ada.Text_IO;
+with Leander.Core.Alts;
 with Leander.Core.Binding_Groups.Inference;
 with Leander.Core.Bindings;
+with Leander.Core.Expressions;
 with Leander.Core.Inference;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Qualifiers;
@@ -9,6 +11,7 @@ with Leander.Core.Substitutions;
 with Leander.Core.Types.Unification;
 with Leander.Environment.Prelude;
 with Leander.Names.Maps;
+with Leander.Source;
 with WL.String_Maps;
 with WL.String_Sets;
 
@@ -21,27 +24,6 @@ package body Leander.Environment is
    package Type_Class_Maps is
      new WL.String_Maps (Leander.Core.Type_Classes.Reference,
                          Leander.Core.Type_Classes."=");
-
-   function Syntax_Bindings_Equal
-     (Left, Right : Leander.Syntax.Bindings.Reference)
-      return Boolean;
-
-   package Syntax_Binding_Maps is
-     new WL.String_Maps (Leander.Syntax.Bindings.Reference,
-                         Syntax_Bindings_Equal);
-
-   ---------------------------
-   -- Syntax_Bindings_Equal --
-   ---------------------------
-
-   function Syntax_Bindings_Equal
-     (Left, Right : Leander.Syntax.Bindings.Reference)
-      return Boolean
-   is
-      use type Leander.Syntax.Bindings.Reference;
-   begin
-      return Left = Right;
-   end Syntax_Bindings_Equal;
 
    type Con_Record is
       record
@@ -86,7 +68,6 @@ package body Leander.Environment is
          Context               : Leander.Core.Inference.Inference_Context;
          Type_Env              : Leander.Core.Type_Env.Reference;
          Classes               : Type_Class_Maps.Map;
-         Class_Syntax_Bindings : Syntax_Binding_Maps.Map;
          Instances             : Instance_Maps.Map;
       end record;
 
@@ -130,16 +111,6 @@ package body Leander.Environment is
    overriding procedure Type_Class
      (This  : in out Instance;
       Class : Leander.Core.Type_Classes.Reference);
-
-   overriding procedure Add_Class_Bindings
-     (This     : in out Instance;
-      Name     : String;
-      Bindings : Leander.Syntax.Bindings.Reference);
-
-   overriding function Class_Bindings
-     (This : Instance;
-      Name : String)
-      return Leander.Syntax.Bindings.Reference;
 
    overriding procedure Type_Instance
      (This          : in out Instance;
@@ -214,24 +185,6 @@ package body Leander.Environment is
    procedure Error
      (Message : String);
 
-   -----------------------
-   -- Add_Class_Bindings --
-   -----------------------
-
-   overriding procedure Add_Class_Bindings
-     (This     : in out Instance;
-      Name     : String;
-      Bindings : Leander.Syntax.Bindings.Reference)
-   is
-   begin
-      Leander.Syntax.Protect (Leander.Syntax.Reference (Bindings));
-      if This.Class_Syntax_Bindings.Contains (Name) then
-         This.Class_Syntax_Bindings.Replace (Name, Bindings);
-      else
-         This.Class_Syntax_Bindings.Insert (Name, Bindings);
-      end if;
-   end Add_Class_Bindings;
-
    --------------
    -- Bindings --
    --------------
@@ -243,33 +196,6 @@ package body Leander.Environment is
    begin
       This.Bindings := Groups;
    end Bindings;
-
-   --------------------
-   -- Class_Bindings --
-   --------------------
-
-   overriding function Class_Bindings
-     (This : Instance;
-      Name : String)
-      return Leander.Syntax.Bindings.Reference
-   is
-      use type Leander.Syntax.Bindings.Reference;
-   begin
-      if This.Class_Syntax_Bindings.Contains (Name) then
-         return This.Class_Syntax_Bindings.Element (Name);
-      end if;
-      for Import of This.Imports loop
-         declare
-            Result : constant Leander.Syntax.Bindings.Reference :=
-                       Import.Class_Bindings (Name);
-         begin
-            if Result /= null then
-               return Result;
-            end if;
-         end;
-      end loop;
-      return null;
-   end Class_Bindings;
 
    ----------------------
    -- Boot_Environment --
@@ -532,18 +458,75 @@ package body Leander.Environment is
                                                 Methods (Idx);
                               Internal_Id   : constant Core.Varid :=
                                                 Internal_Names (Idx);
-                              Global_Scheme : constant
-                                Leander.Core.Schemes.Reference :=
-                                  Class.Method_Scheme (Id);
-                              Global_QT     : constant
-                                Leander.Core.Qualified_Types.Reference :=
-                                  Global_Scheme.Fresh_Instance;
                               B             : constant
                                 Leander.Core.Bindings.Reference :=
                                   Inst.Bindings.Lookup
                                     (Leander.Names.Leander_Name (Id));
+                              --  A missing method's synthetic body just
+                              --  calls the class's precompiled generic
+                              --  default (Type_Class), so its OWN scheme
+                              --  -- not the method's published signature
+                              --  -- is what determines which dictionaries
+                              --  need substituting here: a default's body
+                              --  can genuinely need a superclass dictionary
+                              --  (e.g. Ord's "compare" default calls Eq's
+                              --  "==") that the method's own public
+                              --  signature never mentions, since Haskell
+                              --  method signatures don't restate
+                              --  superclass constraints -- a real, provided
+                              --  method never has this gap because its
+                              --  body compiles against a concrete instance
+                              --  type from the start, resolving any
+                              --  superclass reference directly via
+                              --  instance search, no parameter needed.
+                              Global_Scheme : constant
+                                Leander.Core.Schemes.Reference :=
+                                  (if B /= null
+                                   then Class.Method_Scheme (Id)
+                                   else This.Type_Env.Element
+                                     (Leander.Names.To_Leander_Name
+                                        ("default:"
+                                         & Core.To_String (Class.Id)
+                                         & ":" & Core.To_String (Id))));
+                              Global_QT     : constant
+                                Leander.Core.Qualified_Types.Reference :=
+                                  Global_Scheme.Fresh_Instance;
                            begin
-                              if B /= null then
+                              if B /= null or else Class.Has_Default (Id)
+                              then
+                                 declare
+                                    --  A method the instance omits, but
+                                    --  which the class has a default for
+                                    --  (Type_Class already compiled that
+                                    --  default once, generically, under
+                                    --  this synthetic name), falls back to
+                                    --  a synthetic one-equation, point-free
+                                    --  binding that just calls it. Compiled
+                                    --  through the exact same
+                                    --  Match/Subst/Quantify pipeline as a
+                                    --  real B below, the reference resolves
+                                    --  to this instance's own dictionary
+                                    --  via ordinary Dict_Expr instance
+                                    --  search, exactly as any other
+                                    --  cross-method call would.
+                                    Alts : constant
+                                      Leander.Core.Alts.Reference_Array :=
+                                        (if B /= null
+                                         then B.Alts
+                                         else
+                                           [Leander.Core.Alts.Alt
+                                              (Leander.Core.Expressions
+                                                 .Variable
+                                                   (Leander.Source
+                                                      .No_Location,
+                                                    Core.To_Varid
+                                                      ("default:"
+                                                       & Core.To_String
+                                                         (Class.Id)
+                                                       & ":"
+                                                       & Core.To_String
+                                                         (Id))))]);
+                                 begin
                                  for P of Global_QT.Predicates loop
                                     if P.Class_Name
                                       = Core.To_String (Class.Id)
@@ -583,7 +566,7 @@ package body Leander.Environment is
                                                     Leander.Core.Bindings
                                                       .Explicit_Binding
                                                         (Internal_Id,
-                                                         B.Alts,
+                                                         Alts,
                                                          Inst_Scheme);
                                              end;
                                           end if;
@@ -591,6 +574,7 @@ package body Leander.Environment is
                                        exit;
                                     end if;
                                  end loop;
+                                 end;
                               end if;
                            end;
                         end loop;
@@ -787,6 +771,161 @@ package body Leander.Environment is
          end;
       end if;
 
+      --  Compile each class's own default method implementations (if it
+      --  provides any) once, generically -- parameterized by whatever
+      --  dictionaries they need, never substituting the class's own type
+      --  variable for a concrete type. Dict_Expr
+      --  (leander-core-expressions.adb) short-circuits to a bare, free
+      --  dictionary symbol for any predicate still headed by a type
+      --  variable, with no instance search -- so leaving the class tyvar
+      --  abstract throughout is exactly what lets a same-class (or
+      --  superclass) method reference compile to a plain "<ClassName tv>"
+      --  placeholder instead of needing a concrete instance right now.
+      --  Elaborate_Instance's fallback (below) supplies that placeholder
+      --  with the real, current instance's own dictionary via ordinary
+      --  instance substitution -- the same mechanism a hand-written
+      --  default body already goes through -- so this needs no new
+      --  Calculus machinery. Stored as an ordinary value under a synthetic
+      --  name, so it travels through a .skix image exactly like any other
+      --  compiled value (see issue #65) with no changes needed to
+      --  Dump_Module/Try_Load_Image.
+      --
+      --  This must run here, not at Type_Class/parse time: a default body
+      --  can reference ordinary top-level bindings (e.g. Eq's "/=" default
+      --  calling "not"), whose schemes only exist in This.Type_Env once the
+      --  Infer call above has run.
+      for Class of This.Classes loop
+         declare
+            Methods : constant Core.Varid_Array := Class.Methods;
+         begin
+            for I in Methods'Range loop
+               if Class.Has_Default (Methods (I))
+                 and then Class.Bindings.Lookup
+                   (Leander.Names.Leander_Name (Methods (I))).Alts'Length > 0
+               then
+                  declare
+                     Method_Context : Leander.Core.Inference.Inference_Context
+                       := Leander.Core.Inference.Initial_Context
+                         (This.Type_Env);
+                     B       : constant Leander.Core.Bindings.Reference :=
+                                 Class.Bindings.Lookup
+                                   (Leander.Names.Leander_Name (Methods (I)));
+                     QT      : constant
+                       Leander.Core.Qualified_Types.Reference :=
+                         Class.Method_Scheme (Methods (I)).Fresh_Instance;
+                     Scheme  : constant Leander.Core.Schemes.Reference :=
+                                 Leander.Core.Schemes.Quantify
+                                   (QT.all.Get_Tyvars, QT);
+                     Explicit : constant Leander.Core.Bindings.Reference :=
+                                  Leander.Core.Bindings.Explicit_Binding
+                                    (Methods (I), B.Alts, Scheme);
+                     Builder      : Leander.Core.Binding_Groups
+                       .Instance_Builder;
+                     Group        : Leander.Core.Binding_Groups.Reference;
+                     Default_Name : constant String :=
+                       "default:" & Core.To_String (Class.Id) & ":"
+                       & Core.To_String (Methods (I));
+                  begin
+                     Builder.Add_Explicit_Bindings ([Explicit]);
+                     Group := Builder.Get_Binding_Group;
+                     Leander.Core.Binding_Groups.Inference.Infer
+                       (Method_Context, Group);
+                     Explicit.Update_Type (Method_Context);
+
+                     declare
+                        Tree : Leander.Calculus.Tree :=
+                                 Explicit.To_Calculus
+                                   (Method_Context, This'Unchecked_Access);
+                        Seen : WL.String_Sets.Set;
+                        Full_Predicates : Leander.Core.Predicates
+                          .Predicate_Array
+                            (1 .. Method_Context.Current_Predicates'Length);
+                        Full_Count      : Natural := 0;
+                     begin
+                        --  The Type_Env scheme recorded for this default
+                        --  must describe exactly the dictionary parameters
+                        --  Tree gets wrapped in below -- not the method's
+                        --  own (narrower) published signature. A default's
+                        --  body can need a superclass dictionary its method
+                        --  signature never mentions (e.g. Ord's "compare"
+                        --  default calls Eq's "=="), since Haskell
+                        --  signatures don't restate superclass constraints;
+                        --  only inferring the body
+                        --  (Method_Context.Current_Predicates, just below)
+                        --  reveals the full set.
+                        --
+                        --  Collect first (forward, deduplicated), THEN wrap
+                        --  in reverse: a reference to this value elsewhere
+                        --  (Core.Expressions.To_Calculus's EVar case)
+                        --  applies one Dict_Expr argument per predicate in
+                        --  this same forward array order, and the first
+                        --  argument applied always binds a curried
+                        --  function's outermost (first) parameter -- so the
+                        --  outermost Lambda here must be the array's first
+                        --  entry, requiring the wrap itself to run
+                        --  last-to-first.
+                        for P of Method_Context.Current_Predicates loop
+                           if P.Get_Type.all.Get_Tyvars'Length > 0 then
+                              declare
+                                 Dict : constant String :=
+                                   "<" & P.Show & ">";
+                              begin
+                                 if not Seen.Contains (Dict) then
+                                    Seen.Include (Dict);
+                                    Full_Count := Full_Count + 1;
+                                    Full_Predicates (Full_Count) := P;
+                                 end if;
+                              end;
+                           end if;
+                        end loop;
+                        for P of reverse Full_Predicates (1 .. Full_Count)
+                        loop
+                           Tree :=
+                             Leander.Calculus.Lambda ("<" & P.Show & ">", Tree);
+                        end loop;
+                        This.Values.Insert
+                          (Leander.Names.To_Leander_Name (Default_Name),
+                           Tree);
+                        declare
+                           --  QT (from before Infer ran) is useless here:
+                           --  it holds its own, separate fresh instantiation
+                           --  of Scheme, unrelated to the ALSO-separate one
+                           --  Infer_Explicit_Binding allocates internally
+                           --  when it processes Explicit (Fresh_Instance
+                           --  allocates new type variables on every call,
+                           --  and Leander's types are immutable trees per
+                           --  share/leander/docs/type-inference.md, so
+                           --  neither unification nor Method_Context's
+                           --  substitution ever touches QT's own copy).
+                           --  Method_Context.Binding, called on the Alt
+                           --  itself, reads the resolved type from the
+                           --  SAME instantiation inference actually used.
+                           Resolved_Type : constant
+                             Leander.Core.Types.Reference :=
+                               Method_Context.Binding
+                                 (Explicit.Alts (1)).Apply
+                                   (Method_Context.Current_Substitution);
+                           Full_QT : constant
+                             Leander.Core.Qualified_Types.Reference :=
+                               Leander.Core.Qualified_Types.Qualified_Type
+                                 (Full_Predicates (1 .. Full_Count),
+                                  Resolved_Type);
+                           Full_Scheme : constant
+                             Leander.Core.Schemes.Reference :=
+                               Leander.Core.Schemes.Quantify
+                                 (Full_QT.all.Get_Tyvars, Full_QT);
+                        begin
+                           This.Type_Env :=
+                             This.Type_Env.Compose
+                               (Core.To_Varid (Default_Name), Full_Scheme);
+                        end;
+                     end;
+                  end;
+               end if;
+            end loop;
+         end;
+      end loop;
+
       for Class of This.Classes loop
          if This.Instances.Contains
            (Leander.Names.Leander_Name (Class.Id))
@@ -899,16 +1038,6 @@ package body Leander.Environment is
                                  Type_Class_Maps.Element (Position));
          end if;
       end loop;
-      for Position in E.Class_Syntax_Bindings.Iterate loop
-         if not This.Class_Syntax_Bindings.Contains
-           (Syntax_Binding_Maps.Key (Position))
-         then
-            This.Class_Syntax_Bindings.Insert
-              (Syntax_Binding_Maps.Key (Position),
-               Syntax_Binding_Maps.Element (Position));
-         end if;
-      end loop;
-
       This.Type_Env := This.Type_Env.Compose (E.Type_Env);
    end Import;
 
