@@ -9,6 +9,7 @@ with Leander.Tests.Inference;
 with Leander.Tests.Integration;
 with Leander.Tests.Kinds;
 with Leander.Tests.Prelude;
+with Leander.Tests.Schemes;
 with Leander.Tests.Tycons;
 with Leander.Tests.Type_Classes;
 with Leander.Tests.Types;
@@ -80,6 +81,7 @@ package body Leander.Tests is
       Leander.Tests.Tycons.Run_Tests;
       Leander.Tests.Tyvars.Run_Tests;
       Leander.Tests.Types.Run_Tests;
+      Leander.Tests.Schemes.Run_Tests;
       Leander.Tests.Expressions.Run_Tests;
       Leander.Tests.Inference.Run_Tests;
       Leander.Tests.Prelude.Run_Tests;

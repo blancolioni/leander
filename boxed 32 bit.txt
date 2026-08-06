@@ -1,0 +1,101 @@
+32 BIT BOXING
+
+[fraser@astroboy leander]$ for i in 512 1024 2048 4096 8192 16384 32768; do echo core size $i; time ./bin/leander --main=./share/leander/tests/Evaluation.hs --core-size=$i --report; done
+core size 512
+50005000
+Evaluation: 119ms
+GC: 60 @ 0ms
+Core size: 262144
+Allocated cells: 12527114
+Reclaimed cells: 12353277
+Last copied cells: 100984 static: 100370; transient: 614
+Static<-young writes: total 2170  max/epoch: 52
+
+
+real    0m0.323s
+user    0m0.287s
+sys     0m0.033s
+core size 1024
+50005000
+Evaluation: 98ms
+GC: 26 @ 0ms
+Core size: 524288
+Allocated cells: 12527114
+Reclaimed cells: 12215407
+Last copied cells: 100621 static: 97135; transient: 3486
+Static<-young writes: total 996  max/epoch: 46
+
+
+real    0m0.295s
+user    0m0.242s
+sys     0m0.050s
+core size 2048
+50005000
+Evaluation: 100ms
+GC: 12 @ 0ms
+Core size: 1048576
+Allocated cells: 12527114
+Reclaimed cells: 11929316
+Last copied cells: 98280 static: 90505; transient: 7775
+Static<-young writes: total 498  max/epoch: 46
+
+
+real    0m0.304s
+user    0m0.250s
+sys     0m0.051s
+core size 4096
+50005000
+Evaluation: 112ms
+GC: 6 @ 0ms
+Core size: 2097152
+Allocated cells: 12527114
+Reclaimed cells: 12225707
+Last copied cells: 100682 static: 84385; transient: 16297
+Static<-young writes: total 257  max/epoch: 37
+
+
+real    0m0.350s
+user    0m0.285s
+sys     0m0.060s
+core size 8192
+50005000
+Evaluation: 94ms
+GC: 3 @ 0ms
+Core size: 4194304
+Allocated cells: 12527114
+Reclaimed cells: 12378467
+Last copied cells: 100989 static: 68494; transient: 32495
+Static<-young writes: total 163  max/epoch: 39
+
+
+real    0m0.328s
+user    0m0.246s
+sys     0m0.078s
+core size 16384
+50005000
+Evaluation: 89ms
+GC: 1 @ 0ms
+Core size: 8388608
+Allocated cells: 12527114
+Reclaimed cells: 8319777
+Last copied cells: 68831 static: 0; transient: 68831
+Static<-young writes: total 104  max/epoch: 0
+
+
+real    0m0.364s
+user    0m0.253s
+sys     0m0.107s
+core size 32768
+50005000
+Evaluation: 90ms
+GC: 0 @ 0ms
+Core size: 16777216
+Allocated cells: 12527114
+Reclaimed cells: 0
+Last copied cells: 0 static: 0; transient: 0
+Static<-young writes: total 0  max/epoch: 0
+
+
+real    0m0.458s
+user    0m0.258s
+sys     0m0.193s
