@@ -1,3 +1,6 @@
+with Ada.Calendar;
+with Ada.Directories;
+with Ada.Streams;
 with Ada.Text_IO;
 with Leander.Calculus;
 
@@ -5,19 +8,38 @@ with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
+with Leander.Core.Schemes;
+with Leander.Core.Schemes.Serialize;
 with Leander.Core.Type_Classes;
+with Leander.Core.Type_Env;
 with Leander.Core.Types;
+with Leander.Names;
 with Leander.Primitives;
 with Leander.Resources;
 with Leander.Syntax.Expressions;
 
 with Skit.Combinators;
 with Skit.Compiler;
+with Skit.Handles.Images;
 with Skit.Terms;
 
 package body Leander.Handles is
 
    procedure Evaluate_Error (H : Handle'Class);
+
+   function Try_Load_Image
+     (This        : in out Instance'Class;
+      Env         : Leander.Environment.Reference;
+      Source_Path : String)
+      return Boolean;
+   --  If a sibling "<basename>.skix" of Source_Path exists and is not older
+   --  than it, load it into This.Skit_Handle (priming Resolve's existing
+   --  Skit_Handle.Lookup fast path so covered bindings never reach
+   --  Get_Bound_Calculus) and record each annotated export's decoded Scheme
+   --  into Env (Set_Scheme). Returns whether the image was used; on any
+   --  failure (missing, stale, corrupt, an unresolved import) this returns
+   --  False and leaves This/Env exactly as they were -- the caller falls
+   --  back to ordinary from-source, lazy compilation, unchanged.
 
    ----------
    -- Bind --
@@ -149,6 +171,15 @@ package body Leander.Handles is
             Arg_Types      => [String_Type],
             Res_Types      => [Boolean_Type],
             Eval           => Evaluate_Error'Access));
+
+      --  A fresh sibling .skix primes Skit_Handle's own bindings and Env's
+      --  Type_Env for whatever it covers; anything it doesn't (or if it's
+      --  missing/stale/unusable) falls back to ordinary lazy compilation
+      --  via Resolve, exactly as before this existed.
+      if This.Try_Load_Image (Env, Prelude_Path) then
+         null;
+      end if;
+
       return This;
    end Create;
 
@@ -163,6 +194,101 @@ package body Leander.Handles is
    begin
       return This.Env.Name;
    end Current_Environment;
+
+   -----------------
+   -- Dump_Module --
+   -----------------
+
+   procedure Dump_Module
+     (This        : in out Instance'Class;
+      Path        : String;
+      Module_Name : String := "module")
+   is
+      use Ada.Strings.Unbounded;
+      use type Leander.Core.Type_Env.Nullable_Scheme_Reference;
+
+      Ids : constant Leander.Names.Name_Array := This.Env.Value_Names;
+      Exports : Skit.Handles.Images.Name_Array (1 .. Ids'Length);
+      Count   : Natural := 0;
+
+      function Annotation_Of (Export_Name : String)
+        return Ada.Streams.Stream_Element_Array;
+
+      -------------------
+      -- Annotation_Of --
+      -------------------
+
+      function Annotation_Of (Export_Name : String)
+        return Ada.Streams.Stream_Element_Array
+      is
+         Scheme : constant Leander.Core.Type_Env.Nullable_Scheme_Reference :=
+                    This.Env.Type_Env.Lookup
+                      (Leander.Names.To_Leander_Name (Export_Name));
+      begin
+         if Scheme = null then
+            return Ada.Streams.Stream_Element_Array'
+              (1 .. 0 => <>);
+         else
+            return Leander.Core.Schemes.Serialize.Encode
+              (Leander.Core.Schemes.Reference (Scheme));
+         end if;
+      end Annotation_Of;
+
+   begin
+      --  Binding_Groups.Varids (behind Value_Names) over-approximates: it
+      --  also surfaces clause-pattern variables from equation desugaring
+      --  (e.g. the "xs" in "map f (x:xs) = ..."), which have no top-level
+      --  value of their own. Variable_Binding_Exists is the same guard
+      --  Resolve itself checks before raising, so filtering on it here
+      --  keeps exactly the names Resolve can actually compile.
+      for Id of Ids loop
+         declare
+            Name : constant String := Leander.Names.To_String (Id);
+         begin
+            if This.Env.Variable_Binding_Exists (Name) then
+               declare
+                  Value : Skit.Object;
+               begin
+                  --  Resolve is called as a statement, not a declaration
+                  --  initializer: an exception raised while elaborating a
+                  --  block's declarative part is NOT caught by that same
+                  --  block's own handler, only by an enclosing one.
+                  Value := This.Resolve (Name);
+
+                  --  A name bound directly to a bare primitive function
+                  --  (a "foreign import ... #name" wrapper) has no export
+                  --  representation: Put_Object (unlike Put_Slot) cannot
+                  --  emit it as a named import, and nothing needs to look
+                  --  it up post-load anyway -- any Prelude function that
+                  --  uses it embeds it correctly via a cell slot already.
+                  --  Resolve has still bound it into the handle, so those
+                  --  embedded references resolve.
+                  if not Skit.Is_Primitive_Function (Value) then
+                     Count := Count + 1;
+                     Exports (Count) := To_Unbounded_String (Name);
+                  end if;
+               exception
+                  --  A binding that fails to compile (e.g. a latent gap in
+                  --  recursive-let compilation never exercised by the
+                  --  ordinary REPL/test path, which only forces what a
+                  --  given expression actually reaches) is demoted to a
+                  --  skipped export, not a fatal dump failure -- mirroring
+                  --  ADR 0002's "Serialize may fail; the referencing
+                  --  binding is demoted to an error, the rest proceeds."
+                  when others =>
+                     Ada.Text_IO.Put_Line
+                       (Ada.Text_IO.Standard_Error,
+                        "Dump_Module: skipping """ & Name
+                        & """, failed to compile");
+               end;
+            end if;
+         end;
+      end loop;
+
+      Skit.Handles.Images.Write
+        (This.Skit_Handle, Path, Exports (1 .. Count), Module_Name,
+         Annotation_Of'Access);
+   end Dump_Module;
 
    --------------
    -- Evaluate --
@@ -493,5 +619,57 @@ package body Leander.Handles is
    begin
       This.Slots (Slot) := (Integer_Type, Value);
    end Set_Slot;
+
+   ---------------------
+   -- Try_Load_Image --
+   ---------------------
+
+   function Try_Load_Image
+     (This        : in out Instance'Class;
+      Env         : Leander.Environment.Reference;
+      Source_Path : String)
+      return Boolean
+   is
+      use type Ada.Calendar.Time;
+
+      Image_Path : constant String :=
+                     Ada.Directories.Compose
+                       (Ada.Directories.Containing_Directory
+                          (Ada.Directories.Full_Name (Source_Path)),
+                        Ada.Directories.Base_Name (Source_Path),
+                        "skix");
+
+      procedure On_Annotation
+        (Export_Name : String;
+         Bytes       : Ada.Streams.Stream_Element_Array);
+
+      -------------------
+      -- On_Annotation --
+      -------------------
+
+      procedure On_Annotation
+        (Export_Name : String;
+         Bytes       : Ada.Streams.Stream_Element_Array)
+      is
+      begin
+         Env.Set_Scheme
+           (Export_Name, Leander.Core.Schemes.Serialize.Decode (Bytes));
+      end On_Annotation;
+
+   begin
+      if not Ada.Directories.Exists (Image_Path)
+        or else Ada.Directories.Modification_Time (Image_Path)
+                  < Ada.Directories.Modification_Time (Source_Path)
+      then
+         return False;
+      end if;
+
+      Skit.Handles.Images.Read
+        (This.Skit_Handle, Image_Path, On_Annotation'Access);
+      return True;
+   exception
+      when others =>
+         return False;
+   end Try_Load_Image;
 
 end Leander.Handles;

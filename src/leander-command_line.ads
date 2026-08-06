@@ -10,5 +10,6 @@ package Leander.Command_Line is
    function Build return String;
    function Evaluate return String;
    function Main return String;
+   function Precompile return String;
 
 end Leander.Command_Line;

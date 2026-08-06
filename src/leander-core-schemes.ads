@@ -49,6 +49,18 @@ private
 
    type Kind_Array is array (Positive range <>) of Leander.Core.Kinds.Kind;
 
+   function From_Parts
+     (Ks : Kind_Array;
+      QT : Qualified_Types.Reference)
+      return Reference;
+   --  Construct a Scheme directly from its already-quantified parts: Ks are
+   --  the kinds of the (implicit) quantified variables in binding order, and
+   --  QT's inner type already refers to them via TGen at the matching
+   --  indices. Unlike Quantify, this performs no generalization/substitution
+   --  -- it exists for Leander.Core.Schemes.Serialize, which reconstructs a
+   --  previously-quantified Scheme from decoded bytes and so already has a
+   --  QT whose TGen indices are correct by construction.
+
    type Instance (Count : Natural) is
      new Leander.Core.Tyvars.Container_Abstraction
      and Leander.Showable.Abstraction with

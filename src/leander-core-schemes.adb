@@ -50,6 +50,19 @@ package body Leander.Core.Schemes is
       return False;
    end Contains;
 
+   ----------------
+   -- From_Parts --
+   ----------------
+
+   function From_Parts
+     (Ks : Kind_Array;
+      QT : Qualified_Types.Reference)
+      return Reference
+   is
+   begin
+      return Allocate (Instance'(Ks'Length, Ks, QT));
+   end From_Parts;
+
    --------------------
    -- Fresh_Instance --
    --------------------

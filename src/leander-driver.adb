@@ -1,3 +1,4 @@
+with Ada.Directories;
 with Ada.Text_IO;
 
 with Leander.Command_Line;
@@ -27,6 +28,23 @@ begin
       end;
    elsif Command_Line.Self_Test then
       Leander.Tests.Run_Tests;
+   elsif Command_Line.Precompile /= "" then
+      declare
+         Source_Path : constant String := Command_Line.Precompile;
+         Module_Name : constant String :=
+                         Ada.Directories.Base_Name (Source_Path);
+         Image_Path  : constant String :=
+                         Ada.Directories.Compose
+                           (Ada.Directories.Containing_Directory
+                              (Ada.Directories.Full_Name (Source_Path)),
+                            Module_Name, "skix");
+         H : Leander.Handle := Leander.Create (Core_Size);
+      begin
+         H.Load_Module (Source_Path);
+         H.Dump_Module (Image_Path, Module_Name);
+         Ada.Text_IO.Put_Line ("Wrote " & Image_Path);
+         H.Close;
+      end;
    elsif Command_Line.Main /= "" then
       declare
          H : Leander.Handle := Leander.Create (Core_Size);

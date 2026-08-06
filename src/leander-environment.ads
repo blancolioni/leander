@@ -117,6 +117,18 @@ package Leander.Environment is
       Signature    : Leander.Core.Types.Reference)
    is abstract;
 
+   procedure Set_Scheme
+     (This   : in out Abstraction;
+      Name   : String;
+      Scheme : Leander.Core.Schemes.Reference)
+   is abstract;
+   --  Record Name's already-known Scheme (e.g. decoded from a loaded
+   --  module image's Annotations) without touching Values -- unlike
+   --  Foreign_Import, this makes no claim about how Name's value is
+   --  bound, only what its type is. Get_Bound_Calculus is unaffected: it
+   --  still compiles Name from Bindings on first use if nothing else
+   --  (a pre-loaded Skit binding) short-circuits that first.
+
    procedure Elaborate
      (This : in out Abstraction)
    is abstract;
@@ -126,6 +138,16 @@ package Leander.Environment is
       Name : String)
       return Boolean
       is abstract;
+
+   function Value_Names
+     (This : Abstraction)
+      return Leander.Names.Name_Array
+      is abstract;
+   --  Every top-level name bound in This (Values), for module dumping. This
+   --  is deliberately narrower than Type_Env's Ids: Type_Env accumulates
+   --  every variable inference ever assigned a type -- including local
+   --  lambda- and pattern-bound names from within a binding's own body --
+   --  not just this module's public top-level bindings.
 
    function Get_Bound_Calculus
      (This             : in out Abstraction;
