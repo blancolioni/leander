@@ -141,7 +141,11 @@ package body Leander.Core.Expressions.Inference is
                   S1 : constant Core.Substitutions.Instance'Class :=
                          TI (E.Left);
                begin
-                  Context.Save_Type_Env (Context.Type_Env.Apply (S1));
+                  if S1.Is_Empty then
+                     Context.Save_Type_Env;
+                  else
+                     Context.Save_Type_Env (Context.Type_Env.Apply (S1));
+                  end if;
 
                   declare
                      S2 : constant Core.Substitutions.Instance'Class :=

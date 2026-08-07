@@ -10,6 +10,8 @@ package Leander.Core.Substitutions is
 
    function Empty return Instance;
 
+   function Is_Empty (This : Instance) return Boolean;
+
    function Compose
      (Left  : Instance;
       Right : Instance)
@@ -61,6 +63,9 @@ private
       end record;
 
    overriding function Show (This : Instance) return String;
+
+   function Is_Empty (This : Instance) return Boolean
+   is (This.List.Is_Empty);
 
    function Singleton
      (Name  : Leander.Names.Leander_Name;
