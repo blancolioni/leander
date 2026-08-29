@@ -15,12 +15,15 @@ number of constructors in the data type.
 Given a data type with N constructors, where the i-th constructor takes
 M_i arguments:
 
-    Con_i x1 .. xM  ==>  \$1.\$2...\$N.\x1...\xM. $i x1 ... xM
+    Con_i x1 .. xM  ==>  \x1...\xM.\$1.\$2...\$N. $i x1 ... xM
 
-Each constructor is a function of (N + M_i) arguments. The first N
-arguments are continuations (one per constructor). The remaining M_i
-arguments are the constructor's fields. The body applies the i-th
-continuation to the field values.
+Each constructor is a function of (M_i + N) arguments. The first M_i
+arguments are the constructor's own fields — these come first because a
+constructor is applied to them at construction time (`Cons h t`), same as
+any ordinary curried function. The remaining N arguments are
+continuations (one per constructor), supplied later by whatever pattern-
+matches the value. The body applies the i-th continuation to the field
+values.
 
 ### Examples
 
@@ -32,7 +35,7 @@ continuation to the field values.
 **List** (2 constructors: [] with 0 args, (:) with 2 args):
 
     []     =  \$a.\$b. $a
-    (:)    =  \$a.\$b.\x.\y. $b x y
+    (:)    =  \x.\y.\$a.\$b. $b x y
 
 **Unit** (1 constructor, 0 arguments):
 
@@ -40,12 +43,16 @@ continuation to the field values.
 
 **(,)** (1 constructor, 2 arguments):
 
-    (,)    =  \$a.\x.\y. $a x y
+    (,)    =  \x.\y.\$a. $a x y
+
+(A 0-argument constructor's continuations are its only parameters, so
+`True`/`False`/`[]`/`()` look the same regardless of field/continuation
+order; `(:)` and `(,)` are where the order actually matters.)
 
 The encoding is built in `leander-data_types-builder.adb`, procedure
 `Build`. Variable names are generated as `$a`, `$b`, ... for the
-constructor-selection parameters, and continuation from an offset for
-the field parameters.
+constructor-selection (continuation) parameters, and as further letters
+continuing that same sequence for the field parameters.
 
 ## Pattern matching compilation
 
