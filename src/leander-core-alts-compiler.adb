@@ -81,6 +81,7 @@ package body Leander.Core.Alts.Compiler is
             DT  : constant Leander.Data_Types.Reference :=
                     This.Env.Data_Type (Con);
          begin
+            This.Newtype_Mode := DT.Is_Newtype;
             for I in 1 .. DT.Constructor_Count loop
                This.Con_Pats.Append
                  (Con_Pat_Expr'(null, null));
@@ -222,7 +223,16 @@ package body Leander.Core.Alts.Compiler is
                         E := Lambda (Leander.Names.Leander_Name (Id), E);
                      end loop;
                   end if;
-                  R := Apply (R, E);
+                  --  A newtype value is its field: there is no Scott
+                  --  encoding to dispatch through, so instead of applying
+                  --  the scrutinee to a continuation, apply the single
+                  --  alternative directly to the scrutinee.  Its own
+                  --  Lambda above binds the field, which is the scrutinee.
+                  if This.Newtype_Mode then
+                     R := Apply (E, Symbol (V));
+                  else
+                     R := Apply (R, E);
+                  end if;
                end;
             end loop;
 

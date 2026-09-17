@@ -210,6 +210,8 @@ package body Leander.Tests.Integration is
 
       Test_Eval ("let ret x = return x in ret 1 == Just 1",
                  "Bool", "K",
+                 Handle);
+
       --  seq forcing a value whose Scott encoding is a bare, wholly
       --  unapplied combinator (unit is exactly I).  Regression: the
       --  machine used to strand that head instead of pushing it, so the
@@ -245,6 +247,61 @@ package body Leander.Tests.Integration is
          Handle);
 
       --  Type class usage in module
+
+      --  newtype: a value of a newtype IS the value of its field, with no
+      --  wrapper of any kind, so `Age 65` must evaluate to the bare integer
+      --  65 rather than to a Scott-encoded closure over it (issue #52).
+
+      Test_Module
+        ("module: newtype value has no wrapper",
+         Test_Root & "test_18_newtype.hs",
+         "bare", "65",
+         Handle);
+      Test_Module
+        ("module: newtype field pattern binds the value itself",
+         Test_Root & "test_18_newtype.hs",
+         "unwrapped", "65",
+         Handle);
+      Test_Module
+        ("module: newtype rewrapped in a case alternative",
+         Test_Root & "test_18_newtype.hs",
+         "bumped", "66",
+         Handle);
+      Test_Module
+        ("module: parametric newtype nested over another newtype",
+         Test_Root & "test_18_newtype.hs",
+         "nested", "7",
+         Handle);
+      Test_Module
+        ("module: newtype patterns in several argument positions",
+         Test_Root & "test_18_newtype.hs",
+         "compared", "K",
+         Handle);
+      Test_Module
+        ("module: newtype over a structured field",
+         Test_Root & "test_18_newtype.hs",
+         "inTuple", "3",
+         Handle);
+      Test_Module
+        ("module: deriving Eq on a newtype",
+         Test_Root & "test_18_newtype.hs",
+         "derivedEq", "K",
+         Handle);
+      Test_Module
+        ("module: deriving Eq on a newtype, unequal",
+         Test_Root & "test_18_newtype.hs",
+         "derivedNe", "K I",
+         Handle);
+      Test_Module
+        ("module: a class instance for a newtype",
+         Test_Root & "test_18_newtype.hs",
+         "viaClass", "9",
+         Handle);
+      Test_Module
+        ("module: newtype over a function field",
+         Test_Root & "test_18_newtype.hs",
+         "funcField", "42",
+         Handle);
 
       Test_Module
         ("module: type class",

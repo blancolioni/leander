@@ -17,6 +17,7 @@ package body Leander.Data_Types.Serialize is
       W : BB.Writer;
    begin
       TS.Put (W, This.Applied_Type);
+      W.Put_U8 (Boolean'Pos (This.Is_Newtype));
       W.Put_U32 (This.Constructor_Count);
       for I in 1 .. This.Constructor_Count loop
          W.Put_String (Core.To_String (This.Constructor_Name (I)));
@@ -33,10 +34,11 @@ package body Leander.Data_Types.Serialize is
    function Decode (Bytes : Ada.Streams.Stream_Element_Array) return Reference is
       C       : BB.Offset := Bytes'First;
       Applied : constant Core.Types.Reference := TS.Get (Bytes, C);
+      Newtype : constant Boolean := BB.Get_U8 (Bytes, C) /= 0;
       Cn      : constant Natural := BB.Get_U32 (Bytes, C);
       Builder : Leander.Data_Types.Builder.Data_Type_Builder;
    begin
-      Builder.Start (Applied);
+      Builder.Start (Applied, Is_Newtype => Newtype);
       for I in 1 .. Cn loop
          declare
             Name   : constant Core.Conid := Core.To_Conid (BB.Get_String (Bytes, C));

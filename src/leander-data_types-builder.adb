@@ -92,6 +92,25 @@ package body Leander.Data_Types.Builder is
          E         : Calculus.Tree :=
                        Calculus.Symbol (Var_Ids (Index));
       begin
+         if This.Newtype and then Arg_Count = 1 then
+            --  A newtype value is its field, with nothing wrapped around
+            --  it, so the constructor is the identity.  Everything that
+            --  distinguishes the two lives in the type, which is gone by
+            --  the time this runs.
+            --
+            --  The arity guard is for error recovery only: the parser has
+            --  already reported a newtype whose constructor does not take
+            --  exactly one argument, and falling back to the ordinary
+            --  encoding here keeps that a diagnostic rather than a crash.
+            return Con_Record'
+              (Con_Name => Id,
+               Con_Type => Scheme,
+               Con_Defn =>
+                 Calculus.Lambda
+                   (Pat_Ids (Pat_Ids'First),
+                    Calculus.Symbol (Pat_Ids (Pat_Ids'First))));
+         end if;
+
          for Id of Pat_Ids loop
             E := Calculus.Apply (E, Calculus.Symbol (Id));
          end loop;
@@ -109,13 +128,14 @@ package body Leander.Data_Types.Builder is
 
    begin
       This.DT := new Instance'
-        (Con_Count => This.Cons.Last_Index,
-         Id        => This.Tycon.Constructor.Id,
-         Tycon     => Core.Types.Reference (This.Tycon),
-         Applied   => Core.Types.Reference (This.Applied),
-         Kind      => This.Kind,
-         Cons      => [for I in 1 .. This.Cons.Last_Index =>
-                           Create_Con_Record (I)]);
+        (Con_Count  => This.Cons.Last_Index,
+         Id         => This.Tycon.Constructor.Id,
+         Tycon      => Core.Types.Reference (This.Tycon),
+         Applied    => Core.Types.Reference (This.Applied),
+         Kind       => This.Kind,
+         Is_Newtype => This.Newtype,
+         Cons       => [for I in 1 .. This.Cons.Last_Index =>
+                            Create_Con_Record (I)]);
    end Build;
 
    ---------------
@@ -135,8 +155,9 @@ package body Leander.Data_Types.Builder is
    -----------
 
    procedure Start
-     (This  : in out Data_Type_Builder'Class;
-      Ty    : Leander.Core.Types.Reference)
+     (This       : in out Data_Type_Builder'Class;
+      Ty         : Leander.Core.Types.Reference;
+      Is_Newtype : Boolean := False)
    is
       T : Leander.Core.Types.Reference := Ty;
       K : Leander.Core.Kinds.Kind := Leander.Core.Kinds.Star;
@@ -186,6 +207,7 @@ package body Leander.Data_Types.Builder is
          This.Tycon := Nullable_Type_Reference (Head);
          This.Applied := Nullable_Type_Reference (Rebuild (Ty, K));
       end;
+      This.Newtype := Is_Newtype;
       This.Cons.Clear;
       This.DT := null;
    end Start;
