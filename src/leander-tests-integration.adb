@@ -173,6 +173,15 @@ package body Leander.Tests.Integration is
                  "Int", "7",
                  Handle);
 
+      --  seq forcing a value whose Scott encoding is a bare, wholly
+      --  unapplied combinator (unit is exactly I).  Regression: the
+      --  machine used to strand that head instead of pushing it, so the
+      --  pending #primSeq call read past its own arguments.
+
+      Test_Eval ("seq () (1 + 2)",
+                 "Int", "3",
+                 Handle);
+
       --  Phase 2: Module tests (non-IO)
       --  Simple function definition
 
