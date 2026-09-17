@@ -9,7 +9,9 @@ package Leander.Data_Types.Serialize is
    --  always mechanically regenerated from the constructor's arity, so
    --  Decode drives Leander.Data_Types.Builder exactly as
    --  Leander.Environment.Prelude.Create already does by hand for the
-   --  built-in ()/(,)/Bool/[] types.
+   --  built-in ()/(,)/Bool/[] types.  The newtype flag IS encoded, since
+   --  it changes what that regeneration produces: a newtype constructor
+   --  compiles to the identity rather than a Scott-encoded wrapper.
 
    function Encode (This : Reference) return Ada.Streams.Stream_Element_Array;
 

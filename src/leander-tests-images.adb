@@ -3,6 +3,8 @@ with Ada.Streams;
 
 with Leander.Core.Type_Classes;
 with Leander.Core.Type_Classes.Serialize;
+with Leander.Data_Types;
+with Leander.Data_Types.Serialize;
 with Leander.Primitives;
 with Leander.Resources;
 
@@ -95,6 +97,78 @@ package body Leander.Tests.Images is
       if Ada.Directories.Exists (Path) then
          Ada.Directories.Delete_File (Path);
       end if;
+
+      --  A newtype's whole point is that it has no runtime representation
+      --  of its own, and that is regenerated on decode rather than stored:
+      --  Data_Types.Serialize drives the Builder, which emits the identity
+      --  for a newtype constructor and a Scott-encoded wrapper otherwise.
+      --  So the flag itself has to survive the image, or every newtype
+      --  value silently grows a wrapper when a module is loaded from one.
+      declare
+         NT_Path      : constant String := "test_newtype.skix";
+         Saw_Newtype  : Boolean := False;
+         Saw_Ordinary : Boolean := False;
+
+         procedure On_Data_Type
+           (Export_Name : String;
+            Bytes       : Ada.Streams.Stream_Element_Array);
+
+         -------------------
+         -- On_Data_Type --
+         -------------------
+
+         procedure On_Data_Type
+           (Export_Name : String;
+            Bytes       : Ada.Streams.Stream_Element_Array)
+         is
+            Prefix : constant String := "datatype:";
+         begin
+            if Export_Name'Length > Prefix'Length
+              and then Export_Name (Export_Name'First
+                                     .. Export_Name'First + Prefix'Length - 1)
+                       = Prefix
+            then
+               declare
+                  DT : constant Leander.Data_Types.Reference :=
+                         Leander.Data_Types.Serialize.Decode (Bytes);
+               begin
+                  if DT.Is_Newtype then
+                     Saw_Newtype := True;
+                  else
+                     Saw_Ordinary := True;
+                  end if;
+               end;
+            end if;
+         end On_Data_Type;
+
+      begin
+         declare
+            H : Leander.Handle := Leander.Create;
+         begin
+            H.Load_Module
+              ("./share/leander/tests/integration/test_18_newtype.hs");
+            H.Dump_Module (NT_Path, "test_18_newtype");
+            H.Close;
+         end;
+
+         declare
+            Hr : constant Skit.Handles.Handle :=
+                   Skit.Handles.New_Handle (Core_Size => 512 * 1024);
+         begin
+            Leander.Primitives.Load_Primitives (Hr);
+            Hr.Bind ("#error", Skit.Combinators.I);
+            Skit.Handles.Images.Read (Hr, NT_Path, On_Data_Type'Access);
+         end;
+
+         Test ("newtype.skix: the newtype flag survives the image",
+               Saw_Newtype);
+         Test ("newtype.skix: ordinary data types are still not newtypes",
+               Saw_Ordinary);
+
+         if Ada.Directories.Exists (NT_Path) then
+            Ada.Directories.Delete_File (NT_Path);
+         end if;
+      end;
 
       --  Phase 4 integration: Leander.Create looks for a sibling .skix next
       --  to the real Prelude.hs it loads and, if it is fresh and carries the

@@ -5,8 +5,12 @@ package Leander.Data_Types.Builder is
    type Data_Type_Builder is tagged private;
 
    procedure Start
-     (This  : in out Data_Type_Builder'Class;
-      Ty    : Leander.Core.Types.Reference);
+     (This       : in out Data_Type_Builder'Class;
+      Ty         : Leander.Core.Types.Reference;
+      Is_Newtype : Boolean := False);
+   --  Is_Newtype requires exactly one constructor of exactly one field; the
+   --  caller checks that, since it is the one that can report a source
+   --  location.  See Leander.Data_Types.Is_Newtype.
 
    procedure Add_Con
      (This   : in out Data_Type_Builder'Class;
@@ -45,6 +49,7 @@ private
          Tycon   : Nullable_Type_Reference;
          Applied : Nullable_Type_Reference;
          Kind    : Leander.Core.Kinds.Kind;
+         Newtype : Boolean := False;
          Cons    : Con_Record_Vectors.Vector;
          DT      : Nullable_Data_Type;
       end record;

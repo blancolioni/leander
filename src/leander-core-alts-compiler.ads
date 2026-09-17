@@ -50,6 +50,7 @@ private
          Env          : Leander.Environment.Reference;
          Names        : Varid_Vectors.Vector;
          Compare_Mode : Boolean := False;
+         Newtype_Mode : Boolean := False;
          Con_Pats     : Con_Pat_Expr_Vectors.Vector;
          Con_Dfl      : Con_Pat_Expr;
       end record;

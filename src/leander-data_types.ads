@@ -38,6 +38,14 @@ package Leander.Data_Types is
       Id   : Core.Conid)
       return Natural;
 
+   function Is_Newtype (This : Instance'Class) return Boolean;
+   --  True for a type declared with 'newtype' rather than 'data'.  Such a
+   --  type has exactly one constructor of exactly one field, and carries no
+   --  representation of its own: a value of the newtype *is* the value of
+   --  its field.  The constructor compiles to the identity, and matching it
+   --  binds the field directly to the scrutinee rather than dispatching
+   --  through a Scott-encoded continuation.
+
 private
 
    type Con_Record is
@@ -51,11 +59,12 @@ private
 
    type Instance (Con_Count : Positive) is tagged
       record
-         Id      : Core.Conid;
-         Tycon   : Leander.Core.Types.Reference;
-         Applied : Leander.Core.Types.Reference;
-         Kind    : Leander.Core.Kinds.Kind;
-         Cons    : Con_Array (1 .. Con_Count);
+         Id         : Core.Conid;
+         Tycon      : Leander.Core.Types.Reference;
+         Applied    : Leander.Core.Types.Reference;
+         Kind       : Leander.Core.Kinds.Kind;
+         Is_Newtype : Boolean;
+         Cons       : Con_Array (1 .. Con_Count);
       end record;
 
    function Id (This : Instance'Class) return Core.Conid
@@ -88,5 +97,8 @@ private
       Index : Positive)
       return Leander.Calculus.Tree
    is (This.Cons (Index).Con_Defn);
+
+   function Is_Newtype (This : Instance'Class) return Boolean
+   is (This.Is_Newtype);
 
 end Leander.Data_Types;

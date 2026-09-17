@@ -24,7 +24,11 @@ package body Leander.Parser.Declarations is
      (Context : in out Parse_Context'Class);
 
    procedure Parse_Data_Declaration
-     (Context : Parse_Context'Class);
+     (Context    : Parse_Context'Class;
+      Is_Newtype : Boolean);
+   --  Handles both 'data' and 'newtype': the grammar is the same, except
+   --  that a newtype must declare exactly one constructor of exactly one
+   --  field, which is what makes its zero-cost representation possible.
 
    procedure Parse_Foreign_Import
      (Context : Parse_Context'Class);
@@ -49,7 +53,7 @@ package body Leander.Parser.Declarations is
       return At_Variable or else At_Constructor or else
         Tok <= [Tok_Class, Tok_Data, Tok_Foreign,
                 Tok_Infix, Tok_Infixl, Tok_Infixr,
-                Tok_Instance,
+                Tok_Instance, Tok_Newtype,
                 Tok_Left_Bracket, Tok_Left_Paren];
    end At_Declaration;
 
@@ -230,7 +234,8 @@ package body Leander.Parser.Declarations is
    ----------------------------
 
    procedure Parse_Data_Declaration
-     (Context : Parse_Context'Class)
+     (Context    : Parse_Context'Class;
+      Is_Newtype : Boolean)
    is
       Builder         : Leander.Data_Types.Builder.Data_Type_Builder;
       Derived_Max     : constant := 16;
@@ -238,12 +243,15 @@ package body Leander.Parser.Declarations is
       Derived_Count   : Natural := 0;
       Derived_Loc     : Leander.Source.Source_Location :=
                           Leander.Source.No_Location;
+      Keyword         : constant String :=
+                          (if Is_Newtype then "newtype" else "data");
+      Con_Count       : Natural := 0;
    begin
-      pragma Assert (Tok = Tok_Data);
+      pragma Assert (Tok = (if Is_Newtype then Tok_Newtype else Tok_Data));
       Scan;
 
       if not At_Constructor then
-         Error ("expected a type constructor");
+         Error ("expected a type constructor after '" & Keyword & "'");
          return;
       end if;
 
@@ -262,7 +270,7 @@ package body Leander.Parser.Declarations is
 
          Scan;
 
-         Builder.Start (Data);
+         Builder.Start (Data, Is_Newtype => Is_Newtype);
 
          loop
             if not At_Constructor then
@@ -290,6 +298,14 @@ package body Leander.Parser.Declarations is
                   declare
                      Con_Type : Leander.Core.Types.Reference := Data;
                   begin
+                     Con_Count := Con_Count + 1;
+                     if Is_Newtype and then Count /= 1 then
+                        Error
+                          ("a newtype constructor takes exactly one"
+                           & " argument; " & Con_Name & " takes"
+                           & Natural'Image (Count));
+                     end if;
+
                      for I in reverse 1 .. Count loop
                         Con_Type :=
                           Leander.Core.Types.Fn
@@ -309,6 +325,10 @@ package body Leander.Parser.Declarations is
                exit;
             end if;
          end loop;
+
+         if Is_Newtype and then Con_Count > 1 then
+            Error ("a newtype declares exactly one constructor");
+         end if;
 
          if Tok = Tok_Deriving then
             Derived_Loc := Current_Source_Location;
@@ -447,7 +467,9 @@ package body Leander.Parser.Declarations is
                end loop;
             end;
          elsif Tok = Tok_Data then
-            Parse_Data_Declaration (Context);
+            Parse_Data_Declaration (Context, Is_Newtype => False);
+         elsif Tok = Tok_Newtype then
+            Parse_Data_Declaration (Context, Is_Newtype => True);
          elsif Tok = Tok_Class then
             Parse_Class_Declaration (Context);
          elsif Tok = Tok_Instance then
