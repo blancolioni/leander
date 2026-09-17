@@ -173,6 +173,45 @@ package body Leander.Tests.Integration is
                  "Int", "7",
                  Handle);
 
+      --  A do-block pattern bind whose continuation is left polymorphic.
+      --  The desugaring binds the pattern in a synthetic binding group;
+      --  generalising that group used to freshen the continuation's type
+      --  variables away from the bind site, stranding its Monad predicate
+      --  as an unresolvable <Monad $t> (issue #70).
+
+      Test_Eval
+        ("(do { Just x <- Just (Just 1); return x }) == Just 1",
+         "Bool", "K",
+         Handle);
+
+      --  The same change must not stop an ordinary source-level 'let' from
+      --  generalising: i is used here at both Bool and Int.
+
+      Test_Eval ("let i x = x in if i True then i 1 else 2",
+                 "Int", "1",
+                 Handle);
+
+      --  A local binding whose body raises a class constraint.  Its scheme
+      --  has to carry the predicate so the use site can hand it a
+      --  dictionary, and the binding has to be elaborated with a matching
+      --  dictionary parameter; without both, the constraint was stranded on
+      --  a type variable nothing resolved and the expression quietly
+      --  evaluated to garbage.
+
+      Test_Eval ("let eq2 x y = x == y in eq2 1 1",
+                 "Bool", "K",
+                 Handle);
+      Test_Eval ("let eq2 x y = x == y in eq2 1 2",
+                 "Bool", "K I",
+                 Handle);
+
+      --  The same, for a class with no defaulting to fall back on: the
+      --  monad is fixed only by the use site.
+
+      Test_Eval ("let ret x = return x in ret 1 == Just 1",
+                 "Bool", "K",
+                 Handle);
+
       --  Phase 2: Module tests (non-IO)
       --  Simple function definition
 

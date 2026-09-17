@@ -44,6 +44,21 @@ package Leander.Core.Inference is
    procedure Clear_Predicates
      (This : in out Inference_Context);
 
+   function Predicate_Count
+     (This : Inference_Context)
+      return Natural;
+   --  How many predicates have been collected so far.  Taken before and
+   --  after inferring a binding, the difference identifies the predicates
+   --  that binding alone raised.
+
+   procedure Drop_Predicates
+     (This : in out Inference_Context;
+      From : Positive);
+   --  Discard the predicates from index From onwards.  Used to take a
+   --  binding's own predicates out of the enclosing context once they have
+   --  been split into the ones its scheme retains and the ones that must be
+   --  deferred outwards (which are then saved again).
+
    function Current_Predicates
      (This : Inference_Context)
       return Leander.Core.Predicates.Predicate_Array;

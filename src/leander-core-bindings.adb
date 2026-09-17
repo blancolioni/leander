@@ -1,3 +1,5 @@
+with Ada.Containers.Vectors;
+
 with Leander.Allocator;
 with Leander.Core.Alts.Compiler;
 with Leander.Core.Expressions;
@@ -9,6 +11,63 @@ package body Leander.Core.Bindings is
 
    package Allocator is
      new Leander.Allocator ("bindings", Instance, Variable_Reference);
+
+   package Predicate_Vectors is
+     new Ada.Containers.Vectors
+       (Positive, Leander.Core.Predicates.Instance,
+        Leander.Core.Predicates."=");
+
+   package Dictionary_Vectors is
+     new Ada.Containers.Vectors
+       (Positive, Predicate_Vectors.Vector, Predicate_Vectors."=");
+
+   --  One entry per binding, indexed by Dict_Id.  Holding the predicates
+   --  here keeps Instance free of a variable-length component and lets
+   --  Set_Dictionaries work through an access-constant Reference.
+   Dictionaries_Table : Dictionary_Vectors.Vector;
+
+   function Next_Dict_Id return Positive;
+
+   ------------------
+   -- Dictionaries --
+   ------------------
+
+   function Dictionaries
+     (This : Instance'Class)
+      return Leander.Core.Predicates.Predicate_Array
+   is
+      Ps : Predicate_Vectors.Vector renames
+             Dictionaries_Table (This.Dict_Id);
+   begin
+      return [for P of Ps => P];
+   end Dictionaries;
+
+   ------------------
+   -- Next_Dict_Id --
+   ------------------
+
+   function Next_Dict_Id return Positive is
+   begin
+      Dictionaries_Table.Append (Predicate_Vectors.Empty_Vector);
+      return Dictionaries_Table.Last_Index;
+   end Next_Dict_Id;
+
+   ----------------------
+   -- Set_Dictionaries --
+   ----------------------
+
+   procedure Set_Dictionaries
+     (This : Instance'Class;
+      Ps   : Leander.Core.Predicates.Predicate_Array)
+   is
+      Target : Predicate_Vectors.Vector renames
+                 Dictionaries_Table (This.Dict_Id);
+   begin
+      Target.Clear;
+      for P of Ps loop
+         Target.Append (P);
+      end loop;
+   end Set_Dictionaries;
 
    function Allocate
      (This : Instance'Class)
@@ -28,7 +87,9 @@ package body Leander.Core.Bindings is
    begin
       return Allocate
         (Instance'
-           (Alts'Length, Name, Alts, Nullable_Scheme_Reference (Scheme)));
+           (Alts'Length, Name, Alts, Nullable_Scheme_Reference (Scheme),
+            Monomorphic => False,
+            Dict_Id     => Next_Dict_Id));
    end Explicit_Binding;
 
    -------------------
@@ -49,12 +110,15 @@ package body Leander.Core.Bindings is
    ----------------------
 
    function Implicit_Binding
-     (Name : Varid;
-      Alts : Leander.Core.Alts.Reference_Array)
+     (Name        : Varid;
+      Alts        : Leander.Core.Alts.Reference_Array;
+      Monomorphic : Boolean := False)
       return Reference
    is
    begin
-      return Allocate (Instance'(Alts'Length, Name, Alts, null));
+      return Allocate
+        (Instance'(Alts'Length, Name, Alts, null, Monomorphic,
+                   Dict_Id => Next_Dict_Id));
    end Implicit_Binding;
 
    -----------
@@ -63,6 +127,10 @@ package body Leander.Core.Bindings is
 
    procedure Prune is
    begin
+      --  Dictionaries_Table is deliberately left alone: Allocator.Prune
+      --  keeps protected bindings alive, and those keep their Dict_Id, so
+      --  clearing the table here would dangle their index.  Reclaiming
+      --  entries belongs with the wider allocation cleanup in issue #59.
       Allocator.Prune;
    end Prune;
 

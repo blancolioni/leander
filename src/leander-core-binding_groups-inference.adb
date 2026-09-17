@@ -1,4 +1,5 @@
 with Leander.Core.Alts.Inference;
+with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Qualifiers;
 with Leander.Core.Schemes;
@@ -100,6 +101,11 @@ package body Leander.Core.Binding_Groups.Inference is
          Start_Env : constant Core.Type_Env.Reference := Context.Type_Env;
          Env       : Core.Type_Env.Reference := Start_Env;
          Subst     : Core.Substitutions.Instance := Core.Substitutions.Empty;
+
+         --  Base (I) is how many predicates the context held before binding
+         --  I was inferred, so the ones it raised itself are the slice that
+         --  follows.  Base (Bs'Last + 1) closes the last slice.
+         Base : array (Bs'First .. Bs'Last + 1) of Natural := [others => 0];
       begin
          for I in Ids'Range loop
             Env := Env.Compose (Ids (I), Scs (I));
@@ -107,6 +113,7 @@ package body Leander.Core.Binding_Groups.Inference is
          Context.Update_Type_Env (Env);
          Env := Start_Env;
          for I in Bs'Range loop
+            Base (I) := Context.Predicate_Count;
             Infer_Alts (Bs (I).Alts, Ts (I));
             declare
                S1 : constant Core.Substitutions.Instance'Class :=
@@ -122,6 +129,7 @@ package body Leander.Core.Binding_Groups.Inference is
                Core.Schemes.To_Scheme
                  (Context.Binding (Bs (I).Alts (1).Expression)));
          end loop;
+         Base (Bs'Last + 1) := Context.Predicate_Count;
          for I in Ts'Range loop
             Ts (I) := Ts (I).Apply (Subst);
          end loop;
@@ -142,11 +150,86 @@ package body Leander.Core.Binding_Groups.Inference is
             Gs : constant Core.Tyvars.Tyvar_Array :=
                    New_Tyvars (Ts'First) / Fs;
 
+            All_Ps : constant Core.Predicates.Predicate_Array :=
+                       Context.Current_Predicates;
+
+            function Over_Gs (P : Core.Predicates.Instance) return Boolean
+            is (Core.Tyvars.Intersection
+                  (P.Get_Type.Apply (Subst).all.Get_Tyvars, Gs)'Length > 0);
+            --  True when P constrains a variable this group quantifies, so
+            --  the predicate must travel with the scheme rather than be
+            --  deferred to whatever encloses the group.
+
+            function Select_Preds
+              (I    : Positive;
+               Want : Boolean)
+               return Core.Predicates.Predicate_Array;
+
+            ------------------
+            -- Select_Preds --
+            ------------------
+
+            function Select_Preds
+              (I    : Positive;
+               Want : Boolean)
+               return Core.Predicates.Predicate_Array
+            is
+               use type Core.Predicates.Instance;
+               Result : Core.Predicates.Predicate_Array
+                 (1 .. Base (I + 1) - Base (I));
+               Last   : Natural := 0;
+            begin
+               for K in Base (I) + 1 .. Base (I + 1) loop
+                  if Over_Gs (All_Ps (K)) = Want
+                    and then (for all J in 1 .. Last =>
+                                Result (J) /= All_Ps (K))
+                  then
+                     Last := Last + 1;
+                     Result (Last) := All_Ps (K);
+                  end if;
+               end loop;
+               return Result (1 .. Last);
+            end Select_Preds;
+
          begin
             for I in Ts'Range loop
-               Scs (I) :=
-                 Core.Schemes.Quantify (Gs, [], Ts (I));
+               --  A monomorphic binding keeps its type variables free, so
+               --  they stay shared with its single use site.  Quantifying it
+               --  would freshen them there instead, stranding any class
+               --  constraint raised in the body on a type variable nothing
+               --  ever resolves (issue #70).
+               if Bs (I).Monomorphic then
+                  Scs (I) := Core.Schemes.To_Scheme (Ts (I));
+               else
+                  --  Predicates over the variables this binding quantifies
+                  --  travel with its scheme, so a use site instantiates them
+                  --  and applies one dictionary each; the binding is
+                  --  elaborated with one dictionary lambda per predicate, in
+                  --  that same order.  The rest defer outwards.
+                  declare
+                     Ps : constant Core.Predicates.Predicate_Array :=
+                            Select_Preds (I, Want => True);
+                  begin
+                     Scs (I) := Core.Schemes.Quantify (Gs, Ps, Ts (I));
+                     Bs (I).Set_Dictionaries (Ps);
+                  end;
+               end if;
             end loop;
+
+            --  Rewrite the context's predicate list so the group leaves only
+            --  what it could not discharge: a retained predicate is now the
+            --  binding's own dictionary parameter, not the enclosing scope's.
+            if Bs'Length > 0 then
+               Context.Drop_Predicates (Base (Bs'First) + 1);
+               for I in Bs'Range loop
+                  if not Bs (I).Monomorphic then
+                     Context.Save_Predicates (Select_Preds (I, Want => False));
+                  else
+                     Context.Save_Predicates
+                       (All_Ps (Base (I) + 1 .. Base (I + 1)));
+                  end if;
+               end loop;
+            end if;
          end;
 
          Env := Start_Env;

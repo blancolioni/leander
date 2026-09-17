@@ -71,6 +71,29 @@ package body Leander.Core.Inference is
       This.Predicates.Clear;
    end Clear_Predicates;
 
+   ---------------------
+   -- Drop_Predicates --
+   ---------------------
+
+   procedure Drop_Predicates
+     (This : in out Inference_Context;
+      From : Positive)
+   is
+   begin
+      while Natural (This.Predicates.Length) >= From loop
+         This.Predicates.Delete_Last;
+      end loop;
+   end Drop_Predicates;
+
+   ---------------------
+   -- Predicate_Count --
+   ---------------------
+
+   function Predicate_Count
+     (This : Inference_Context)
+      return Natural
+   is (Natural (This.Predicates.Length));
+
    ------------------------
    -- Current_Predicates --
    ------------------------

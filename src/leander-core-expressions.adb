@@ -2,6 +2,7 @@ with Ada.Exceptions;
 
 with Leander.Allocator;
 with Leander.Core.Binding_Groups;
+with Leander.Core.Bindings;
 with Leander.Core.Predicates;
 with Leander.Core.Substitutions;
 with Leander.Core.Type_Instances;
@@ -244,6 +245,29 @@ package body Leander.Core.Expressions is
       return Symbol ("<" & P.Show & ">");
    end Dict_Expr;
 
+   ---------------
+   -- Dict_Name --
+   ---------------
+
+   function Dict_Name
+     (Types : Leander.Core.Inference.Inference_Context'Class;
+      P     : Leander.Core.Predicates.Instance)
+      return String
+   is
+      --  Resolve the predicate against the substitution as it now stands.
+      --  Generalisation records a binding's dictionaries before the enclosing
+      --  binding is finished, so a variable still free then may since have
+      --  been resolved -- and the body's own references, rewritten by
+      --  Update_Type, name the dictionary by its resolved type.
+      Q : constant Leander.Core.Predicates.Instance :=
+            Leander.Core.Predicates.Predicate
+              (P.Class_Id,
+               Leander.Core.Types.Reference
+                 (P.Get_Type.Apply (Types.Current_Substitution)));
+   begin
+      return "<" & Q.Show & ">";
+   end Dict_Name;
+
    -----------------
    -- To_Calculus --
    -----------------
@@ -295,12 +319,55 @@ package body Leander.Core.Expressions is
                        This.Let_Bindings.Varids;
             begin
                for Id of Ids loop
-                  E := Lambda (Leander.Names.Leander_Name (Id), E);
-                  E := Apply
-                    (E,
-                     This.Let_Bindings.Lookup
-                       (Leander.Names.Leander_Name (Id))
-                     .To_Calculus (Types, Env));
+                  declare
+                     B     : constant Leander.Core.Bindings.Reference :=
+                               This.Let_Bindings.Lookup
+                                 (Leander.Names.Leander_Name (Id));
+                     Dicts : constant
+                       Leander.Core.Predicates.Predicate_Array :=
+                         B.Dictionaries;
+                     Base  : constant Natural := Types.Predicate_Count;
+                     Calc  : Tree := B.To_Calculus (Types, Env);
+                  begin
+                     --  One dictionary lambda per predicate the binding's
+                     --  scheme retains.  Wrapped in reverse, so the outermost
+                     --  parameter is the first dictionary a use site applies
+                     --  (the EVar case above applies them in scheme order).
+                     for P of reverse Dicts loop
+                        Calc := Lambda (Dict_Name (Types, P), Calc);
+                     end loop;
+
+                     --  Compiling the body re-raised its predicates into the
+                     --  context.  The ones this binding just took as its own
+                     --  parameters are discharged here and must not travel
+                     --  further out, or whatever encloses this expression
+                     --  would wrap itself in a dictionary lambda for them
+                     --  that nothing ever supplies.  Anything else the body
+                     --  raised is genuinely deferred, so it is put back.
+                     declare
+                        Raised : constant
+                          Leander.Core.Predicates.Predicate_Array :=
+                            Types.Current_Predicates;
+                        Keep   : Leander.Core.Predicates.Predicate_Array
+                          (1 .. Raised'Last - Base);
+                        Last   : Natural := 0;
+                     begin
+                        for K in Base + 1 .. Raised'Last loop
+                           if (for all D of Dicts =>
+                                 Dict_Name (Types, D)
+                                   /= Dict_Name (Types, Raised (K)))
+                           then
+                              Last := Last + 1;
+                              Keep (Last) := Raised (K);
+                           end if;
+                        end loop;
+                        Types.Drop_Predicates (Base + 1);
+                        Types.Save_Predicates (Keep (1 .. Last));
+                     end;
+
+                     E := Lambda (Leander.Names.Leander_Name (Id), E);
+                     E := Apply (E, Calc);
+                  end;
                end loop;
                Result := E;
             end;
