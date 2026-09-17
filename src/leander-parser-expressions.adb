@@ -787,7 +787,7 @@ package body Leander.Parser.Expressions is
             E    : constant Syntax.Expressions.Reference :=
                      Parse_Expression (Context);
             Bs   : constant Leander.Syntax.Bindings.Reference :=
-                     Leander.Syntax.Bindings.Empty;
+                     Leander.Syntax.Bindings.Empty (Monomorphic => True);
 
             procedure On_Alt
               (Alt : Case_Alt_Record);
@@ -831,7 +831,8 @@ package body Leander.Parser.Expressions is
             Fn         : constant String :=
                            Leander.Names.To_String (Leander.Names.New_Name);
             Bs         : constant Leander.Syntax.Bindings.Reference :=
-                           Leander.Syntax.Bindings.Empty;
+                           Leander.Syntax.Bindings.Empty
+                             (Monomorphic => True);
          begin
             Scan;
             Cond := Parse_Expression (Context);
@@ -953,9 +954,16 @@ package body Leander.Parser.Expressions is
                      declare
                         Rest : constant Syntax.Expressions.Reference :=
                                  To_Expression (Next_Pos);
-                        Ok   : constant String := "$ok";
+                        --  A fresh name, not a fixed "$ok": To_Expression
+                        --  recurses, so a do-block with two pattern binds
+                        --  would otherwise nest two bindings of the same
+                        --  name.
+                        Ok   : constant String :=
+                                 Leander.Names.To_String
+                                   (Leander.Names.New_Name);
                         Bs   : constant Syntax.Bindings.Reference :=
-                                 Syntax.Bindings.Empty;
+                                 Syntax.Bindings.Empty
+                                   (Monomorphic => True);
                      begin
                         Bs.Add_Binding
                           (Stmt.Location, Ok, [Stmt.Pattern], Rest);

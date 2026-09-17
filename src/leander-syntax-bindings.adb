@@ -29,7 +29,8 @@ package body Leander.Syntax.Bindings is
      (Bindings      : Name_Binding_Lists.List;
       Types         : Type_Binding_Lists.List;
       Context       : Core.Declaration_Context;
-      Predicates    : Core.Predicates.Predicate_Array)
+      Predicates    : Core.Predicates.Predicate_Array;
+      Monomorphic   : Boolean)
       return Leander.Core.Binding_Groups.Reference;
 
    type Graph_Vertex is
@@ -140,14 +141,16 @@ package body Leander.Syntax.Bindings is
    -----------
 
    function Empty
-     (Context    : Core.Declaration_Context := Core.Binding_Context;
-      Predicates : Leander.Core.Predicates.Predicate_Array := [])
+     (Context     : Core.Declaration_Context := Core.Binding_Context;
+      Predicates  : Leander.Core.Predicates.Predicate_Array := [];
+      Monomorphic : Boolean := False)
       return Reference
    is
    begin
       return Allocate (Instance'
         (Context     => Context,
          Predicates  => [for P of Predicates => P],
+         Monomorphic => Monomorphic,
          others      => <>));
    end Empty;
 
@@ -159,7 +162,8 @@ package body Leander.Syntax.Bindings is
      (Bindings      : Name_Binding_Lists.List;
       Types         : Type_Binding_Lists.List;
       Context       : Core.Declaration_Context;
-      Predicates    : Core.Predicates.Predicate_Array)
+      Predicates    : Core.Predicates.Predicate_Array;
+      Monomorphic   : Boolean)
       return Leander.Core.Binding_Groups.Reference
    is
       pragma Unreferenced (Predicates);
@@ -328,7 +332,8 @@ package body Leander.Syntax.Bindings is
                begin
                   List.Append
                     (Core.Bindings.Implicit_Binding
-                       (Core.Varid (Binding.Name), Get_Alts));
+                       (Core.Varid (Binding.Name), Get_Alts,
+                        Monomorphic => Monomorphic));
                end Add;
 
             begin
@@ -382,7 +387,8 @@ package body Leander.Syntax.Bindings is
         (This.Bindings, This.Types, This.Context,
          (if This.Predicates.Is_Empty
           then []
-          else [for P of This.Predicates => P]));
+          else [for P of This.Predicates => P]),
+         This.Monomorphic);
    end To_Core;
 
 end Leander.Syntax.Bindings;

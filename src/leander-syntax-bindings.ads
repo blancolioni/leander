@@ -48,9 +48,16 @@ package Leander.Syntax.Bindings is
       return Leander.Core.Binding_Groups.Reference;
 
    function Empty
-     (Context    : Core.Declaration_Context := Core.Binding_Context;
-      Predicates : Leander.Core.Predicates.Predicate_Array := [])
+     (Context     : Core.Declaration_Context := Core.Binding_Context;
+      Predicates  : Leander.Core.Predicates.Predicate_Array := [];
+      Monomorphic : Boolean := False)
       return Reference;
+   --  Monomorphic marks a group the desugarer synthesises for a construct
+   --  that is not a source-level 'let' -- case alternatives, if-then-else,
+   --  a do-block's pattern bind.  Each such binding is applied at exactly
+   --  one site, and generalising it strands class constraints raised in its
+   --  body (see Leander.Core.Bindings.Monomorphic).
+
 
 private
 
@@ -111,6 +118,7 @@ private
          Predicates  : Predicate_Lists.List;
          Bindings    : Name_Binding_Lists.List;
          Types       : Type_Binding_Lists.List;
+         Monomorphic : Boolean := False;
       end record;
 
 end Leander.Syntax.Bindings;
