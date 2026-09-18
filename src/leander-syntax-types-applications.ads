@@ -1,3 +1,5 @@
+with Leander.Core.Type_Synonyms;
+
 private package Leander.Syntax.Types.Applications is
 
    subtype Parent is Leander.Syntax.Types.Instance;
@@ -24,11 +26,15 @@ private
       return Reference
    is (This.Left.Head);
 
+   --  Expand here rewrites this node's own spine when its head turns out
+   --  to be a fully applied synonym.  To_Core runs bottom up, so both
+   --  children have already been expanded by the time it is reached.
    overriding function To_Core
      (This : Instance)
       return Leander.Core.Types.Reference
-   is (Leander.Core.Types.Application
-         (This.Left.To_Core, This.Right.To_Core));
+   is (Leander.Core.Type_Synonyms.Expand
+         (Leander.Core.Types.Application
+            (This.Left.To_Core, This.Right.To_Core)));
 
    function Allocate
      (This : Instance'Class)

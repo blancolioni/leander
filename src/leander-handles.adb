@@ -14,6 +14,8 @@ with Leander.Core.Schemes;
 with Leander.Core.Schemes.Serialize;
 with Leander.Core.Type_Classes;
 with Leander.Core.Type_Classes.Serialize;
+with Leander.Core.Type_Synonyms;
+with Leander.Core.Types.Serialize;
 with Leander.Core.Type_Env;
 with Leander.Core.Type_Instances;
 with Leander.Core.Type_Instances.Serialize;
@@ -46,6 +48,7 @@ package body Leander.Handles is
    Data_Type_Prefix : constant String := "datatype:";
    Instance_Prefix : constant String := "instance:";
    Fixity_Prefix   : constant String := "fixity:";
+   Synonym_Prefix  : constant String := "synonym:";
    Meta_Prefix     : constant String := "__leander_meta__:";
 
    Meta_Version : constant := 1;
@@ -96,6 +99,10 @@ package body Leander.Handles is
      (Bytes : Ada.Streams.Stream_Element_Array)
       return Leander.Parser.Fixity_Entry_Array;
 
+   function Encode_Synonyms return Ada.Streams.Stream_Element_Array;
+
+   procedure Decode_Synonyms (Bytes : Ada.Streams.Stream_Element_Array);
+
    ---------------------
    -- Encode_Fixities --
    ---------------------
@@ -144,6 +151,54 @@ package body Leander.Handles is
          end loop;
       end return;
    end Decode_Fixities;
+
+   ---------------------
+   -- Encode_Synonyms --
+   ---------------------
+
+   --  Type synonyms are erased by the time anything runs, so an image holds
+   --  no trace of them in its values; but a module loaded from an image is
+   --  never parsed, so without this a downstream module could not name a
+   --  synonym the image's module declared.  Like fixity, they live in one
+   --  table for the whole process rather than per environment, so the whole
+   --  table travels as a single annotation.
+
+   function Encode_Synonyms return Ada.Streams.Stream_Element_Array is
+      package TS renames Leander.Core.Types.Serialize;
+      W : Leander.Byte_Buffers.Writer;
+   begin
+      W.Put_U32 (Leander.Core.Type_Synonyms.Count);
+      for I in 1 .. Leander.Core.Type_Synonyms.Count loop
+         W.Put_String
+           (Leander.Core.To_String
+              (Leander.Core.Type_Synonyms.Synonym_Name (I)));
+         W.Put_U32 (Leander.Core.Type_Synonyms.Synonym_Arity (I));
+         TS.Put (W, Leander.Core.Type_Synonyms.Synonym_Definition (I));
+      end loop;
+      return W.To_Bytes;
+   end Encode_Synonyms;
+
+   ---------------------
+   -- Decode_Synonyms --
+   ---------------------
+
+   procedure Decode_Synonyms (Bytes : Ada.Streams.Stream_Element_Array) is
+      package BB renames Leander.Byte_Buffers;
+      package TS renames Leander.Core.Types.Serialize;
+      C  : BB.Offset := Bytes'First;
+      Cn : constant Natural := BB.Get_U32 (Bytes, C);
+   begin
+      for I in 1 .. Cn loop
+         declare
+            Name  : constant String := BB.Get_String (Bytes, C);
+            Arity : constant Natural := BB.Get_U32 (Bytes, C);
+            Defn  : constant Leander.Core.Types.Reference := TS.Get (Bytes, C);
+         begin
+            Leander.Core.Type_Synonyms.Add_Expanded
+              (Leander.Core.To_Conid (Name), Arity, Defn);
+         end;
+      end loop;
+   end Decode_Synonyms;
 
    procedure Evaluate_Error (H : Handle'Class);
 
@@ -363,13 +418,14 @@ package body Leander.Handles is
                     This.Env.Own_Instances;
 
       Extra_Count : constant Natural :=
-        Classes'Length + Data_Types_List'Length + Instances'Length + 2;
+        Classes'Length + Data_Types_List'Length + Instances'Length + 3;
 
       Exports : Skit.Handles.Images.Name_Array (1 .. Ids'Length + Extra_Count);
       Count   : Natural := 0;
 
-      Fixity_Name : constant String := Fixity_Prefix & Module_Name;
-      Meta_Name   : constant String := Meta_Prefix & Module_Name;
+      Fixity_Name  : constant String := Fixity_Prefix & Module_Name;
+      Synonym_Name : constant String := Synonym_Prefix & Module_Name;
+      Meta_Name    : constant String := Meta_Prefix & Module_Name;
 
       function Annotation_Of (Export_Name : String)
         return Ada.Streams.Stream_Element_Array;
@@ -388,6 +444,8 @@ package body Leander.Handles is
             end return;
          elsif Export_Name = Fixity_Name then
             return Encode_Fixities (Leander.Parser.All_Fixities);
+         elsif Export_Name = Synonym_Name then
+            return Encode_Synonyms;
          elsif Has_Prefix (Export_Name, Class_Prefix) then
             return Leander.Core.Type_Classes.Serialize.Encode
               (Classes (Trailing_Index (Export_Name)));
@@ -506,6 +564,10 @@ package body Leander.Handles is
       This.Skit_Handle.Bind (Fixity_Name, Skit.Combinators.I);
       Count := Count + 1;
       Exports (Count) := To_Unbounded_String (Fixity_Name);
+
+      This.Skit_Handle.Bind (Synonym_Name, Skit.Combinators.I);
+      Count := Count + 1;
+      Exports (Count) := To_Unbounded_String (Synonym_Name);
 
       This.Skit_Handle.Bind (Meta_Name, Skit.Combinators.I);
       Count := Count + 1;
@@ -846,9 +908,9 @@ package body Leander.Handles is
       This.Slots (Slot) := (Integer_Type, Value);
    end Set_Slot;
 
-   ---------------------
+   --------------------
    -- Try_Load_Image --
-   ---------------------
+   --------------------
 
    function Try_Load_Image
      (This          : in out Instance'Class;
@@ -916,6 +978,8 @@ package body Leander.Handles is
                  (Ada.Strings.Unbounded.To_String (E.Operator),
                   E.Associativity, E.Priority);
             end loop;
+         elsif Has_Prefix (Export_Name, Synonym_Prefix) then
+            Decode_Synonyms (Bytes);
          else
             Env.Set_Scheme
               (Export_Name, Leander.Core.Schemes.Serialize.Decode (Bytes));

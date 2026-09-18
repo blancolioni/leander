@@ -303,6 +303,46 @@ package body Leander.Tests.Integration is
          "funcField", "42",
          Handle);
 
+      --  Type synonyms (issue #51).  A synonym is a compile-time rewrite
+      --  with no runtime trace, so every one of these must behave exactly
+      --  as the type it stands for.
+
+      Test_Module
+        ("module: synonym is transparent to the type it names",
+         Test_Root & "test_19_type_synonym.hs",
+         "viaSynonym", "42",
+         Handle);
+      Test_Module
+        ("module: synonym with a parameter",
+         Test_Root & "test_19_type_synonym.hs",
+         "dupped", "14",
+         Handle);
+      Test_Module
+        ("module: synonym with two parameters",
+         Test_Root & "test_19_type_synonym.hs",
+         "keyed", "3",
+         Handle);
+      Test_Module
+        ("module: synonym defined in terms of another synonym",
+         Test_Root & "test_19_type_synonym.hs",
+         "swapped", "2",
+         Handle);
+      Test_Module
+        ("module: a synonym the Prelude declared (String)",
+         Test_Root & "test_19_type_synonym.hs",
+         "shouted", "3",
+         Handle);
+      Test_Module
+        ("module: synonyms in data fields",
+         Test_Root & "test_19_type_synonym.hs",
+         "aged", "44",
+         Handle);
+      Test_Module
+        ("module: synonym in a newtype field, class and instance head",
+         Test_Root & "test_19_type_synonym.hs",
+         "sized", "2",
+         Handle);
+
       Test_Module
         ("module: type class",
          Test_Root & "test_04_type_class.hs",

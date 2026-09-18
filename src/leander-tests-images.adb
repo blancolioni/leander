@@ -3,6 +3,7 @@ with Ada.Streams;
 
 with Leander.Core.Type_Classes;
 with Leander.Core.Type_Classes.Serialize;
+with Leander.Core.Type_Synonyms;
 with Leander.Data_Types;
 with Leander.Data_Types.Serialize;
 with Leander.Primitives;
@@ -182,6 +183,9 @@ package body Leander.Tests.Images is
          Image_Path : constant String :=
                         Leander.Resources.Resource_Path
                         & "/modules/Prelude.skix";
+         String_Id  : constant Leander.Core.Conid :=
+                        Leander.Core.To_Conid ("String");
+         Had_Synonym : Boolean;
       begin
          if Ada.Directories.Exists (Image_Path) then
             Ada.Directories.Delete_File (Image_Path);
@@ -194,9 +198,21 @@ package body Leander.Tests.Images is
             H1.Close;
          end;
 
+         --  A type synonym is erased before anything runs, so an image's
+         --  values hold no trace of one; it travels as its own annotation
+         --  instead.  The table is global and never cleared, so proving
+         --  the decode path means emptying it by hand first -- otherwise
+         --  the entry left behind by the parse above would answer for it.
+         Had_Synonym := Leander.Core.Type_Synonyms.Exists (String_Id);
+         Leander.Core.Type_Synonyms.Clear;
+
          declare
             H2 : Leander.Handle := Leander.Create;
          begin
+            Test ("Prelude.skix: the Prelude declares a synonym to begin with",
+                  Had_Synonym);
+            Test ("Prelude.skix: a type synonym is restored from the image",
+                  Leander.Core.Type_Synonyms.Exists (String_Id));
             Test ("Prelude.skix: Create uses a fresh image transparently",
                   "12", H2.Evaluate ("sum (map (*2) [1,2,3])"));
             Test ("Prelude.skix: dictionary resolution via a primed image",
@@ -219,6 +235,14 @@ package body Leander.Tests.Images is
             --  (Leander.Environment.Elaborate / Elaborate_Instance), not
             --  from source, so it works here exactly as it does when
             --  Prelude is loaded normally (see leander-tests-integration.adb).
+            --  Naming String in a signature only works if the restored
+            --  synonym expands; an unexpanded String would not unify with
+            --  the [Char] a string literal has.
+            H2.Load_Module
+              ("./share/leander/tests/integration/test_19_type_synonym.hs");
+            Test ("Prelude.skix: a module can name a synonym from the image",
+                  "3", H2.Evaluate ("shouted"));
+
             H2.Load_Module
               ("./share/leander/tests/integration/test_17_default_method.hs");
             Test ("Prelude.skix: a downstream instance omitting a "
