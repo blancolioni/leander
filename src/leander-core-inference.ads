@@ -63,6 +63,17 @@ package Leander.Core.Inference is
      (This : Inference_Context)
       return Leander.Core.Predicates.Predicate_Array;
 
+   function Raw_Predicates
+     (This : Inference_Context)
+      return Leander.Core.Predicates.Predicate_Array;
+   --  The saved predicates as they were raised, without the current
+   --  substitution applied.  Current_Predicates builds fresh predicates
+   --  with the substitution baked into them, which is what a caller that
+   --  is about to read a type wants -- but it detaches them from any
+   --  later refinement.  A predicate that is being put back for an
+   --  enclosing scope to discharge must stay attached, because the
+   --  variable it constrains may not be resolved yet.
+
    function OK (This : Inference_Context) return Boolean;
    function Error_Message (This : Inference_Context) return String;
 

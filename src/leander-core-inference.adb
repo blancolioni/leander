@@ -113,6 +113,15 @@ package body Leander.Core.Inference is
                    Apply_Subst (Predicates.Get_Type (P)))];
    end Current_Predicates;
 
+   ---------------------
+   -- Raw_Predicates --
+   ---------------------
+
+   function Raw_Predicates
+     (This : Inference_Context)
+      return Leander.Core.Predicates.Predicate_Array
+   is ([for P of This.Predicates => P]);
+
    --------------------------
    -- Current_Substitution --
    --------------------------

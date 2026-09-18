@@ -1,5 +1,4 @@
 with Leander.Core.Types;
-with Leander.Data_Types;
 
 package body Leander.Core.Alts.Compiler is
 
@@ -81,6 +80,7 @@ package body Leander.Core.Alts.Compiler is
             DT  : constant Leander.Data_Types.Reference :=
                     This.Env.Data_Type (Con);
          begin
+            This.DT := DT;
             This.Newtype_Mode := DT.Is_Newtype;
             for I in 1 .. DT.Constructor_Count loop
                This.Con_Pats.Append
@@ -166,8 +166,6 @@ package body Leander.Core.Alts.Compiler is
          V          : constant Leander.Names.Leander_Name :=
                         Leander.Names.New_Name;
          R          : Tree := Symbol (V);
-         Err        : Tree;
-         Have_Error : Boolean := False;
       begin
          if This.Compare_Mode then
             if This.Con_Dfl.Expr = null then
@@ -204,19 +202,54 @@ package body Leander.Core.Alts.Compiler is
                   E  : Tree;
                begin
                   if Cp.Expr = null then
-                     if This.Con_Dfl.Expr = null then
-                        if not Have_Error then
-                           Err := Symbol ("#error");
-                           Have_Error := True;
+                     --  No alternative names this constructor, so this slot
+                     --  is filled by the catch-all (or by #error).  The Scott
+                     --  encoding applies every branch to exactly that
+                     --  constructor's fields, so the filler must bind exactly
+                     --  Arity of them -- not one, which silently under-binds
+                     --  a nullary slot and over-applies an arity > 1 slot.
+                     declare
+                        Arity : constant Natural :=
+                                  This.DT.Constructor_Arity (I);
+                        Fresh : constant Leander.Names.Name_Array
+                          (1 .. Arity) :=
+                            [for K in 1 .. Arity =>
+                               Leander.Names.New_Name];
+                     begin
+                        if This.Con_Dfl.Expr = null then
+                           E := Symbol ("#error");
+                        else
+                           E := This.Con_Dfl.Expr.To_Calculus
+                             (This.Context, This.Env);
+
+                           --  A named catch-all means the whole scrutinee,
+                           --  which this branch has already been taken apart
+                           --  into fields.  Put it back together from this
+                           --  slot's own constructor and bind the name to
+                           --  that.  A wildcard names nothing, so there is
+                           --  nothing to rebuild.
+                           if not This.Con_Dfl.Pat.Is_Wildcard then
+                              declare
+                                 Whole : Tree :=
+                                   This.DT.Constructor_Calculus (I);
+                              begin
+                                 for K in 1 .. Arity loop
+                                    Whole := Apply (Whole, Symbol (Fresh (K)));
+                                 end loop;
+                                 E := Apply
+                                   (Lambda
+                                      (Leander.Names.Leander_Name
+                                         (This.Con_Dfl.Pat.Variable),
+                                       E),
+                                    Whole);
+                              end;
+                           end if;
                         end if;
-                        E := Err;
-                     else
-                        E := This.Con_Dfl.Expr.To_Calculus
-                          (This.Context, This.Env);
-                        E := Lambda
-                          (Leander.Names.Leander_Name (This.Con_Dfl.Pat.Variable),
-                           E);
-                     end if;
+
+                        for K in reverse 1 .. Arity loop
+                           E := Lambda (Fresh (K), E);
+                        end loop;
+                     end;
                   else
                      E := Cp.Expr.To_Calculus (This.Context, This.Env);
                      for Id of reverse Cp.Pat.Con_Arguments loop

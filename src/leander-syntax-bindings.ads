@@ -1,4 +1,5 @@
 private with Ada.Containers.Indefinite_Doubly_Linked_Lists;
+private with Ada.Strings.Unbounded;
 private with Ada.Containers.Doubly_Linked_Lists;
 
 with Leander.Core.Binding_Groups;
@@ -25,17 +26,24 @@ package Leander.Syntax.Bindings is
    function Pats (Rec : Binding_LHS) return Patterns.Reference_Array;
 
    procedure Add_Binding
-     (This      : in out Instance;
-      Loc       : Source.Source_Location;
-      Name      : String;
-      Pats      : Patterns.Reference_Array;
-      Expr      : not null access constant Expressions.Instance'Class);
+     (This        : in out Instance;
+      Loc         : Source.Source_Location;
+      Name        : String;
+      Pats        : Patterns.Reference_Array;
+      Expr        : not null access constant Expressions.Instance'Class;
+      Fallthrough : String := "");
 
    procedure Add_Binding
-     (This      : in out Instance;
-      Loc       : Source.Source_Location;
-      Bound     : Binding_LHS;
-      Expr      : not null access constant Expressions.Instance'Class);
+     (This        : in out Instance;
+      Loc         : Source.Source_Location;
+      Bound       : Binding_LHS;
+      Expr        : not null access constant Expressions.Instance'Class;
+      Fallthrough : String := "");
+   --  Fallthrough names the free variable Expr falls out to when every
+   --  guard in it fails, and is empty for an unguarded equation.  It is
+   --  left unbound here because what a failed guard should do depends on
+   --  what follows in the equation list; Leander.Syntax.Bindings.Guards
+   --  binds it once the whole list is known.
 
    procedure Add_Type
      (This      : in out Instance;
@@ -82,8 +90,9 @@ private
 
    type Binding_Record (Pat_Count : Natural) is
       record
-         Pats : Patterns.Reference_Array (1 .. Pat_Count);
-         Expr : Expression_Reference;
+         Pats        : Patterns.Reference_Array (1 .. Pat_Count);
+         Expr        : Expression_Reference;
+         Fallthrough : Ada.Strings.Unbounded.Unbounded_String;
       end record;
 
    package Binding_Record_Lists is

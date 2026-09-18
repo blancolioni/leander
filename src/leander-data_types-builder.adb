@@ -42,35 +42,9 @@ package body Leander.Data_Types.Builder is
                                Leander.Names.To_Leander_Name
                                  (Var_Id (I))];
 
-      function Con_Arg_Count
-        (Scheme : Leander.Core.Schemes.Reference)
-         return Natural;
-
       function Create_Con_Record
         (Index : Positive)
          return Con_Record;
-
-      -------------------
-      -- Con_Arg_Count --
-      -------------------
-
-      function Con_Arg_Count
-        (Scheme : Leander.Core.Schemes.Reference)
-         return Natural
-      is
-         use type Core.Types.Reference;
-         T : Core.Types.Reference := Scheme.Inner_Type;
-         Count : Natural := 0;
-      begin
-         while T.Is_Application
-           and then T.Left.Is_Application
-           and then T.Left.Left = Core.Types.T_Arrow
-         loop
-            Count := Count + 1;
-            T := T.Right;
-         end loop;
-         return Count;
-      end Con_Arg_Count;
 
       -----------------------
       -- Create_Con_Record --
@@ -84,7 +58,7 @@ package body Leander.Data_Types.Builder is
          Id        : constant Core.Conid := CR.Id;
          Scheme    : constant Leander.Core.Schemes.Reference :=
                        Leander.Core.Schemes.Reference (CR.Scheme);
-         Arg_Count : constant Natural := Con_Arg_Count (Scheme);
+         Arg_Count : constant Natural := Scheme_Arity (Scheme);
          Pat_Ids   : constant Leander.Names.Name_Array :=
                        [for I in 1 .. Arg_Count =>
                                       Leander.Names.To_Leander_Name

@@ -134,6 +134,34 @@ package body Leander.Tests.Integration is
          "Int", "20",
          Handle);
 
+      --  A catch-all alternative fills every constructor slot that no
+      --  alternative names, and the Scott encoding applies each branch to
+      --  that constructor's fields.  The filler must therefore bind exactly
+      --  as many as the slot's constructor takes: none for a nullary slot,
+      --  and for a named catch-all over a slot with fields, the whole
+      --  scrutinee rebuilt from them.
+
+      Test_Eval
+        ("case True of { False -> 1; _ -> 2 }",
+         "Int", "2",
+         Handle);
+      Test_Eval
+        ("case [] of { (x:xs) -> 1; y -> 2 }",
+         "Int", "2",
+         Handle);
+      Test_Eval
+        ("(case [] of { (x:xs) -> 1; y -> 2 }) + 40",
+         "Int", "42",
+         Handle);
+      Test_Eval
+        ("case [1,2] of { [] -> 0; ys -> length ys }",
+         "Int", "2",
+         Handle);
+      Test_Eval
+        ("case (Just 3) of { Nothing -> 1; y -> 2 }",
+         "Int", "2",
+         Handle);
+
       --  If-then-else
 
       Test_Eval ("if True then 5 else 10",
@@ -317,6 +345,135 @@ package body Leander.Tests.Integration is
          Test_Root & "test_19_type_synonym.hs",
          "dupped", "14",
          Handle);
+
+      --  Guards
+
+      Test_Module
+        ("module: a guard set ending in otherwise takes the first true arm",
+         Test_Root & "test_20_guards.hs",
+         "gdPosOne", "1",
+         Handle);
+      Test_Module
+        ("module: a middle guard arm",
+         Test_Root & "test_20_guards.hs",
+         "gdNegOne", "-1",
+         Handle);
+      Test_Module
+        ("module: the otherwise arm",
+         Test_Root & "test_20_guards.hs",
+         "gdZero", "0",
+         Handle);
+      Test_Module
+        ("module: every guard failing continues at the next equation",
+         Test_Root & "test_20_guards.hs",
+         "gdZeroed", "2",
+         Handle);
+      Test_Module
+        ("module: a guard succeeding stops before the next equation",
+         Test_Root & "test_20_guards.hs",
+         "gdBig", "1",
+         Handle);
+      Test_Module
+        ("module: falling through two equations to the catch-all",
+         Test_Root & "test_20_guards.hs",
+         "gdSmall", "3",
+         Handle);
+      Test_Module
+        ("module: a guard on a constructor pattern succeeds",
+         Test_Root & "test_20_guards.hs",
+         "gdSomeBig", "9",
+         Handle);
+      Test_Module
+        ("module: a guard on a constructor pattern falls through",
+         Test_Root & "test_20_guards.hs",
+         "gdSomeSmall", "0",
+         Handle);
+      Test_Module
+        ("module: a constructor that matches no alternative still falls through",
+         Test_Root & "test_20_guards.hs",
+         "gdNoneAtAll", "0",
+         Handle);
+      Test_Module
+        ("module: comma-separated guards conjoin",
+         Test_Root & "test_20_guards.hs",
+         "gdInRange", "1",
+         Handle);
+      Test_Module
+        ("module: a leading comma guard failing falls through",
+         Test_Root & "test_20_guards.hs",
+         "gdTooSmall", "0",
+         Handle);
+      Test_Module
+        ("module: a trailing comma guard failing falls through",
+         Test_Root & "test_20_guards.hs",
+         "gdTooBig", "0",
+         Handle);
+      Test_Module
+        ("module: a staged guarded function can still recurse",
+         Test_Root & "test_20_guards.hs",
+         "gdCounted", "42",
+         Handle);
+      Test_Module
+        ("module: a guard on a multi-argument function",
+         Test_Root & "test_20_guards.hs",
+         "gdFirstBigger", "1",
+         Handle);
+      Test_Module
+        ("module: a multi-argument guard falling to a literal equation",
+         Test_Root & "test_20_guards.hs",
+         "gdFirstZero", "2",
+         Handle);
+      Test_Module
+        ("module: a multi-argument guard falling to the catch-all",
+         Test_Root & "test_20_guards.hs",
+         "gdNeither", "3",
+         Handle);
+      Test_Module
+        ("module: a guard on a case alternative",
+         Test_Root & "test_20_guards.hs",
+         "gdOver10", "1",
+         Handle);
+      Test_Module
+        ("module: a second guard arm on a case alternative",
+         Test_Root & "test_20_guards.hs",
+         "gdOver5", "2",
+         Handle);
+      Test_Module
+        ("module: a case alternative falling through its guards",
+         Test_Root & "test_20_guards.hs",
+         "gdIsZero", "3",
+         Handle);
+      Test_Module
+        ("module: a case alternative falling through to the catch-all",
+         Test_Root & "test_20_guards.hs",
+         "gdOther", "4",
+         Handle);
+      Test_Module
+        ("module: a class-constrained guard keeps its dictionary",
+         Test_Root & "test_20_guards.hs",
+         "gdOrdBigger", "1",
+         Handle);
+      Test_Module
+        ("module: a class-constrained guard falls through",
+         Test_Root & "test_20_guards.hs",
+         "gdOrdSmaller", "0",
+         Handle);
+      Test_Module
+        ("module: the same guarded function at another instance",
+         Test_Root & "test_20_guards.hs",
+         "gdOrdChar", "1",
+         Handle);
+      Test_Module
+        ("module: a guard reads a where binding",
+         Test_Root & "test_20_guards.hs",
+         "gdSteppedBig", "18",
+         Handle);
+      Test_Module
+        ("module: a where binding is shared with the otherwise arm",
+         Test_Root & "test_20_guards.hs",
+         "gdSteppedSmall", "0",
+         Handle);
+
       Test_Module
         ("module: synonym with two parameters",
          Test_Root & "test_19_type_synonym.hs",

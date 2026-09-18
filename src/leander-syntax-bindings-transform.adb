@@ -145,9 +145,10 @@ package body Leander.Syntax.Bindings.Transform is
          if Varpat.Patvar.Is_Wildcard then
             Equations.Append
               (Binding_Record'
-                 (Pat_Count => Varpat.Pat_Count,
-                  Pats      => Varpat.Equation.Pats,
-                  Expr      => Varpat.Equation.Expr));
+                 (Pat_Count   => Varpat.Pat_Count,
+                  Pats        => Varpat.Equation.Pats,
+                  Expr        => Varpat.Equation.Expr,
+                  Fallthrough => Varpat.Equation.Fallthrough));
          else
             if not Have_Variable then
                V := Varpat.Patvar.Variable;
@@ -156,15 +157,17 @@ package body Leander.Syntax.Bindings.Transform is
             if V = Varpat.Patvar.Variable then
                Equations.Append
                  (Binding_Record'
-                    (Pat_Count => Varpat.Pat_Count,
-                     Pats      => Varpat.Equation.Pats,
-                     Expr      => Varpat.Equation.Expr));
+                    (Pat_Count   => Varpat.Pat_Count,
+                     Pats        => Varpat.Equation.Pats,
+                     Expr        => Varpat.Equation.Expr,
+                     Fallthrough => Varpat.Equation.Fallthrough));
             else
                Equations.Append
                  (Binding_Record'
-                    (Pat_Count => Varpat.Pat_Count,
-                     Pats      => Varpat.Equation.Pats,
-                     Expr      =>
+                    (Pat_Count   => Varpat.Pat_Count,
+                     Pats        => Varpat.Equation.Pats,
+                     Fallthrough => Varpat.Equation.Fallthrough,
+                     Expr        =>
                        Expression_Reference
                          (Syntax.Expressions.Application
                               (Varpat.Equation.Expr.Location,
@@ -263,7 +266,8 @@ package body Leander.Syntax.Bindings.Transform is
                      Binding_Record'
                        (Equation.Pat_Count - 1,
                         Equation.Pats (2 .. Equation.Pat_Count),
-                        Equation.Expr);
+                        Equation.Expr,
+                        Equation.Fallthrough);
          begin
             if Pat.Is_Variable then
                Partial.Vars.Append

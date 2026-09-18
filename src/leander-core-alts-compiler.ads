@@ -2,6 +2,7 @@ with Ada.Containers;
 with Ada.Containers.Vectors;
 with Leander.Calculus;
 with Leander.Core.Inference;
+with Leander.Data_Types;
 with Leander.Environment;
 
 package Leander.Core.Alts.Compiler is
@@ -51,6 +52,7 @@ private
          Names        : Varid_Vectors.Vector;
          Compare_Mode : Boolean := False;
          Newtype_Mode : Boolean := False;
+         DT           : Leander.Data_Types.Reference;
          Con_Pats     : Con_Pat_Expr_Vectors.Vector;
          Con_Dfl      : Con_Pat_Expr;
       end record;

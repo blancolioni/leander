@@ -166,3 +166,40 @@ To be recorded as steps land. Expected:
 - The status doc becomes a living checklist; the remaining gaps are cleanly
   partitioned into the foundational tier and the numeric cliff, each with a
   designated home.
+
+### Step 2 (guards) — landed
+
+The open question is settled: **guards are lowered before alternative
+selection.** Threading a continuation through the alts compiler is not
+possible as it stands. It files one alternative per constructor slot, first
+writer wins, which is correct only while guards do not exist — without them a
+later equation naming an already-named constructor is unreachable. And the
+Scott encoding offers no repair after the fact: dispatch is `v E1 .. EN`, and
+applying the scrutinee to the continuations *is* the commit, so a branch that
+has been entered cannot hand control back. The only thing a failed guard can
+do is call something already in scope before the dispatch.
+
+`Leander.Syntax.Bindings.Guards` therefore rewrites the equation list. Where
+no guard can fail, or only the last equation's can, the equations keep their
+shape and the compiler sees exactly what it would without guards. Otherwise
+the group is staged: each equation becomes a nullary thunk dispatching on the
+same, already evaluated, argument variables and falling out to the next, so a
+fall-through costs one further dispatch and never re-evaluates the scrutinee.
+Nothing in the core IR, its inference or the alts compiler changed.
+
+Two pre-existing defects surfaced on the way and are worth recording.
+
+- A catch-all branch was wrapped in exactly one lambda whatever the arity of
+  the slot it filled, so `case True of { False -> 1; _ -> 2 }` returned an
+  unapplied lambda. Fixed first, separately, since staging fills nullary slots
+  constantly.
+- A binding with no patterns gets no `Y`, so `f = \x -> ... f ...` does not
+  resolve its own name. The lowering works around it by keeping the rewritten
+  equation's parameters as patterns; the hole itself is still there.
+
+One limitation remains, and it is not a guard one: an explicit binding does no
+predicate work at all (`Infer_Explicit_Binding` neither splits nor discharges
+what its body raises), so a constrained function whose result is its own
+constrained variable strands the dictionary. `f :: Ord a => a -> a -> a`
+written with nested `if`s and no guards fails the same way. Guards meet it
+more often because staging nests binding groups.

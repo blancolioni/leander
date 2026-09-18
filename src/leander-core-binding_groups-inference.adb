@@ -153,6 +153,18 @@ package body Leander.Core.Binding_Groups.Inference is
             All_Ps : constant Core.Predicates.Predicate_Array :=
                        Context.Current_Predicates;
 
+            --  The same predicates, still attached to the context's type
+            --  variables.  A monomorphic binding defers all of its
+            --  predicates outwards, and the variable one of them
+            --  constrains is often not resolved until the binding's single
+            --  use site is inferred -- which, for a nested group, happens
+            --  after this point.  Putting back the substituted copies from
+            --  All_Ps would freeze them as they stand now and leave the
+            --  enclosing scope holding a dictionary for a type variable
+            --  that nothing ever resolves.
+            Raw_Ps : constant Core.Predicates.Predicate_Array :=
+                       Context.Raw_Predicates;
+
             function Over_Gs (P : Core.Predicates.Instance) return Boolean
             is (Core.Tyvars.Intersection
                   (P.Get_Type.Apply (Subst).all.Get_Tyvars, Gs)'Length > 0);
@@ -226,7 +238,7 @@ package body Leander.Core.Binding_Groups.Inference is
                      Context.Save_Predicates (Select_Preds (I, Want => False));
                   else
                      Context.Save_Predicates
-                       (All_Ps (Base (I) + 1 .. Base (I + 1)));
+                       (Raw_Ps (Base (I) + 1 .. Base (I + 1)));
                   end if;
                end loop;
             end if;
