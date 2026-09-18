@@ -1,4 +1,5 @@
 with Ada.Containers.Doubly_Linked_Lists;
+with Ada.Containers.Vectors;
 with Ada.Containers.Indefinite_Doubly_Linked_Lists;
 with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Strings.Fixed.Hash;
@@ -75,10 +76,27 @@ package body Leander.Parser.Expressions is
       record
          Pat : Leander.Syntax.Patterns.Reference;
          Exp : Leander.Syntax.Expressions.Reference;
+         Fallthrough : Ada.Strings.Unbounded.Unbounded_String;
       end record;
 
    function Parse_Case_Alt (Context : Parse_Context'Class)
                             return Case_Alt_Record;
+
+   package Expression_Vectors is
+     new Ada.Containers.Vectors
+       (Positive, Leander.Syntax.Expressions.Reference,
+        Leander.Syntax.Expressions."=");
+
+   function Make_If
+     (Loc        : Source.Source_Location;
+      Cond, T, F : Leander.Syntax.Expressions.Reference)
+      return Leander.Syntax.Expressions.Reference;
+
+   function Parse_Guard_Arms
+     (Context   : Parse_Context'Class;
+      Separator : Leander.Parser.Tokens.Token;
+      Fail      : Leander.Syntax.Expressions.Reference)
+      return Leander.Syntax.Expressions.Reference;
 
    package Case_Alt_Parser is
      new Leander.Parser.Sequences
@@ -525,6 +543,118 @@ package body Leander.Parser.Expressions is
       return Pat;
    end Parse_Atomic_Pattern;
 
+   -------------
+   -- Make_If --
+   -------------
+
+   function Make_If
+     (Loc        : Source.Source_Location;
+      Cond, T, F : Leander.Syntax.Expressions.Reference)
+      return Leander.Syntax.Expressions.Reference
+   is
+      Fn : constant String :=
+             Leander.Names.To_String (Leander.Names.New_Name);
+      Bs : constant Leander.Syntax.Bindings.Reference :=
+             Leander.Syntax.Bindings.Empty (Monomorphic => True);
+   begin
+      --  There is no conditional in the core IR.  A Bool is Scott-encoded,
+      --  so choosing between two branches is exactly matching on it: build
+      --  a two-equation binding on True/False and apply it to the
+      --  condition.  Monomorphic, because the group is synthesised and
+      --  applied at exactly one site -- generalising it would strand any
+      --  class constraint the condition raises.
+      Bs.Add_Binding
+        (Loc, Fn, [Syntax.Patterns.Constructor (Loc, "True", [])], T);
+      Bs.Add_Binding
+        (Loc, Fn, [Syntax.Patterns.Constructor (Loc, "False", [])], F);
+      return Syntax.Expressions.Let
+        (Loc, Bs,
+         Leander.Syntax.Expressions.Application
+           (Loc,
+            Leander.Syntax.Expressions.Variable (Loc, Fn),
+            Cond));
+   end Make_If;
+
+   ---------------------
+   -- Parse_Guard_Arms --
+   ---------------------
+
+   function Parse_Guard_Arms
+     (Context   : Parse_Context'Class;
+      Separator : Leander.Parser.Tokens.Token;
+      Fail      : Leander.Syntax.Expressions.Reference)
+      return Leander.Syntax.Expressions.Reference
+   is
+      Loc     : constant Source.Source_Location := Current_Source_Location;
+      Guards  : Expression_Vectors.Vector;
+      Arm     : Leander.Syntax.Expressions.Reference;
+      Rest    : Leander.Syntax.Expressions.Reference;
+      Cond    : Leander.Syntax.Expressions.Reference;
+   begin
+      Scan;   --  past '|'
+
+      loop
+         Guards.Append (Parse_Expression (Context));
+         exit when Tok /= Tok_Comma;
+         Scan;
+      end loop;
+
+      Expect (Separator, [Tok_Identifier]);
+      Arm := Parse_Expression (Context);
+
+      --  This arm's guards failing means trying the next arm, and the last
+      --  arm's failing means falling out of the equation altogether.
+      if Tok = Tok_Vertical_Bar then
+         Rest := Parse_Guard_Arms (Context, Separator, Fail);
+      else
+         Rest := Fail;
+      end if;
+
+      --  Comma-separated guards conjoin.  Fold them into one condition
+      --  rather than nesting the arm inside each, so that Rest -- which
+      --  can be the whole remaining chain -- is mentioned exactly once
+      --  instead of once per guard.  'if g then h else False' is 'g && h',
+      --  without needing the Prelude's (&&).
+      Cond := Guards.Last_Element;
+      for I in reverse 1 .. Guards.Last_Index - 1 loop
+         Cond := Make_If
+           (Loc, Guards (I), Cond,
+            Syntax.Expressions.Constructor (Loc, "False"));
+      end loop;
+
+      return Make_If (Loc, Cond, Arm, Rest);
+   end Parse_Guard_Arms;
+
+   -----------------------
+   -- Parse_Guarded_RHS --
+   -----------------------
+
+   function Parse_Guarded_RHS
+     (Context   : Parse_Context'Class;
+      Separator : Leander.Parser.Tokens.Token)
+      return Guarded_RHS
+   is
+      Loc : constant Source.Source_Location := Current_Source_Location;
+   begin
+      if Tok /= Tok_Vertical_Bar then
+         Expect (Separator, [Tok_Identifier]);
+         return (Expr        => Parse_Expression (Context),
+                 Fallthrough => Ada.Strings.Unbounded.Null_Unbounded_String);
+      end if;
+
+      declare
+         Fail : constant String :=
+                  Leander.Names.To_String (Leander.Names.New_Name);
+      begin
+         return (Expr        =>
+                   Parse_Guard_Arms
+                     (Context, Separator,
+                      Syntax.Expressions.Variable (Loc, Fail)),
+                 Fallthrough =>
+                   Ada.Strings.Unbounded.To_Unbounded_String (Fail));
+      end;
+   end Parse_Guarded_RHS;
+
    --------------------
    -- Parse_Case_Alt --
    --------------------
@@ -536,13 +666,14 @@ package body Leander.Parser.Expressions is
       Pat : constant Leander.Syntax.Patterns.Reference :=
               Parse_Expression (Context).To_Pattern;
    begin
-      Expect (Tok_Right_Arrow, [Tok_Identifier]);
-
+      --  Parse_Expression stops cleanly at '|': a lone bar lexes as
+      --  Tok_Vertical_Bar, not as the symbolic identifier At_Operator
+      --  requires, so the pattern above never swallows a guard.
       declare
-         Expr : constant Leander.Syntax.Expressions.Reference :=
-                  Parse_Expression (Context);
+         RHS : constant Guarded_RHS :=
+                 Parse_Guarded_RHS (Context, Tok_Right_Arrow);
       begin
-         return (Pat, Expr);
+         return (Pat, RHS.Expr, RHS.Fallthrough);
       end;
    end Parse_Case_Alt;
 
@@ -804,7 +935,8 @@ package body Leander.Parser.Expressions is
                  (Alt.Pat.Location,
                   Leander.Names.To_String (F_Id),
                   [Alt.Pat],
-                  Alt.Exp);
+                  Alt.Exp,
+                  Ada.Strings.Unbounded.To_String (Alt.Fallthrough));
             end On_Alt;
          begin
             if Tok = Tok_Of then
@@ -826,13 +958,9 @@ package body Leander.Parser.Expressions is
          end;
       elsif Tok = Tok_If then
          declare
-            Loc        : constant Source.Source_Location := Current_Source_Location;
+            Loc        : constant Source.Source_Location :=
+                           Current_Source_Location;
             Cond, T, F : Syntax.Expressions.Reference;
-            Fn         : constant String :=
-                           Leander.Names.To_String (Leander.Names.New_Name);
-            Bs         : constant Leander.Syntax.Bindings.Reference :=
-                           Leander.Syntax.Bindings.Empty
-                             (Monomorphic => True);
          begin
             Scan;
             Cond := Parse_Expression (Context);
@@ -852,21 +980,7 @@ package body Leander.Parser.Expressions is
                F := Syntax.Expressions.Constructor (Loc, "False");
             end if;
 
-            Bs.Add_Binding
-              (Loc, Fn,
-               [Syntax.Patterns.Constructor (Loc, "True", [])],
-               T);
-            Bs.Add_Binding
-              (Loc, Fn,
-               [Syntax.Patterns.Constructor (Loc, "False", [])],
-               F);
-            return Syntax.Expressions.Let
-              (Loc, Bs,
-               Leander.Syntax.Expressions.Application
-                 (Loc,
-                  Leander.Syntax.Expressions.Variable
-                    (Loc, Fn),
-                  Cond));
+            return Make_If (Loc, Cond, T, F);
          end;
 
       elsif Tok = Tok_Do then

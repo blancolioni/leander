@@ -1,3 +1,4 @@
+with Ada.Strings.Unbounded;
 with Leander.Core;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
@@ -78,12 +79,12 @@ package body Leander.Parser.Bindings is
             Error ("expect a single name in type Binding");
          end if;
          Parse_Type_Bindings ([Core.To_Varid (Syntax.Bindings.Name (LHS))]);
-      elsif Tok = Tok_Equal then
-         Scan;
+      elsif Tok = Tok_Equal or else Tok = Tok_Vertical_Bar then
          declare
-            Expr : Leander.Syntax.Expressions.Reference :=
-                     Leander.Parser.Expressions.Parse_Expression
-                       (Context);
+            RHS  : constant Leander.Parser.Expressions.Guarded_RHS :=
+                     Leander.Parser.Expressions.Parse_Guarded_RHS
+                       (Context, Tok_Equal);
+            Expr : Leander.Syntax.Expressions.Reference := RHS.Expr;
          begin
             if Tok = Tok_Where then
                declare
@@ -125,10 +126,15 @@ package body Leander.Parser.Bindings is
                   Expr := Syntax.Expressions.Let (Loc, Bs, Expr);
                end;
             end if;
-            To.Add_Binding (Loc, LHS, Expr);
+            --  The 'where' group wraps the whole guard chain, not each
+            --  arm: its bindings are in scope in the guards as well as in
+            --  the bodies.
+            To.Add_Binding
+              (Loc, LHS, Expr,
+               Ada.Strings.Unbounded.To_String (RHS.Fallthrough));
          end;
       else
-         Error ("expected '::' or '=' at " & Tok'Image);
+         Error ("expected '::', '=' or '|' at " & Tok'Image);
          raise Parse_Error;
       end if;
    end Parse_Binding;

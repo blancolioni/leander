@@ -38,7 +38,7 @@ core rejects is marked by its effective (worst) status.
 | Unary negation | ❌ | `(-1)` mis-parses as a right section. |
 | `let` / `where` | 🟡 | Both work on bindings; `where` **not** on case alternatives. |
 | `if`/`then`/`else` | ✅ | |
-| `case` | 🟡 | Works; **no guards** in alternatives. |
+| `case` | 🟡 | Works, guards included; `where` **not** on alternatives. |
 | `do` notation | ✅ | Monad-generic desugar; **no `MonadFail`** — refutable bind mismatch is a hard error. |
 | Tuples | ✅ | Construction + `fst`/`snd`; pairs best-supported. |
 | List literals | ✅ | |
@@ -57,7 +57,7 @@ core rejects is marked by its effective (worst) status.
 | Multiple equations | ✅ | |
 | As-patterns `@` | ❌ | Unreachable (patterns are parsed as expressions). |
 | Irrefutable / lazy `~` | ❌ | Same. |
-| Guards (function & case) | ❌ | No `\| guard` grammar anywhere. |
+| Guards (function & case) | 🟡 | Boolean guards with `,` conjunction, and fall-through to the next equation. Pattern guards and `let` in guards ❌. A constrained function returning its own constrained variable still strands the dictionary. |
 | Exhaustiveness / redundancy checks | ❌ | Unmatched → runtime `#error`; no static check. |
 
 ## Data types

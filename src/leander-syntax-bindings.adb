@@ -3,6 +3,7 @@ with Leander.Core.Alts;
 with Leander.Core.Bindings;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
+with Leander.Syntax.Bindings.Guards;
 with Leander.Syntax.Bindings.Transform;
 with Leander.Syntax.Expressions;
 
@@ -60,13 +61,14 @@ package body Leander.Syntax.Bindings is
    -----------------
 
    procedure Add_Binding
-     (This      : in out Instance;
-      Loc       : Source.Source_Location;
-      Bound     : Binding_LHS;
-      Expr      : not null access constant Expressions.Instance'Class)
+     (This        : in out Instance;
+      Loc         : Source.Source_Location;
+      Bound       : Binding_LHS;
+      Expr        : not null access constant Expressions.Instance'Class;
+      Fallthrough : String := "")
    is
    begin
-      Add_Binding (This, Loc, Bound.Name, Bound.Pats, Expr);
+      Add_Binding (This, Loc, Bound.Name, Bound.Pats, Expr, Fallthrough);
    end Add_Binding;
 
    -----------------
@@ -74,11 +76,12 @@ package body Leander.Syntax.Bindings is
    -----------------
 
    procedure Add_Binding
-     (This      : in out Instance;
-      Loc       : Source.Source_Location;
-      Name      : String;
-      Pats      : Patterns.Reference_Array;
-      Expr      : not null access constant Expressions.Instance'Class)
+     (This        : in out Instance;
+      Loc         : Source.Source_Location;
+      Name        : String;
+      Pats        : Patterns.Reference_Array;
+      Expr        : not null access constant Expressions.Instance'Class;
+      Fallthrough : String := "")
    is
       use type Leander.Names.Leander_Name;
    begin
@@ -95,9 +98,11 @@ package body Leander.Syntax.Bindings is
       declare
          B : Name_Binding renames This.Bindings (This.Bindings.Last);
          R : constant Binding_Record := Binding_Record'
-           (Pat_Count => Pats'Length,
-            Pats      => Pats,
-            Expr      => Expression_Reference (Expr));
+           (Pat_Count   => Pats'Length,
+            Pats        => Pats,
+            Expr        => Expression_Reference (Expr),
+            Fallthrough =>
+              Ada.Strings.Unbounded.To_Unbounded_String (Fallthrough));
       begin
          B.Equations.Append (R);
       end;
@@ -202,17 +207,27 @@ package body Leander.Syntax.Bindings is
    begin
       for Binding of Bindings loop
          declare
-            Alts : constant Leander.Core.Alts.Reference_Array :=
-                     Transform.To_Alts (Binding.Equations);
+            Equations : Binding_Record_Lists.List := Binding.Equations;
          begin
-            Implicit.Insert
-              (Leander.Names.To_String (Binding.Name),
-               Binding_Entry'
-                 (Alt_Count => Alts'Length,
-                  Name      => Binding.Name,
-                  Alts      => Alts,
-                  Index     => 1,
-                  T         => null));
+            --  Guards first: a failed guard has to continue at the next
+            --  equation, and once Transform.To_Alts has filed the
+            --  equations by constructor there is no longer a next one to
+            --  continue at.  See Leander.Syntax.Bindings.Guards.
+            Guards.Lower (Binding.Name, Equations);
+
+            declare
+               Alts : constant Leander.Core.Alts.Reference_Array :=
+                        Transform.To_Alts (Equations);
+            begin
+               Implicit.Insert
+                 (Leander.Names.To_String (Binding.Name),
+                  Binding_Entry'
+                    (Alt_Count => Alts'Length,
+                     Name      => Binding.Name,
+                     Alts      => Alts,
+                     Index     => 1,
+                     T         => null));
+            end;
          exception
             when others =>
                raise Program_Error with
