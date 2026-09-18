@@ -38,6 +38,22 @@ package Leander.Data_Types is
       Id   : Core.Conid)
       return Natural;
 
+   function Constructor_Arity
+     (This  : Instance'Class;
+      Index : Positive)
+      return Natural;
+
+   function Scheme_Arity
+     (Scheme : Leander.Core.Schemes.Reference)
+      return Natural;
+   --  The length of the arrow spine of Scheme.  Exposed because the data
+   --  type builder and the deriving generators need a constructor's arity
+   --  from its scheme alone, before any Instance exists to ask.
+   --  The number of fields constructor Index takes, i.e. the length of the
+   --  arrow spine of its scheme.  A Scott-encoded value applies each branch
+   --  to exactly this many fields, so a branch that fills this slot must
+   --  bind exactly this many parameters.
+
    function Is_Newtype (This : Instance'Class) return Boolean;
    --  True for a type declared with 'newtype' rather than 'data'.  Such a
    --  type has exactly one constructor of exactly one field, and carries no

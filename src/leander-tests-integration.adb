@@ -134,6 +134,34 @@ package body Leander.Tests.Integration is
          "Int", "20",
          Handle);
 
+      --  A catch-all alternative fills every constructor slot that no
+      --  alternative names, and the Scott encoding applies each branch to
+      --  that constructor's fields.  The filler must therefore bind exactly
+      --  as many as the slot's constructor takes: none for a nullary slot,
+      --  and for a named catch-all over a slot with fields, the whole
+      --  scrutinee rebuilt from them.
+
+      Test_Eval
+        ("case True of { False -> 1; _ -> 2 }",
+         "Int", "2",
+         Handle);
+      Test_Eval
+        ("case [] of { (x:xs) -> 1; y -> 2 }",
+         "Int", "2",
+         Handle);
+      Test_Eval
+        ("(case [] of { (x:xs) -> 1; y -> 2 }) + 40",
+         "Int", "42",
+         Handle);
+      Test_Eval
+        ("case [1,2] of { [] -> 0; ys -> length ys }",
+         "Int", "2",
+         Handle);
+      Test_Eval
+        ("case (Just 3) of { Nothing -> 1; y -> 2 }",
+         "Int", "2",
+         Handle);
+
       --  If-then-else
 
       Test_Eval ("if True then 5 else 10",

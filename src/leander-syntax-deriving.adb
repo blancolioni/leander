@@ -1,6 +1,5 @@
 with Leander.Core;
 with Leander.Core.Predicates;
-with Leander.Core.Schemes;
 with Leander.Core.Tyvars;
 with Leander.Core.Types;
 
@@ -11,32 +10,6 @@ with Leander.Syntax.Expressions;
 with Leander.Syntax.Patterns;
 
 package body Leander.Syntax.Deriving is
-
-   function Con_Arity
-     (Scheme : Leander.Core.Schemes.Reference)
-      return Natural;
-
-   ----------------
-   -- Con_Arity --
-   ----------------
-
-   function Con_Arity
-     (Scheme : Leander.Core.Schemes.Reference)
-      return Natural
-   is
-      use type Leander.Core.Types.Reference;
-      T     : Leander.Core.Types.Reference := Scheme.Inner_Type;
-      Count : Natural := 0;
-   begin
-      while T.Is_Application
-        and then T.Left.Is_Application
-        and then T.Left.Left = Leander.Core.Types.T_Arrow
-      loop
-         Count := Count + 1;
-         T := T.Right;
-      end loop;
-      return Count;
-   end Con_Arity;
 
    ---------------
    -- Derive_Eq --
@@ -89,7 +62,7 @@ package body Leander.Syntax.Deriving is
             I_Name   : constant String :=
                          Leander.Core.To_String (DT.Constructor_Name (I));
             I_Arity  : constant Natural :=
-                         Con_Arity (DT.Constructor_Type (I));
+                         DT.Constructor_Arity (I);
             L_Args   : Leander.Syntax.Patterns.Reference_Array (1 .. I_Arity);
             L_Names  : Leander.Names.Name_Array (1 .. I_Arity);
             Y_Name   : constant String :=
@@ -110,7 +83,7 @@ package body Leander.Syntax.Deriving is
                               Leander.Core.To_String
                                 (DT.Constructor_Name (J));
                   J_Arity : constant Natural :=
-                              Con_Arity (DT.Constructor_Type (J));
+                              DT.Constructor_Arity (J);
                   J_Args  : Leander.Syntax.Patterns.Reference_Array
                               (1 .. J_Arity);
                   J_Names : Leander.Names.Name_Array (1 .. J_Arity);
