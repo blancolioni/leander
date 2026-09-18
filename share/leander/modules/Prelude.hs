@@ -1,5 +1,7 @@
 module Prelude where
 
+type String = [Char]
+
 foreign import skit "#eq" #primIntEq :: Int -> Int -> Bool
 foreign import skit "#eq" #primCharEq :: Char -> Char -> Bool
 

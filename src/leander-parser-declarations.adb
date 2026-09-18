@@ -1,6 +1,7 @@
 with Leander.Core.Kinds;
 with Leander.Core.Predicates;
 with Leander.Core.Schemes;
+with Leander.Core.Type_Synonyms;
 with Leander.Core.Types;
 with Leander.Core.Tyvars;
 with Leander.Data_Types;
@@ -33,6 +34,9 @@ package body Leander.Parser.Declarations is
    procedure Parse_Foreign_Import
      (Context : Parse_Context'Class);
 
+   procedure Parse_Type_Synonym_Declaration
+     (Context : Parse_Context'Class);
+
    procedure Parse_Instance_Declaration
      (Context : in out Parse_Context'Class);
 
@@ -53,7 +57,7 @@ package body Leander.Parser.Declarations is
       return At_Variable or else At_Constructor or else
         Tok <= [Tok_Class, Tok_Data, Tok_Foreign,
                 Tok_Infix, Tok_Infixl, Tok_Infixr,
-                Tok_Instance, Tok_Newtype,
+                Tok_Instance, Tok_Newtype, Tok_Type,
                 Tok_Left_Bracket, Tok_Left_Paren];
    end At_Declaration;
 
@@ -255,6 +259,17 @@ package body Leander.Parser.Declarations is
          return;
       end if;
 
+      --  Checked before the head is parsed: To_Core expands a synonym, so
+      --  by the time there is a core type the name has already been
+      --  rewritten into whatever it stands for.
+      if Leander.Core.Type_Synonyms.Exists
+        (Leander.Core.To_Conid (Tok_Text))
+      then
+         Error (Tok_Text & " is already a type synonym");
+         Skip_Declaration;
+         return;
+      end if;
+
       declare
          TExpr : constant Leander.Syntax.Types.Reference :=
                    Leander.Parser.Types.Parse_Type_Expression (Context);
@@ -337,9 +352,9 @@ package body Leander.Parser.Declarations is
             declare
                procedure Record_Class;
 
-               -------------------
+               ------------------
                -- Record_Class --
-               -------------------
+               ------------------
 
                procedure Record_Class is
                begin
@@ -399,6 +414,92 @@ package body Leander.Parser.Declarations is
       end;
 
    end Parse_Data_Declaration;
+
+   ------------------------------------
+   -- Parse_Type_Synonym_Declaration --
+   ------------------------------------
+
+   procedure Parse_Type_Synonym_Declaration
+     (Context : Parse_Context'Class)
+   is
+      Max_Parameters : constant := 16;
+      Parameters     : Leander.Core.Varid_Array (1 .. Max_Parameters);
+      Count          : Natural := 0;
+   begin
+      pragma Assert (Tok = Tok_Type);
+      Scan;
+
+      if not At_Constructor then
+         Error ("expected a type constructor after 'type'");
+         Skip_Declaration;
+         return;
+      end if;
+
+      declare
+         Name : constant String := Scan_Identifier;
+      begin
+         while At_Variable loop
+            if Count = Max_Parameters then
+               Error ("too many type synonym parameters");
+               Skip_Declaration;
+               return;
+            end if;
+            Count := Count + 1;
+            Parameters (Count) :=
+              Leander.Core.To_Varid (Scan_Identifier);
+         end loop;
+
+         if Tok /= Tok_Equal then
+            Error ("expected '=' in type synonym declaration");
+            Skip_Declaration;
+            return;
+         end if;
+
+         Scan;
+
+         if Context.Environment.Exists
+           (Leander.Names.To_Leander_Name (Name),
+            Leander.Environment.Type_Constructor)
+         then
+            Error (Name & " is already a data type");
+            Skip_Declaration;
+            return;
+         end if;
+
+         --  To_Core expands any synonym the right-hand side names, so what
+         --  is stored is always fully expanded.  That is what lets Expand
+         --  be a single rewrite rather than an iteration to a fixed point,
+         --  and it means a synonym must be declared before it is used.
+         declare
+            Definition : constant Leander.Core.Types.Reference :=
+                           Leander.Parser.Types.Parse_Type_Expression
+                             (Context).To_Core;
+
+            function Mentions
+              (T : Leander.Core.Types.Reference)
+               return Boolean
+            is (if T.Is_Application
+                then Mentions (T.Left) or else Mentions (T.Right)
+                elsif T.Is_Constructor
+                then Leander.Core.To_String (T.Constructor.Id) = Name
+                else False);
+
+         begin
+            --  The right-hand side is expanded before it is stored, so a
+            --  synonym naming itself has nothing to expand into and would
+            --  otherwise be registered as a definition that goes nowhere.
+            if Mentions (Definition) then
+               Error ("type synonym " & Name & " is recursive");
+               return;
+            end if;
+
+            Leander.Core.Type_Synonyms.Add
+              (Name       => Leander.Core.To_Conid (Name),
+               Parameters => Parameters (1 .. Count),
+               Definition => Definition);
+         end;
+      end;
+   end Parse_Type_Synonym_Declaration;
 
    ------------------------
    -- Parse_Declarations --
@@ -470,6 +571,8 @@ package body Leander.Parser.Declarations is
             Parse_Data_Declaration (Context, Is_Newtype => False);
          elsif Tok = Tok_Newtype then
             Parse_Data_Declaration (Context, Is_Newtype => True);
+         elsif Tok = Tok_Type then
+            Parse_Type_Synonym_Declaration (Context);
          elsif Tok = Tok_Class then
             Parse_Class_Declaration (Context);
          elsif Tok = Tok_Instance then
