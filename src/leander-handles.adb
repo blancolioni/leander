@@ -330,7 +330,7 @@ package body Leander.Handles is
                    new Leander.Parser.Parse_Context;
       Prelude_Path : constant String :=
                        Leander.Resources.Resource_Path
-                       & "/modules/Prelude.hs";
+                       & "modules/Prelude.hs";
       Env          : Leander.Environment.Reference :=
                    Leander.Environment.Prelude.Create;
       This : constant Reference :=

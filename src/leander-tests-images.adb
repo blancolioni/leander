@@ -182,7 +182,7 @@ package body Leander.Tests.Images is
       declare
          Image_Path : constant String :=
                         Leander.Resources.Resource_Path
-                        & "/modules/Prelude.skix";
+                        & "modules/Prelude.skix";
          String_Id  : constant Leander.Core.Conid :=
                         Leander.Core.To_Conid ("String");
          Had_Synonym : Boolean;

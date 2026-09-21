@@ -245,11 +245,15 @@ package body Leander.Environment is
       return Boolean
    is
       use type Leander.Core.Bindings.Reference;
+      use type Leander.Core.Binding_Groups.Reference;
       L : constant Leander.Names.Leander_Name :=
             Leander.Names.To_Leander_Name (Name);
    begin
+      --  A module loaded from a full-coverage .skix image has no binding
+      --  group at all, so the null check is not merely defensive here.
       return This.Values.Contains (L)
-        or else This.Bindings.Lookup (L) /= null
+        or else (This.Bindings /= null
+                 and then This.Bindings.Lookup (L) /= null)
         or else (for some Import of This.Imports =>
                    Import.Variable_Binding_Exists (Name));
    end Variable_Binding_Exists;

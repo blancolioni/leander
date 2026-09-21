@@ -101,7 +101,14 @@ package body Leander.Core.Type_Env is
                       Element : Nullable_Scheme_Reference)
       is
       begin
-         Result.Map.Insert (Key, Element);
+         --  Result.Map starts as This.Map and we then flatten the rest of
+         --  This's chain into it, nearest link first, so a key already
+         --  present is one that shadows this one. Skipping it is both the
+         --  correct scoping rule and what stops a second Import (whose
+         --  chain re-includes Prelude) raising from Insert.
+         if not Result.Map.Contains (Key) then
+            Result.Map.Insert (Key, Element);
+         end if;
       end Save;
 
    begin

@@ -171,20 +171,32 @@ package body Leander.Parser is
       declare
          Prelude_Path : constant String :=
                           Leander.Resources.Resource_Path
-                          & "/modules/Prelude.hs";
+                          & "modules/Prelude.hs";
          Prelude_Env : constant Leander.Environment.Reference :=
            (if Name = "Prelude"
             then null
             else Context.Load_Module (Prelude_Path));
+         Env         : Leander.Environment.Reference;
       begin
          Open (Path);
-         return Env : constant Leander.Environment.Reference :=
-           Leander.Parser.Modules.Parse_Module (Context, Name, Prelude_Env)
-         do
-            Loaded_Module_Map.Insert (Name, Env);
-            Close;
-            Env.Elaborate;
-         end return;
+
+         begin
+            Env := Leander.Parser.Modules.Parse_Module
+              (Context, Name, Prelude_Env);
+         exception
+            when others =>
+               --  Parse_Module absorbs Parse_Error itself, but anything it
+               --  lets through would leak this lexer frame. Loading one
+               --  module from inside another compounds that, so close the
+               --  frame we opened before propagating.
+               Close;
+               raise;
+         end;
+
+         Loaded_Module_Map.Insert (Name, Env);
+         Close;
+         Env.Elaborate;
+         return Env;
       end;
    end Load_Module;
 
