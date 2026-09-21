@@ -837,6 +837,20 @@ package body Leander.Tests.Integration is
          "wellFormedArea", "11",
          Handle);
 
+      --  A class exports its methods the same way a data type exports
+      --  its constructors, by "(..)" or by naming them.
+      Test_Module
+        ("module: a class exported with (..) brings its methods",
+         Modules_Root & "UseClassy.hs",
+         "viaWildcard", "7",
+         Handle);
+
+      Test_Module
+        ("module: a class exporting only some methods",
+         Modules_Root & "UseClassy.hs",
+         "viaNamedMethod", "5",
+         Handle);
+
       --  The control for everything below: a module doing correctly what
       --  each rejection case does wrongly. Without it those cases could
       --  all be passing on error state left behind by something else.
@@ -870,6 +884,10 @@ package body Leander.Tests.Integration is
       Test_Module_Fails
         ("module: naming a non-exported import is rejected",
          Modules_Root & "bad/BadHiddenName.hs");
+
+      Test_Module_Fails
+        ("module: naming a non-exported class method is rejected",
+         Modules_Root & "bad/BadClassMethod.hs");
 
       Test_Module_Fails
         ("module: an import after other declarations is rejected",

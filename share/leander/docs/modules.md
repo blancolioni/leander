@@ -96,8 +96,11 @@ declaration makes them visible:
 | `import M hiding (a)` | all but `a` |
 | `import qualified M` | none |
 
-`T(..)` in an import list is expanded once the module is loaded — only
-the exporting module can say what its constructors are.
+`T(..)` in an import or export list is expanded once the module is
+loaded — only the exporting module can say what it stands for, and what
+it stands for depends on what was named: a data type's constructors, or
+a class's methods. A class's methods can also be named individually, as
+`Eq((==), (/=))`.
 
 `qualified`, `hiding` and `as` are contextual identifiers, not tokens.
 `Leander.Parser.Lexical`'s `Keywords` string is positional against
