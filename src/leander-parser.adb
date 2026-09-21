@@ -1,5 +1,9 @@
 with Ada.Characters.Handling;
+with Ada.Containers.Indefinite_Vectors;
 with Ada.Directories;
+with Ada.Strings.Fixed;
+
+with GCS.Constraints;
 
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
@@ -10,6 +14,7 @@ with Leander.Parser.Modules;
 with Leander.Resources;
 
 with WL.String_Maps;
+with WL.String_Sets;
 
 package body Leander.Parser is
 
@@ -28,7 +33,36 @@ package body Leander.Parser is
      new WL.String_Maps (Leander.Environment.Reference,
                          Leander.Environment."=");
 
+   package String_Vectors is
+     new Ada.Containers.Indefinite_Vectors (Positive, String);
+
    Loaded_Module_Map : Loaded_Module_Maps.Map;
+   --  Keyed by dotted module name, as read from a module's own header.
+   --  This is the authoritative "already loaded" answer: a module is
+   --  loaded once however many files or import declarations name it.
+
+   Loaded_Path_Map   : Loaded_Module_Maps.Map;
+   --  Keyed by full source path, so that loading the same file twice does
+   --  not have to reopen it just to read its header. A miss here is only
+   --  ever a cost, never an error: the name map above still catches it.
+
+   Loading_Modules   : WL.String_Sets.Set;
+   --  Modules whose parse is in progress, so that a cycle is a diagnostic
+   --  rather than a recursion down to the lexer's open-file limit.
+
+   Include_Path_List : String_Vectors.Vector;
+
+   function Module_Source_Name (Name : String) return String;
+   --  "Data.List" -> "Data/List.hs"
+
+   function Join (Directory, Relative : String) return String
+   is (if Directory = "" then Relative
+       elsif Directory (Directory'Last) in '/' | '\'
+       then Directory & Relative
+       else Directory & '/' & Relative);
+
+   function Last_Component (Name : String) return String;
+   --  The part of a dotted module name after its final dot.
 
    ------------------
    -- Add_Fixity --
@@ -150,6 +184,26 @@ package body Leander.Parser is
       end if;
    end Get_Identifier;
 
+   ----------------------
+   -- Add_Include_Path --
+   ----------------------
+
+   procedure Add_Include_Path (Dir : String) is
+   begin
+      Include_Path_List.Append (Dir);
+   end Add_Include_Path;
+
+   --------------------
+   -- Last_Component --
+   --------------------
+
+   function Last_Component (Name : String) return String is
+      Dot : constant Natural :=
+              Ada.Strings.Fixed.Index (Name, ".", Ada.Strings.Backward);
+   begin
+      return (if Dot = 0 then Name else Name (Dot + 1 .. Name'Last));
+   end Last_Component;
+
    -----------------
    -- Load_Module --
    -----------------
@@ -159,46 +213,160 @@ package body Leander.Parser is
       Path    : String)
       return Leander.Environment.Reference
    is
-      Name : constant String :=
-        Ada.Directories.Base_Name (Path);
+      --  GCS prepends the directory of the first file it ever opened to
+      --  any later relative name (gcs-file_manager.adb), which for us is
+      --  wherever Prelude came from. Resolving to a full name first keeps
+      --  a module's own path meaning what it says.
+      Full : constant String := Ada.Directories.Full_Name (Path);
+      Name : Ada.Strings.Unbounded.Unbounded_String;
+      Env  : Leander.Environment.Reference;
    begin
-      if Loaded_Module_Map.Contains (Name) then
-         return Loaded_Module_Map (Name);
+      if Loaded_Path_Map.Contains (Full) then
+         return Loaded_Path_Map (Full);
       end if;
 
-      --  Load Prelude first so the module's environment can see Prelude's
-      --  classes and constructors while its declarations are parsed.
-      declare
-         Prelude_Path : constant String :=
-                          Leander.Resources.Resource_Path
-                          & "modules/Prelude.hs";
-         Prelude_Env : constant Leander.Environment.Reference :=
-           (if Name = "Prelude"
-            then null
-            else Context.Load_Module (Prelude_Path));
-         Env         : Leander.Environment.Reference;
-      begin
-         Open (Path);
+      Open (Full);
 
+      begin
+         Name :=
+           Ada.Strings.Unbounded.To_Unbounded_String
+             (Leander.Parser.Modules.Scan_Module_Header);
+      exception
+         when others =>
+            Close;
+            raise;
+      end;
+
+      declare
+         use Ada.Strings.Unbounded;
+         Module : constant String := To_String (Name);
+         Base   : constant String := Ada.Directories.Base_Name (Path);
+      begin
+         if Module = "" then
+            Close;
+            return null;
+         end if;
+
+         --  The header is what names the module, but a file claiming a
+         --  name its own file name contradicts would poison the cache for
+         --  anything later importing either name, so say so.
+         if Last_Component (Module) /= Base then
+            Error ("module " & Module & " should be in a file named "
+                   & Last_Component (Module) & ".hs");
+         end if;
+
+         if Loaded_Module_Map.Contains (Module) then
+            Close;
+            Env := Loaded_Module_Map (Module);
+            Loaded_Path_Map.Insert (Full, Env);
+            return Env;
+         end if;
+
+         if Loading_Modules.Contains (Module) then
+            Error ("module " & Module & " is part of an import cycle");
+            Close;
+            return null;
+         end if;
+
+         Loading_Modules.Include (Module);
+
+         --  Load Prelude first so the module's environment can see
+         --  Prelude's classes and constructors while its declarations are
+         --  parsed. Doing that with this file's lexer frame already open
+         --  is the same nesting an import declaration needs, and the lexer
+         --  keeps its token state per open file.
+         declare
+            use type Leander.Environment.Reference;
+            Prelude_Env : Leander.Environment.Reference;
          begin
+            if Module /= "Prelude" then
+               Prelude_Env :=
+                 Context.Load_Module_By_Name ("Prelude", From_Dir => "");
+               if Prelude_Env = null then
+                  Error ("could not find the Prelude (looked for "
+                         & Module_Source_Name ("Prelude") & ")");
+               end if;
+            end if;
+
             Env := Leander.Parser.Modules.Parse_Module
-              (Context, Name, Prelude_Env);
+              (Context, Module, Prelude_Env);
          exception
             when others =>
                --  Parse_Module absorbs Parse_Error itself, but anything it
                --  lets through would leak this lexer frame. Loading one
                --  module from inside another compounds that, so close the
                --  frame we opened before propagating.
+               Loading_Modules.Delete (Module);
                Close;
                raise;
          end;
 
-         Loaded_Module_Map.Insert (Name, Env);
+         Loading_Modules.Delete (Module);
+         Loaded_Module_Map.Insert (Module, Env);
+         Loaded_Path_Map.Insert (Full, Env);
          Close;
          Env.Elaborate;
          return Env;
       end;
    end Load_Module;
+
+   -------------------------
+   -- Load_Module_By_Name --
+   -------------------------
+
+   function Load_Module_By_Name
+     (Context  : in out Parse_Context'Class;
+      Name     : String;
+      From_Dir : String)
+      return Leander.Environment.Reference
+   is
+      --  Parse_Module points the context at whatever module it is
+      --  building, so a load started from inside a parse would otherwise
+      --  leave the importer parsing against the imported module's
+      --  environment.
+      Saved : constant Leander.Environment.Reference := Context.Env;
+   begin
+      if Loaded_Module_Map.Contains (Name) then
+         return Loaded_Module_Map (Name);
+      end if;
+
+      if Loading_Modules.Contains (Name) then
+         return null;
+      end if;
+
+      declare
+         Path : constant String := Resolve_Module_Path (Name, From_Dir);
+      begin
+         if Path = "" then
+            return null;
+         end if;
+
+         return Env : constant Leander.Environment.Reference :=
+           Context.Load_Module (Path)
+         do
+            Context.Env := Saved;
+         end return;
+      exception
+         when others =>
+            Context.Env := Saved;
+            raise;
+      end;
+   end Load_Module_By_Name;
+
+   ------------------------
+   -- Module_Source_Name --
+   ------------------------
+
+   function Module_Source_Name (Name : String) return String is
+      Result : String := Name;
+   begin
+      for Ch of Result loop
+         if Ch = '.' then
+            Ch := '/';
+         end if;
+      end loop;
+      return Result & ".hs";
+   end Module_Source_Name;
 
    ----------------------------
    -- Register_Loaded_Module --
@@ -207,14 +375,85 @@ package body Leander.Parser is
    procedure Register_Loaded_Module
      (Context : in out Parse_Context'Class;
       Name    : String;
-      Env     : Leander.Environment.Reference)
+      Env     : Leander.Environment.Reference;
+      Path    : String := "")
    is
       pragma Unreferenced (Context);
    begin
       if not Loaded_Module_Map.Contains (Name) then
          Loaded_Module_Map.Insert (Name, Env);
       end if;
+
+      if Path /= "" then
+         declare
+            Full : constant String := Ada.Directories.Full_Name (Path);
+         begin
+            if not Loaded_Path_Map.Contains (Full) then
+               Loaded_Path_Map.Insert (Full, Env);
+            end if;
+         end;
+      end if;
    end Register_Loaded_Module;
+
+   -------------------------
+   -- Resolve_Module_Path --
+   -------------------------
+
+   function Resolve_Module_Path
+     (Name     : String;
+      From_Dir : String)
+      return String
+   is
+      Relative : constant String := Module_Source_Name (Name);
+
+      function Try (Directory : String) return String;
+
+      ---------
+      -- Try --
+      ---------
+
+      function Try (Directory : String) return String is
+         Path : constant String := Join (Directory, Relative);
+      begin
+         if Ada.Directories.Exists (Path)
+           and then Ada.Directories."="
+                      (Ada.Directories.Kind (Path),
+                       Ada.Directories.Ordinary_File)
+         then
+            return Ada.Directories.Full_Name (Path);
+         else
+            return "";
+         end if;
+      exception
+         when others =>
+            --  A directory that does not exist, or a name this platform
+            --  will not even form, is just a miss.
+            return "";
+      end Try;
+
+   begin
+      if From_Dir /= "" then
+         declare
+            Found : constant String := Try (From_Dir);
+         begin
+            if Found /= "" then
+               return Found;
+            end if;
+         end;
+      end if;
+
+      for Directory of Include_Path_List loop
+         declare
+            Found : constant String := Try (Directory);
+         begin
+            if Found /= "" then
+               return Found;
+            end if;
+         end;
+      end loop;
+
+      return Try (Leander.Resources.Resource_Path & "modules");
+   end Resolve_Module_Path;
 
    ---------------------
    -- New_Environment --
@@ -245,6 +484,50 @@ package body Leander.Parser is
          Close;
       end return;
    end Parse_Expression;
+
+   ----------------------
+   -- Scan_Dotted_Name --
+   ----------------------
+
+   function Scan_Dotted_Name return String is
+      use Ada.Strings.Unbounded;
+      Result   : Unbounded_String;
+      Line     : GCS.Constraints.Line_Number;
+      Next_Col : GCS.Constraints.Column_Count;
+   begin
+      loop
+         Line := Tok_Line;
+         Next_Col := Tok_Column + Tok_Text'Length;
+         Append (Result, Tok_Text);
+         Scan;
+
+         --  The lexer hands back "." as an ordinary symbolic identifier,
+         --  so adjacency is the only thing that distinguishes a qualified
+         --  name from a composition. Tok_Info.Finish is never assigned
+         --  (gcs-lexer.adb), hence the column arithmetic.
+         exit when Tok /= Tok_Identifier
+           or else Tok_Text /= "."
+           or else Tok_Line /= Line
+           or else Tok_Column /= Next_Col;
+
+         Next_Col := Next_Col + 1;
+         Scan;
+
+         if Tok /= Tok_Identifier
+           or else Tok_Line /= Line
+           or else Tok_Column /= Next_Col
+         then
+            --  The dot is already consumed and the lexer cannot push a
+            --  token back, so there is nothing to do but report it.
+            Error ("expected a module name component after '.'");
+            exit;
+         end if;
+
+         Append (Result, ".");
+      end loop;
+
+      return To_String (Result);
+   end Scan_Dotted_Name;
 
    ---------------------
    -- Scan_Identifier --

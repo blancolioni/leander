@@ -373,7 +373,7 @@ package body Leander.Handles is
       if This.Try_Load_Image (Env, Prelude_Path, Full_Coverage)
         and then Full_Coverage
       then
-         Context.Register_Loaded_Module ("Prelude", Env);
+         Context.Register_Loaded_Module ("Prelude", Env, Prelude_Path);
       else
          Env := Context.Load_Module (Prelude_Path);
          This.Env := Env;

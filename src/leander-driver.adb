@@ -2,6 +2,7 @@ with Ada.Directories;
 with Ada.Text_IO;
 
 with Leander.Command_Line;
+with Leander.Parser;
 with Leander.Repl;
 with Leander.Tests;
 with Leander.Version;
@@ -9,6 +10,12 @@ with Leander.Version;
 procedure Leander.Driver is
    Core_Size : constant Natural := Command_Line.Core_Size * 1024;
 begin
+
+   --  Push the -i directories into the parser before anything can load a
+   --  module, so that an imported module resolves against them. The parser
+   --  keeps its own list rather than reading the command line itself,
+   --  which is what lets the resolver be tested directly.
+   Command_Line.Iterate_Include_Paths (Leander.Parser.Add_Include_Path'Access);
 
    if Command_Line.Version then
       Ada.Text_IO.Put_Line ("Leander " & Leander.Version.Version_String);

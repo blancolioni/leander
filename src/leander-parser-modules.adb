@@ -26,16 +26,6 @@ package body Leander.Parser.Modules is
       if Prelude_Env /= null then
          Env.Import (Prelude_Env);
       end if;
-      Expect (Tok_Module, [Tok_Identifier]);
-
-      if Tok = Tok_Identifier then
-         if Tok_Text /= Name then
-            Error ("expected module " & Name & "; found " & Tok_Text);
-         end if;
-         Scan;
-      else
-         Error ("expected module name");
-      end if;
 
       Expect (Tok_Where,
               [Tok_Identifier, Tok_Data, Tok_Type, Tok_Newtype,
@@ -53,5 +43,23 @@ package body Leander.Parser.Modules is
 
       return Env;
    end Parse_Module;
+
+   ------------------------
+   -- Scan_Module_Header --
+   ------------------------
+
+   function Scan_Module_Header return String is
+   begin
+      Expect (Tok_Module, [Tok_Identifier]);
+
+      if Tok = Tok_Identifier
+        and then Is_Alphanumeric_Identifier (Tok_Text)
+      then
+         return Scan_Dotted_Name;
+      else
+         Error ("expected module name");
+         return "";
+      end if;
+   end Scan_Module_Header;
 
 end Leander.Parser.Modules;
