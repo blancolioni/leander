@@ -188,6 +188,19 @@ package Leander.Environment is
    --  always True for built-in syntax and for the synthetic names that
    --  dictionary passing resolves by string.
 
+   function Exports_Everything (This : Abstraction) return Boolean
+      is abstract;
+   --  True when this module wrote no export list, and so exports all of
+   --  its own declarations. Distinct from an empty list, which exports
+   --  nothing.
+
+   function Export_Names
+     (This : Abstraction)
+      return Leander.Names.Name_Array
+      is abstract;
+   --  The names the module's export list mentions, once expanded. Empty
+   --  when Exports_Everything, which is not the same as an empty list.
+
    function Canonical_Name
      (This : Abstraction;
       Name : String)

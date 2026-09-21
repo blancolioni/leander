@@ -184,6 +184,39 @@ package body Leander.Core.Type_Env is
       return Local_Empty_Env'Access;
    end Empty;
 
+   ------------
+   -- Insert --
+   ------------
+
+   procedure Insert
+     (This   : in out Builder;
+      Name   : String;
+      Scheme : Leander.Core.Schemes.Reference)
+   is
+      Key : constant Leander.Names.Leander_Name :=
+              Leander.Names.To_Leander_Name (Name);
+   begin
+      if not This.Type_Env.Map.Contains (Key) then
+         This.Type_Env.Map.Insert (Key, Nullable_Scheme_Reference (Scheme));
+      end if;
+   end Insert;
+
+   -------------
+   -- Compose --
+   -------------
+
+   function Compose
+     (This : not null access constant Instance'Class;
+      That : Builder'Class)
+      return access constant Instance
+   is
+      Result : constant Instance :=
+                 Instance'(Map  => That.Type_Env.Map,
+                           Next => Reference (This));
+   begin
+      return Allocate (Result);
+   end Compose;
+
    ------------------
    -- Get_Type_Env --
    ------------------

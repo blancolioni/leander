@@ -51,7 +51,17 @@ package body Leander.Handles is
    Synonym_Prefix  : constant String := "synonym:";
    Meta_Prefix     : constant String := "__leander_meta__:";
 
-   Meta_Version : constant := 1;
+   Meta_Version : constant := 2;
+   --  1: a bare version byte, meaning only "this image covers everything".
+   --  2: that byte followed by the module's export state.
+   --
+   --  The export state extends this payload rather than taking a prefix of
+   --  its own on purpose. A reader that predates it ignores the bytes
+   --  entirely, so a new version stays loadable; a new prefix would fall
+   --  into On_Annotation's else branch of an older binary, be handed to
+   --  Set_Scheme as though it were an encoded type, raise, get swallowed
+   --  by Try_Load_Image's "when others", and silently demote a perfectly
+   --  good image to a full source re-parse.
 
    function Has_Prefix (S, Prefix : String) return Boolean
    is (S'Length >= Prefix'Length
@@ -439,9 +449,19 @@ package body Leander.Handles is
       is
       begin
          if Export_Name = Meta_Name then
-            return Bytes : Ada.Streams.Stream_Element_Array (1 .. 1) do
-               Bytes (1) := Ada.Streams.Stream_Element (Meta_Version);
-            end return;
+            declare
+               Exported : constant Leander.Names.Name_Array :=
+                            This.Env.Export_Names;
+               W        : Leander.Byte_Buffers.Writer;
+            begin
+               W.Put_U8 (Meta_Version);
+               W.Put_U8 (Boolean'Pos (This.Env.Exports_Everything));
+               W.Put_U32 (Exported'Length);
+               for N of Exported loop
+                  W.Put_String (Leander.Names.To_String (N));
+               end loop;
+               return W.To_Bytes;
+            end;
          elsif Export_Name = Fixity_Name then
             return Encode_Fixities (Leander.Parser.All_Fixities);
          elsif Export_Name = Synonym_Name then
@@ -979,7 +999,43 @@ package body Leander.Handles is
       is
       begin
          if Has_Prefix (Export_Name, Meta_Prefix) then
-            Full_Coverage := True;
+            --  Unlike the datatype/class/instance annotations, which have
+            --  to wait until every annotation has been read and bucketed,
+            --  export state depends on nothing and is applied here.
+            declare
+               package BB renames Leander.Byte_Buffers;
+               C : BB.Offset := Bytes'First;
+            begin
+               if Bytes'Length = 0 then
+                  Full_Coverage := True;
+               else
+                  case BB.Get_U8 (Bytes, C) is
+                     when 1 =>
+                        --  A values-and-schemes image from before export
+                        --  lists existed: it exports all it declares.
+                        Full_Coverage := True;
+                     when Meta_Version =>
+                        Full_Coverage := True;
+                        if BB.Get_U8 (Bytes, C) = 0 then
+                           declare
+                              Count : constant Natural :=
+                                        BB.Get_U32 (Bytes, C);
+                           begin
+                              Env.Start_Exports;
+                              for I in 1 .. Count loop
+                                 Env.Add_Export (BB.Get_String (Bytes, C));
+                              end loop;
+                           end;
+                        end if;
+                     when others =>
+                        --  A format from the future. Leaving Full_Coverage
+                        --  alone falls back to the source, which is the
+                        --  safe reading of an image we cannot fully
+                        --  understand.
+                        null;
+                  end case;
+               end if;
+            end;
          elsif Has_Prefix (Export_Name, Class_Prefix) then
             Pending_Classes.Append
               (Leander.Core.Type_Classes.Serialize.Decode (Bytes));

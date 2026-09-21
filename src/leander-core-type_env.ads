@@ -64,6 +64,26 @@ package Leander.Core.Type_Env is
 
    type Builder is tagged private;
 
+   procedure Insert
+     (This   : in out Builder;
+      Name   : String;
+      Scheme : Leander.Core.Schemes.Reference);
+   --  Add Name to the set being collected, keeping the first binding for
+   --  a name already present -- the same first-wins rule Compose applies
+   --  when it flattens a chain.
+
+   function Compose
+     (This : not null access constant Instance'Class;
+      That : Builder'Class)
+      return access constant Instance;
+   --  Everything That collected, as a single link in front of This.
+   --
+   --  Worth preferring over repeated Compose (Name, Scheme) for anything
+   --  but a handful of names: that allocates one link apiece and Lookup
+   --  walks the chain linearly, once per EVar and ECon, so composing a
+   --  module the size of the Prelude name by name would put a 250-deep
+   --  walk in front of every inference miss.
+
    function Get_Type_Env
      (This : Builder)
       return Reference;

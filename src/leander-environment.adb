@@ -207,6 +207,13 @@ package body Leander.Environment is
 
    overriding procedure Start_Exports (This : in out Instance);
 
+   overriding function Exports_Everything (This : Instance) return Boolean
+   is (This.Exports_All);
+
+   overriding function Export_Names
+     (This : Instance)
+      return Leander.Names.Name_Array;
+
    overriding procedure Add_Export
      (This : in out Instance;
       Name : String);
@@ -320,6 +327,34 @@ package body Leander.Environment is
    begin
       This.Exports.Include (Name);
    end Add_Export;
+
+   ------------------
+   -- Export_Names --
+   ------------------
+
+   overriding function Export_Names
+     (This : Instance)
+      return Leander.Names.Name_Array
+   is
+      Result : Leander.Names.Name_Array (1 .. This.Exports.Count);
+      Next   : Natural := 0;
+
+      procedure Save (Item : String);
+
+      ----------
+      -- Save --
+      ----------
+
+      procedure Save (Item : String) is
+      begin
+         Next := Next + 1;
+         Result (Next) := Leander.Names.To_Leander_Name (Item);
+      end Save;
+
+   begin
+      This.Exports.Iterate (Save'Access);
+      return Result (1 .. Next);
+   end Export_Names;
 
    -----------------
    -- Is_Exported --
@@ -1378,28 +1413,43 @@ package body Leander.Environment is
          This.Type_Env := This.Type_Env.Compose (E.Type_Env);
       end if;
 
-      for N of E.Declared_Names loop
-         declare
-            Bare   : constant String := Leander.Names.To_String (N);
-            Key    : constant String := Canonical (Bare);
-            Scheme : constant Leander.Core.Type_Env.Nullable_Scheme_Reference
-              := E.Type_Env.Lookup (N);
-         begin
-            if Scheme /= null and then Exported (Bare) then
-               if Key /= Bare then
-                  This.Type_Env :=
-                    This.Type_Env.Compose
-                      (Key, Leander.Core.Schemes.Reference (Scheme));
-               end if;
+      --  Collected into one link rather than composed name by name:
+      --  Compose (Name, Scheme) allocates a link apiece and Lookup walks
+      --  the chain linearly, once per EVar and ECon, so a module the size
+      --  of the Prelude would otherwise put a 250-deep walk in front of
+      --  every inference miss.
+      declare
+         Imported : Leander.Core.Type_Env.Builder;
+         Any      : Boolean := False;
+      begin
+         for N of E.Declared_Names loop
+            declare
+               Bare   : constant String := Leander.Names.To_String (N);
+               Key    : constant String := Canonical (Bare);
+               Scheme : constant
+                 Leander.Core.Type_Env.Nullable_Scheme_Reference
+                   := E.Type_Env.Lookup (N);
+            begin
+               if Scheme /= null and then Exported (Bare) then
+                  if Key /= Bare then
+                     Imported.Insert
+                       (Key, Leander.Core.Schemes.Reference (Scheme));
+                     Any := True;
+                  end if;
 
-               if not Wholesale and then Visible (Bare) then
-                  This.Type_Env :=
-                    This.Type_Env.Compose
-                      (Bare, Leander.Core.Schemes.Reference (Scheme));
+                  if not Wholesale and then Visible (Bare) then
+                     Imported.Insert
+                       (Bare, Leander.Core.Schemes.Reference (Scheme));
+                     Any := True;
+                  end if;
                end if;
-            end if;
-         end;
-      end loop;
+            end;
+         end loop;
+
+         if Any then
+            This.Type_Env := This.Type_Env.Compose (Imported);
+         end if;
+      end;
    end Import;
 
    ------------
