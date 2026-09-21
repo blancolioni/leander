@@ -101,7 +101,14 @@ package body Leander.Core.Type_Env is
                       Element : Nullable_Scheme_Reference)
       is
       begin
-         Result.Map.Insert (Key, Element);
+         --  Result.Map starts as This.Map and we then flatten the rest of
+         --  This's chain into it, nearest link first, so a key already
+         --  present is one that shadows this one. Skipping it is both the
+         --  correct scoping rule and what stops a second Import (whose
+         --  chain re-includes Prelude) raising from Insert.
+         if not Result.Map.Contains (Key) then
+            Result.Map.Insert (Key, Element);
+         end if;
       end Save;
 
    begin
@@ -176,6 +183,80 @@ package body Leander.Core.Type_Env is
    begin
       return Local_Empty_Env'Access;
    end Empty;
+
+   -------------
+   -- Iterate --
+   -------------
+
+   procedure Iterate
+     (This    : Instance;
+      Process : not null access
+        procedure (Name   : Leander.Names.Leander_Name;
+                   Scheme : Leander.Core.Schemes.Reference))
+   is
+      Seen : Scheme_Maps.Map;
+      It   : Reference := This'Unrestricted_Access;
+
+      procedure Visit
+        (Key     : Leander.Names.Leander_Name;
+         Element : Nullable_Scheme_Reference);
+
+      -----------
+      -- Visit --
+      -----------
+
+      procedure Visit
+        (Key     : Leander.Names.Leander_Name;
+         Element : Nullable_Scheme_Reference)
+      is
+      begin
+         if not Seen.Contains (Key) then
+            Seen.Insert (Key, Element);
+            if Element /= null then
+               Process (Key, Leander.Core.Schemes.Reference (Element));
+            end if;
+         end if;
+      end Visit;
+
+   begin
+      while It /= null loop
+         It.Map.Iterate (Visit'Access);
+         It := It.Next;
+      end loop;
+   end Iterate;
+
+   ------------
+   -- Insert --
+   ------------
+
+   procedure Insert
+     (This   : in out Builder;
+      Name   : String;
+      Scheme : Leander.Core.Schemes.Reference)
+   is
+      Key : constant Leander.Names.Leander_Name :=
+              Leander.Names.To_Leander_Name (Name);
+   begin
+      if not This.Type_Env.Map.Contains (Key) then
+         This.Type_Env.Map.Insert (Key, Nullable_Scheme_Reference (Scheme));
+      end if;
+   end Insert;
+
+   -------------
+   -- Compose --
+   -------------
+
+   function Compose
+     (This : not null access constant Instance'Class;
+      That : Builder'Class)
+      return access constant Instance
+   is
+      Result : constant Instance :=
+                 Instance'(Map  => That.Type_Env.Map,
+                           Next => Reference (This));
+   begin
+      return Allocate (Result);
+   end Compose;
 
    ------------------
    -- Get_Type_Env --

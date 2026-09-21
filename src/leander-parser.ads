@@ -1,6 +1,7 @@
 with Ada.Strings.Unbounded;
 
 with Leander.Environment;
+with Leander.Scopes;
 with Leander.Syntax.Expressions;
 
 with Leander.Source;
@@ -28,17 +29,62 @@ package Leander.Parser is
      (Context : in out Parse_Context'Class;
       Path    : String)
       return Leander.Environment.Reference;
+   --  Load the module held in the source file Path. The module's own name
+   --  comes from its header, not from the file name, so Path may sit
+   --  anywhere; the file base name only has to match the header's last
+   --  component.
+
+   function Load_Module_By_Name
+     (Context  : in out Parse_Context'Class;
+      Name     : String;
+      From_Dir : String)
+      return Leander.Environment.Reference;
+   --  Load the module called Name (dotted, e.g. "Data.List"), resolving it
+   --  to a source file via Resolve_Module_Path below. Returns null if no
+   --  such file exists, or if Name is already being loaded further up the
+   --  chain (an import cycle). It does not report either case itself: the
+   --  caller is what holds the source location worth pointing at, which is
+   --  the import declaration that asked for the module. Safe to call from
+   --  inside a parse -- the caller's current environment is restored
+   --  before returning.
+
+   function Module_Is_Loading (Name : String) return Boolean;
+   --  True when module Name is partway through its own parse, i.e. a
+   --  request for it now closes an import cycle. Load_Module_By_Name
+   --  returns null for this as it does for a module that does not exist;
+   --  this is how a caller tells the two apart in its diagnostic.
+
+   procedure Add_Include_Path (Dir : String);
+   --  Append Dir to the directories searched for an imported module's
+   --  source, after the importing file's own directory and before the
+   --  installed module directory. Pushed from Leander.Driver, so that the
+   --  parser needs no dependency on Leander.Command_Line.
+
+   function Resolve_Module_Path
+     (Name     : String;
+      From_Dir : String)
+      return String;
+   --  The source file holding module Name, or "" if there is none. Dots
+   --  become directory separators, so "Data.List" is "Data/List.hs" under
+   --  each searched directory in turn: From_Dir (when not ""), then each
+   --  Add_Include_Path directory in order, then the installed modules
+   --  directory. Exposed for testing the search order without loading.
 
    procedure Register_Loaded_Module
      (Context : in out Parse_Context'Class;
       Name    : String;
-      Env     : Leander.Environment.Reference);
-   --  Record Env as Name's already-loaded module, so a later Load_Module
-   --  (Context, Path) for a source file whose base name is Name returns Env
-   --  directly rather than parsing -- for a module reconstructed entirely
-   --  from a complete .skix image (see Leander.Handles.Create), so that
-   --  module's source is never opened at all, not even by a second,
-   --  unrelated Load_Module call that would otherwise re-parse it.
+      Env     : Leander.Environment.Reference;
+      Path    : String := "");
+   --  Record Env as module Name's already-loaded environment, so a later
+   --  Load_Module_By_Name (Context, Name, ...) returns Env directly rather
+   --  than parsing -- for a module reconstructed entirely from a complete
+   --  .skix image (see Leander.Handles.Create).
+   --
+   --  Path, when given, is the source file Env stands in for, and is
+   --  registered too. That part matters: Load_Module reads a file's header
+   --  to learn its module name, so without the path a Load_Module call
+   --  naming that same file would open the source after all, which is
+   --  exactly what a full-coverage image is there to avoid.
 
    procedure Add_Fixity
      (Operator      : String;
@@ -96,10 +142,71 @@ private
    function Scan_Identifier return String
      with Pre => At_Identifier;
 
+   function Scan_Qualified_Name return String
+     with Pre => Tok_Is_Identifier;
+   --  Consume a name that may carry a module qualifier and return it as
+   --  written, qualifier included: "Data.Map.insert", "S.Square", "S.+".
+   --
+   --  A dot joins the run only when it is written with no space either
+   --  side and the component before it looks like a module name, which is
+   --  Haskell's own rule and is what leaves "f . g" and "f.g" as
+   --  composition. The run cannot be classified before it is consumed --
+   --  "A.B.c" is five tokens against three of usable lookahead -- so
+   --  callers must decide what they have from the result, not from the
+   --  token they started on.
+
+   function Scope (This : Parse_Context'Class) return Leander.Scopes.Reference;
+   procedure Set_Scope
+     (This  : in out Parse_Context'Class;
+      Scope : Leander.Scopes.Reference);
+
+   function Resolve
+     (This     : Parse_Context'Class;
+      Written  : String;
+      Space    : Leander.Scopes.Name_Space;
+      Location : Leander.Source.Source_Location)
+      return String;
+   --  The name to use for Written, reported at Location if it cannot be
+   --  resolved. Falls back to Written on failure so that one bad name
+   --  does not derail the rest of the parse. Location is passed in rather
+   --  than read from the lexer because the name has already been
+   --  consumed by the time this is called, so the parser is sitting on
+   --  whatever follows it.
+
+   procedure Report
+     (Location : Leander.Source.Source_Location;
+      Message  : String);
+   --  Report an error against a location captured earlier. Lexical.Error
+   --  reads the current token, which is no use once a construct has been
+   --  consumed, and raises outright at end of file: Tok_Column is 0
+   --  there, outside Column_Number.
+
+   function Scan_Dotted_Name return String
+     with Pre => At_Name;
+   --  Consume a maximal run of adjacent identifiers joined by dots and
+   --  return it dotted, e.g. "Data.List". A dot only joins the run when
+   --  it is written with no space either side, which is Haskell's own
+   --  rule and is what keeps "f . g" composition. Whether a run that
+   --  could also be composition should have been reassembled at all is
+   --  the caller's decision: in a module header or an import declaration
+   --  there is nothing else it could be.
+
+   function Last_Name_Component (Name : String) return String;
+   --  The part of a dotted name after its final dot, i.e. the name itself
+   --  with any module qualifier removed.
+
+   function Tok_Is_Identifier return Boolean;
+   --  Tok = Tok_Identifier, exposed so that Scan_Qualified_Name can state
+   --  its precondition without the token type being visible here.
+
    type Parse_Context is tagged
       record
-         Env : Leander.Environment.Reference;
+         Env   : Leander.Environment.Reference;
+         Scope : Leander.Scopes.Reference;
       end record;
+
+   function Scope (This : Parse_Context'Class) return Leander.Scopes.Reference
+   is (This.Scope);
 
    function Environment
      (This : Parse_Context'Class)

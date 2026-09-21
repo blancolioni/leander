@@ -66,8 +66,8 @@ core rejects is marked by its effective (worst) status.
 |---|---|---|
 | `data`, multiple constructors, args | ✅ | Silent per-constructor arg cap of 10. |
 | Type parameters (polymorphic data) | ✅ | |
-| `newtype` | ❌ | Token exists; no parser branch. |
-| Type synonyms (`type`) | ❌ | Token exists; no handler. |
+| `newtype` | ✅ | Compiles to its field with no wrapper; patterns bind the value itself. |
+| Type synonyms (`type`) | 🟡 | Parameterised aliases expand in `To_Core`. The table is process-global, so a synonym is visible in every module regardless of imports. |
 | Record syntax (fields, selectors, update) | ❌ | Positional atomic args only. |
 | Strictness annotations `!` | ❌ | No bang token. |
 | Infix / operator constructors in `data` | ❌ | Prefix constructors only. |
@@ -121,12 +121,12 @@ core rejects is marked by its effective (worst) status.
 
 | Feature | Status | Note |
 |---|---|---|
-| `module Name where` header | 🟡 | Name parsed/checked; nothing else. |
-| Export lists | ❌ | Everything implicitly exported. |
-| `import` declarations | ❌ | No import grammar at all. |
-| Qualified / `hiding` / `as` / import lists | ❌ | — |
-| Multiple modules / separate compilation | ❌ | Single user module; `Load_Module` replaces the env. |
-| Auto-imported Prelude | ✅ | Wholesale; cannot be hidden/shadowed. |
+| `module Name where` header | ✅ | Dotted names. The header names the module; the file base name must match its last component. |
+| Export lists | ✅ | `name`, `(op)`, `T(..)`, `T(C1,C2)`. A name kept back is unreachable even qualified. `module M` re-export rejected. |
+| `import` declarations | ✅ | Resolved by name: `Data.List` is `Data/List.hs` under the importing file's directory, then each `-i` directory, then the installed module directory. Cycles are reported. |
+| Qualified / `hiding` / `as` / import lists | 🟡 | All enforced, including `T(..)` expansion. Qualified operators work in a section (`(M.+)`) but not infix (`a M.+ b`). |
+| Multiple modules / separate compilation | 🟡 | Several modules load and link together. Separate compilation is not there yet: a `.skix` is written per module but only the Prelude's is read back. |
+| Auto-imported Prelude | 🟡 | A synthesised `import Prelude`, so it carries an export list like any module. It is still unconditional, so `import Prelude ()` cannot restrict it. A local declaration does now shadow an imported name. |
 
 ## IO
 
@@ -176,13 +176,13 @@ Ordered by leverage — most Haskell programs unblocked per unit effort.
 ### Tier 1 — cheap, high-frequency (do first)
 
 1. **Prelude breadth.** Add `foldl`, `zip`/`zipWith`, `drop`, `takeWhile`/`dropWhile`, `elem`, `lookup`, `(!!)`, `replicate`, `any`/`all`, `concatMap`, `Either`+`either`. Pure Haskell in `Prelude.hs`; near-zero risk; removes constant friction.
-2. **Guards** (function equations + case alts). Pervasive idiom, currently absent. Parser + desugar to nested `if`; no core-IR change. High value, contained scope.
+2. ~~**Guards** (function equations + case alts).~~ Landed for boolean guards; pattern guards and `let` in guards remain.
 3. **`deriving Show`** (then `Ord`). `Show` is needed to print data types at the REPL/`print`; currently only hand-written `Bool`/`Int`. Mirror the existing `Eq` generator (`leander-syntax-deriving.adb`).
 
 ### Tier 2 — foundational
 
 4. **Nested pattern compilation.** Core requires constructor args be variables, so `Just (x:xs)`, `[a,b]`, `(Just x, y)` all fail. Desugar nested patterns into fresh vars + inner matches in the alts compiler. Unlocks idiomatic matching; prerequisite for a lot of real code.
-5. **Type synonyms (`type`)** and **`newtype`.** `type` is cheap (alias resolution); `newtype` ≈ `data` with one field. Both common in ordinary programs.
+5. ~~**Type synonyms (`type`)** and **`newtype`.**~~ Both landed. Synonyms remain process-global rather than per module.
 6. **Expression type annotations `e :: T`.** Needed to disambiguate and to write idiomatic code; small AST + inference addition.
 
 ### Tier 3 — correctness cliffs (bigger, sequence together)
@@ -192,7 +192,7 @@ Ordered by leverage — most Haskell programs unblocked per unit effort.
 
 ### Tier 4 — breadth when needed
 
-9. **Module imports/exports** (multi-file programs).
+9. ~~**Module imports/exports** (multi-file programs).~~ Landed — see `share/leander/docs/modules.md`. What is left is separate compilation: reading a module's `.skix` back rather than only the Prelude's.
 10. **Input IO** (`getLine`/`getChar`).
 11. **Real layout algorithm** (replace ad-hoc indent checks) — foundational but higher risk; do when the ad-hoc rules start failing real code.
 12. **Char/String literal patterns**, **block comments**, **numeric escapes**, **left sections**, **multi-arg/pattern lambdas** — small polish items.

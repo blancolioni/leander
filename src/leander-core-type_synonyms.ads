@@ -11,9 +11,11 @@ package Leander.Core.Type_Synonyms is
    --  never cleared between handles -- a second Leander.Create reuses an
    --  already-registered Prelude rather than reparsing it, so clearing
    --  would throw away synonyms nothing would put back.  Two modules can
-   --  therefore see each other's synonyms, exactly as they already see
-   --  each other's data types and fixities; there is no module system yet
-   --  (issues #53 and #66).
+   --  therefore see each other's synonyms regardless of what their import
+   --  and export lists say -- unlike data types and values, which #66
+   --  gave per-module keys.  Scoping synonyms (and fixities, which have
+   --  the same shape) is separate work; see
+   --  share/leander/docs/modules.md.
    --
    --  A declaration stores its right-hand side with each parameter replaced
    --  by a TGen index, so expanding an application is Types.Instantiate over

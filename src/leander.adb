@@ -1,7 +1,27 @@
+with GCS.Errors;
+
+with Leander.Errors;
 with Ada.Unchecked_Deallocation;
 with Leander.Handles;
 
 package body Leander is
+
+   ------------------
+   -- Clear_Errors --
+   ------------------
+
+   procedure Clear_Errors is
+   begin
+      GCS.Errors.Clear_Errors;
+      Leander.Errors.Clear;
+   end Clear_Errors;
+
+   ----------------
+   -- Had_Errors --
+   ----------------
+
+   function Had_Errors return Boolean
+   is (GCS.Errors.Has_Errors or else Leander.Errors.Had_Errors);
 
    function Current_Environment
      (This : Handle'Class)

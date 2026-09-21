@@ -10,6 +10,7 @@ with Leander.Core.Qualifiers;
 with Leander.Core.Substitutions;
 with Leander.Core.Types.Unification;
 with Leander.Environment.Prelude;
+with Leander.Errors;
 with Leander.Names.Maps;
 with Leander.Source;
 with WL.String_Maps;
@@ -69,14 +70,37 @@ package body Leander.Environment is
          Type_Env              : Leander.Core.Type_Env.Reference;
          Classes               : Type_Class_Maps.Map;
          Instances             : Instance_Maps.Map;
+         Own                   : WL.String_Sets.Set;
+         Exports               : WL.String_Sets.Set;
+         Exports_All           : Boolean := True;
       end record;
+      --  Own holds the names this module declares itself, as opposed to
+      --  the ones it inherited through an Import. Only a module's own
+      --  names are its to export, and only they are renamed when another
+      --  module imports them, so the distinction has to be recorded as
+      --  the declarations arrive -- the maps themselves cannot tell.
 
    overriding function Name (This : Instance) return String
    is (Leander.Names.To_String (This.Name));
 
+   function Module_Prefix (Name : Leander.Names.Leander_Name) return String;
+   --  The prefix a module puts on its own names when another module
+   --  imports them. Empty for the Prelude, which stays unprefixed so that
+   --  every hardcoded literal ("Y", "#add", "Bool", "True") keeps
+   --  working and existing images stay valid.
+
+   function Is_Prefixable (Name : String) return Boolean;
+   --  False for the names that must stay byte-identical wherever they
+   --  appear: built-in syntax, which the parser emits as a literal for
+   --  every list and tuple form, and synthetic names, which
+   --  Skit.Compiler.Abstract_Variable matches by string.
+
+
    overriding procedure Import
-     (This : in out Instance;
-      Env  : not null access Abstraction'Class);
+     (This    : in out Instance;
+      Env     : not null access Abstraction'Class;
+      Mode    : Import_Visibility := All_Names;
+      Names   : Leander.Names.Name_Array := []);
 
    overriding procedure Bindings
      (This   : in out Instance;
@@ -163,6 +187,47 @@ package body Leander.Environment is
      (This : Instance)
       return Leander.Names.Name_Array;
 
+   overriding function Declares
+     (This : Instance;
+      Name : String)
+      return Boolean
+   is (This.Own.Contains (Name));
+
+   overriding function Canonical_Name
+     (This : Instance;
+      Name : String)
+      return String
+   is (if Module_Prefix (This.Name) = "" or else not Is_Prefixable (Name)
+       then Name
+       else Module_Prefix (This.Name) & "." & Name);
+
+   overriding function Local_Name
+     (This : Instance;
+      Name : String)
+      return String;
+
+   overriding procedure Start_Exports (This : in out Instance);
+
+   overriding function Exports_Everything (This : Instance) return Boolean
+   is (This.Exports_All);
+
+   overriding function Export_Names
+     (This : Instance)
+      return Leander.Names.Name_Array;
+
+   overriding procedure Add_Export
+     (This : in out Instance;
+      Name : String);
+
+   overriding function Is_Exported
+     (This : Instance;
+      Name : String)
+      return Boolean;
+
+   overriding function Declared_Names
+     (This : Instance)
+      return Leander.Names.Name_Array;
+
    overriding function Own_Classes
      (This : Instance)
       return Type_Class_Array;
@@ -195,7 +260,173 @@ package body Leander.Environment is
    is
    begin
       This.Bindings := Groups;
+      for V of Groups.Varids loop
+         This.Own.Include (Core.To_String (V));
+      end loop;
    end Bindings;
+
+   --------------------
+   -- Declared_Names --
+   --------------------
+
+   overriding function Declared_Names
+     (This : Instance)
+      return Leander.Names.Name_Array
+   is
+      Result : Leander.Names.Name_Array (1 .. This.Own.Count);
+      Next   : Natural := 0;
+
+      procedure Save (Item : String);
+
+      ----------
+      -- Save --
+      ----------
+
+      procedure Save (Item : String) is
+      begin
+         Next := Next + 1;
+         Result (Next) := Leander.Names.To_Leander_Name (Item);
+      end Save;
+
+   begin
+      This.Own.Iterate (Save'Access);
+      return Result (1 .. Next);
+   end Declared_Names;
+
+   --------------------
+   -- Is_Prefixable --
+   --------------------
+
+   function Is_Prefixable (Name : String) return Boolean is
+   begin
+      if Name = "" then
+         return False;
+      end if;
+
+      if Name (Name'First) in '#' | '<' | '$' then
+         return False;
+      end if;
+
+      if Name'Length >= 8
+        and then Name (Name'First .. Name'First + 7) = "default:"
+      then
+         return False;
+      end if;
+
+      return (for some Ch of Name =>
+                Ch in 'a' .. 'z' | 'A' .. 'Z' | '_');
+   end Is_Prefixable;
+
+   ----------------
+   -- Add_Export --
+   ----------------
+
+   overriding procedure Add_Export
+     (This : in out Instance;
+      Name : String)
+   is
+   begin
+      This.Exports.Include (Name);
+   end Add_Export;
+
+   ------------------
+   -- Export_Names --
+   ------------------
+
+   overriding function Export_Names
+     (This : Instance)
+      return Leander.Names.Name_Array
+   is
+      Result : Leander.Names.Name_Array (1 .. This.Exports.Count);
+      Next   : Natural := 0;
+
+      procedure Save (Item : String);
+
+      ----------
+      -- Save --
+      ----------
+
+      procedure Save (Item : String) is
+      begin
+         Next := Next + 1;
+         Result (Next) := Leander.Names.To_Leander_Name (Item);
+      end Save;
+
+   begin
+      This.Exports.Iterate (Save'Access);
+      return Result (1 .. Next);
+   end Export_Names;
+
+   -----------------
+   -- Is_Exported --
+   -----------------
+
+   overriding function Is_Exported
+     (This : Instance;
+      Name : String)
+      return Boolean
+   is
+   begin
+      if Name = "" then
+         return False;
+      elsif Name (Name'First) = '#' then
+         --  A Skit primitive is an FFI symbol, not a Haskell entity, and
+         --  is private to the module that imported it however that
+         --  module's export list reads.
+         return False;
+      elsif not Is_Prefixable (Name) then
+         --  Built-in syntax -- [] : () (,) -> -- and the synthetic names
+         --  dictionary passing matches by string. Every list or tuple
+         --  literal is an ECon on one of these, so they are in scope
+         --  everywhere and no export list mentions them. Real Haskell's
+         --  Prelude does not list them either, for the same reason.
+         return True;
+      elsif This.Exports_All then
+         return This.Own.Contains (Name);
+      else
+         return This.Exports.Contains (Name);
+      end if;
+   end Is_Exported;
+
+   --------------------
+   -- Start_Exports --
+   --------------------
+
+   overriding procedure Start_Exports (This : in out Instance) is
+   begin
+      This.Exports_All := False;
+   end Start_Exports;
+
+   ----------------
+   -- Local_Name --
+   ----------------
+
+   overriding function Local_Name
+     (This : Instance;
+      Name : String)
+      return String
+   is
+      Prefix : constant String := Module_Prefix (This.Name);
+   begin
+      if Prefix /= ""
+        and then Name'Length > Prefix'Length + 1
+        and then Name (Name'First .. Name'First + Prefix'Length) = Prefix & "."
+      then
+         return Name (Name'First + Prefix'Length + 1 .. Name'Last);
+      else
+         return Name;
+      end if;
+   end Local_Name;
+
+   -------------------
+   -- Module_Prefix --
+   -------------------
+
+   function Module_Prefix (Name : Leander.Names.Leander_Name) return String is
+      S : constant String := Leander.Names.To_String (Name);
+   begin
+      return (if S = "Prelude" then "" else S);
+   end Module_Prefix;
 
    ----------------------
    -- Boot_Environment --
@@ -245,13 +476,17 @@ package body Leander.Environment is
       return Boolean
    is
       use type Leander.Core.Bindings.Reference;
+      use type Leander.Core.Binding_Groups.Reference;
       L : constant Leander.Names.Leander_Name :=
             Leander.Names.To_Leander_Name (Name);
    begin
+      --  A module loaded from a full-coverage .skix image has no binding
+      --  group at all, so the null check is not merely defensive here.
       return This.Values.Contains (L)
-        or else This.Bindings.Lookup (L) /= null
+        or else (This.Bindings /= null
+                 and then This.Bindings.Lookup (L) /= null)
         or else (for some Import of This.Imports =>
-                   Import.Variable_Binding_Exists (Name));
+                   Import.Variable_Binding_Exists (Import.Local_Name (Name)));
    end Variable_Binding_Exists;
 
    -----------------
@@ -277,8 +512,27 @@ package body Leander.Environment is
          declare
             Declared : constant Leander.Names.Name_Array :=
               [for V of This.Bindings.Varids => Leander.Names.Leander_Name (V)];
+            Forced   : constant Leander.Names.Name_Array :=
+                         This.Values.Get_Keys;
+            Union    : constant Leander.Names.Name_Array :=
+                         Declared & Forced;
+            Seen     : WL.String_Sets.Set;
+            Result   : Leander.Names.Name_Array
+                         (1 .. Declared'Length + Forced'Length);
+            Count    : Natural := 0;
          begin
-            return Declared & This.Values.Get_Keys;
+            --  Forcing a binding compiles it into Values while it stays in
+            --  Bindings, so the two overlap as soon as anything has been
+            --  evaluated. Dump_Module turns this list into an image's
+            --  export set, and an export named twice is at best wasted.
+            for N of Union loop
+               if not Seen.Contains (Leander.Names.To_String (N)) then
+                  Seen.Include (Leander.Names.To_String (N));
+                  Count := Count + 1;
+                  Result (Count) := N;
+               end if;
+            end loop;
+            return Result (1 .. Count);
          end;
       end if;
    end Value_Names;
@@ -374,6 +628,7 @@ package body Leander.Environment is
    is
    begin
       This.Tycons.Insert (Core.To_String (DT.Id), DT);
+      This.Own.Include (Core.To_String (DT.Id));
       for I in 1 .. DT.Constructor_Count loop
          declare
             Id : constant Leander.Core.Conid :=
@@ -387,6 +642,7 @@ package body Leander.Environment is
                  (DT.Constructor_Type (I),
                   DT.Constructor_Calculus (I),
                   DT));
+            This.Own.Include (Core.To_String (Id));
             This.Type_Env :=
               This.Type_Env.Compose
                 (Core.Varid (Id),
@@ -769,6 +1025,11 @@ package body Leander.Environment is
                  .Update_Type (Context);
             end loop;
          end;
+      else
+         --  Inference_Context.Error has already printed whatever went
+         --  wrong; without this the module would go on to report itself
+         --  loaded regardless.
+         Leander.Errors.Note_Error;
       end if;
 
       --  Compile each class's own default method implementations (if it
@@ -950,6 +1211,7 @@ package body Leander.Environment is
       Ada.Text_IO.Put_Line
         (Ada.Text_IO.Standard_Error,
          Message);
+      Leander.Errors.Note_Error;
    end Error;
 
    ------------
@@ -990,6 +1252,7 @@ package body Leander.Environment is
       This.Values.Insert
         (Leander.Names.To_Leander_Name (Name),
          Leander.Calculus.Symbol (Foreign_Name));
+      This.Own.Include (Name);
       This.Type_Env :=
         This.Type_Env.Compose
           (Core.To_Varid (Name),
@@ -1007,6 +1270,7 @@ package body Leander.Environment is
    is
    begin
       This.Type_Env := This.Type_Env.Compose (Name, Scheme);
+      This.Own.Include (Name);
    end Set_Scheme;
 
    ------------
@@ -1014,31 +1278,199 @@ package body Leander.Environment is
    ------------
 
    overriding procedure Import
-     (This : in out Instance;
-      Env  : not null access Abstraction'Class)
+     (This    : in out Instance;
+      Env     : not null access Abstraction'Class;
+      Mode    : Import_Visibility := All_Names;
+      Names   : Leander.Names.Name_Array := [])
    is
       E : Instance'Class renames Instance'Class (Env.all);
+
+      function Visible (Name : String) return Boolean;
+      function Canonical (Name : String) return String
+      is (if E.Own.Contains (Name) then E.Canonical_Name (Name) else Name);
+
+      -------------
+      -- Visible --
+      -------------
+
+      Wholesale : constant Boolean :=
+                    Mode = All_Names and then E.Exports_All;
+
+      function Exported (Name : String) return Boolean
+      is (not E.Own.Contains (Name) or else E.Is_Exported (Name));
+      --  What the exporting module inherited is left alone: its export
+      --  list speaks about its own declarations, and the copies it
+      --  carries are already under whatever key they should have. That
+      --  they travel one module further than Haskell would re-export is
+      --  a known looseness, harmless while every module imports the
+      --  Prelude for itself.
+
+      function Visible (Name : String) return Boolean is
+         Listed : Boolean := False;
+      begin
+         if not E.Own.Contains (Name) then
+            --  What the exporting module itself inherited is already
+            --  under whatever name it should have, and an import list
+            --  never speaks about it.
+            return True;
+         end if;
+
+         case Mode is
+            when All_Names =>
+               return True;
+            when No_Names =>
+               return False;
+            when Only_Names | Except_Names =>
+               for N of Names loop
+                  if Leander.Names.To_String (N) = Name then
+                     Listed := True;
+                  end if;
+               end loop;
+               return (if Mode = Only_Names then Listed else not Listed);
+         end case;
+      end Visible;
+
+      procedure Add_Tycon (Key : String; DT : Leander.Data_Types.Reference);
+      procedure Add_Con (Key : String; Con : Con_Record);
+      procedure Add_Class
+        (Key : String; C : Leander.Core.Type_Classes.Reference);
+
+      ---------------
+      -- Add_Class --
+      ---------------
+
+      procedure Add_Class
+        (Key : String; C : Leander.Core.Type_Classes.Reference) is
+      begin
+         if not This.Classes.Contains (Key) then
+            This.Classes.Insert (Key, C);
+         end if;
+      end Add_Class;
+
+      -------------
+      -- Add_Con --
+      -------------
+
+      procedure Add_Con (Key : String; Con : Con_Record) is
+      begin
+         if not This.Cons.Contains (Key) then
+            This.Cons.Insert (Key, Con);
+         end if;
+      end Add_Con;
+
+      ---------------
+      -- Add_Tycon --
+      ---------------
+
+      procedure Add_Tycon (Key : String; DT : Leander.Data_Types.Reference) is
+      begin
+         if not This.Tycons.Contains (Key) then
+            This.Tycons.Insert (Key, DT);
+         end if;
+      end Add_Tycon;
+
    begin
       This.Imports.Append (Reference (Env));
+
       for Position in E.Tycons.Iterate loop
-         if not This.Tycons.Contains (Tycon_Maps.Key (Position)) then
-            This.Tycons.Insert (Tycon_Maps.Key (Position),
-                                Tycon_Maps.Element (Position));
-         end if;
+         declare
+            Bare : constant String := Tycon_Maps.Key (Position);
+         begin
+            if Exported (Bare) then
+               Add_Tycon (Canonical (Bare), Tycon_Maps.Element (Position));
+               if Visible (Bare) then
+                  Add_Tycon (Bare, Tycon_Maps.Element (Position));
+               end if;
+            end if;
+         end;
       end loop;
+
       for Position in E.Cons.Iterate loop
-         if not This.Cons.Contains (Con_Maps.Key (Position)) then
-            This.Cons.Insert (Con_Maps.Key (Position),
-                              Con_Maps.Element (Position));
-         end if;
+         declare
+            Bare : constant String := Con_Maps.Key (Position);
+         begin
+            if Exported (Bare) then
+               Add_Con (Canonical (Bare), Con_Maps.Element (Position));
+               if Visible (Bare) then
+                  Add_Con (Bare, Con_Maps.Element (Position));
+               end if;
+            end if;
+         end;
       end loop;
+
       for Position in E.Classes.Iterate loop
-         if not This.Classes.Contains (Type_Class_Maps.Key (Position)) then
-            This.Classes.Insert (Type_Class_Maps.Key (Position),
-                                 Type_Class_Maps.Element (Position));
-         end if;
+         declare
+            Bare : constant String := Type_Class_Maps.Key (Position);
+         begin
+            if Exported (Bare) then
+               Add_Class (Canonical (Bare), Type_Class_Maps.Element (Position));
+               if Visible (Bare) then
+                  Add_Class (Bare, Type_Class_Maps.Element (Position));
+               end if;
+            end if;
+         end;
       end loop;
-      This.Type_Env := This.Type_Env.Compose (E.Type_Env);
+
+      --  The whole chain in one link, when nothing has to be held back.
+      --  Composing the Prelude's ~250 names individually would build a
+      --  chain that deep, and Lookup walks it linearly on every inference
+      --  miss. An import list or an export list means going name by name
+      --  instead, because the chain cannot be composed selectively.
+      if Wholesale then
+         This.Type_Env := This.Type_Env.Compose (E.Type_Env);
+      end if;
+
+      --  Collected into one link rather than composed name by name:
+      --  Compose (Name, Scheme) allocates a link apiece and Lookup walks
+      --  the chain linearly, once per EVar and ECon, so a module the size
+      --  of the Prelude would otherwise put a 250-deep walk in front of
+      --  every inference miss.
+      declare
+         Imported : Leander.Core.Type_Env.Builder;
+         Any      : Boolean := False;
+
+         procedure Take
+           (Name   : Leander.Names.Leander_Name;
+            Scheme : Leander.Core.Schemes.Reference);
+
+         ----------
+         -- Take --
+         ----------
+
+         procedure Take
+           (Name   : Leander.Names.Leander_Name;
+            Scheme : Leander.Core.Schemes.Reference)
+         is
+            Bare : constant String := Leander.Names.To_String (Name);
+            Key  : constant String := Canonical (Bare);
+         begin
+            if not Exported (Bare) then
+               return;
+            end if;
+
+            if Key /= Bare then
+               Imported.Insert (Key, Scheme);
+               Any := True;
+            end if;
+
+            if not Wholesale and then Visible (Bare) then
+               Imported.Insert (Bare, Scheme);
+               Any := True;
+            end if;
+         end Take;
+
+      begin
+         --  Taken from the chain itself rather than from Declared_Names:
+         --  a module's Type_Env also carries entries nothing declared by
+         --  name -- instance dictionaries, generic defaults, the schemes
+         --  inference saved -- and rebuilding from the declared set alone
+         --  silently drops every one of them.
+         E.Type_Env.Iterate (Take'Access);
+
+         if Any then
+            This.Type_Env := This.Type_Env.Compose (Imported);
+         end if;
+      end;
    end Import;
 
    ------------
@@ -1071,9 +1503,13 @@ package body Leander.Environment is
             begin
                if Binding = null then
                   for Import of This.Imports loop
-                     if Import.Variable_Binding_Exists (Name) then
-                        return Import.Get_Bound_Calculus (Name);
-                     end if;
+                     declare
+                        Inner : constant String := Import.Local_Name (Name);
+                     begin
+                        if Import.Variable_Binding_Exists (Inner) then
+                           return Import.Get_Bound_Calculus (Inner);
+                        end if;
+                     end;
                   end loop;
                   raise Constraint_Error with
                     "undefined: " & Name;
@@ -1217,6 +1653,10 @@ package body Leander.Environment is
                   Class.Methods;
    begin
       This.Classes.Insert (Core.To_String (Class.Id), Class);
+      This.Own.Include (Core.To_String (Class.Id));
+      for I in Methods'Range loop
+         This.Own.Include (Core.To_String (Methods (I)));
+      end loop;
       for I in Methods'Range loop
          This.Type_Env :=
            This.Type_Env.Compose

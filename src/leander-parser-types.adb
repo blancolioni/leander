@@ -5,6 +5,7 @@ with Leander.Core.Types;
 with Leander.Core.Tyvars;
 with Leander.Environment;
 with Leander.Names;
+with Leander.Scopes;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
@@ -78,7 +79,50 @@ package body Leander.Parser.Types is
       end Scan_Rest_Of_Tuple;
 
    begin
-      if At_Variable then
+      if Tok = Tok_Identifier and then Is_Alphanumeric_Identifier (Tok_Text)
+      then
+         --  This site reads Tok_Text and scans directly rather than going
+         --  through Scan_Identifier, so a hook placed there alone would
+         --  leave qualified type names silently unqualified.
+         declare
+            Written : constant String := Scan_Qualified_Name;
+            Simple  : constant String := Last_Name_Component (Written);
+         begin
+            if Is_Constructor (Simple) then
+               declare
+                  Key : constant String :=
+                          Context.Resolve
+                            (Written, Leander.Scopes.Type_Space, Loc);
+               begin
+                  --  Resolving settles whether the name may be written
+                  --  here -- an import that hides a type never inserts it
+                  --  under its bare key. What goes into the type
+                  --  expression, though, has to be the type's own id: a
+                  --  TCon is identified by name, and the exporting module
+                  --  built its constructors' schemes against the
+                  --  unprefixed one, so emitting the key itself would
+                  --  leave "Shapes.Shape" and "Shape" refusing to unify.
+                  if Context.Environment.Exists
+                    (Leander.Names.To_Leander_Name (Key),
+                     Leander.Environment.Type_Constructor)
+                  then
+                     return Constructor
+                       (Loc,
+                        Core.To_String
+                          (Context.Environment.Data_Type
+                             (Core.To_Conid (Key)).Id));
+                  else
+                     return Constructor (Loc, Key);
+                  end if;
+               end;
+            else
+               --  A type variable is never qualified, and
+               --  Scan_Qualified_Name will not have joined a run behind a
+               --  lowercase component anyway.
+               return Variable (Loc, Written);
+            end if;
+         end;
+      elsif At_Variable then
          return T : constant Reference := Variable (Loc, Tok_Text) do
             Scan;
          end return;

@@ -1,5 +1,8 @@
 with Ada.Directories;
+with Ada.Exceptions;
 with Ada.Streams;
+
+with Leander.Byte_Buffers;
 
 with Leander.Core.Type_Classes;
 with Leander.Core.Type_Classes.Serialize;
@@ -19,6 +22,8 @@ package body Leander.Tests.Images is
    ---------------
    -- Run_Tests --
    ---------------
+
+   procedure Test_Export_Round_Trip;
 
    procedure Run_Tests is
       Path : constant String := "test_prelude.skix";
@@ -182,7 +187,7 @@ package body Leander.Tests.Images is
       declare
          Image_Path : constant String :=
                         Leander.Resources.Resource_Path
-                        & "/modules/Prelude.skix";
+                        & "modules/Prelude.skix";
          String_Id  : constant Leander.Core.Conid :=
                         Leander.Core.To_Conid ("String");
          Had_Synonym : Boolean;
@@ -248,6 +253,26 @@ package body Leander.Tests.Images is
             Test ("Prelude.skix: a downstream instance omitting a "
                   & "defaulted method still works",
                   "K", H2.Evaluate ("Foo 1 /= Foo 2"));
+
+            --  Issue #66: a module that imports another, against a Prelude
+            --  that came from an image rather than from source. The
+            --  importing module's own names stay bare while the imported
+            --  module's arrive under its name, and the Prelude's stay
+            --  unprefixed -- so this is the combination where a
+            --  disagreement about keys between the image and the parser
+            --  would show up.
+            H2.Load_Module
+              ("./share/leander/tests/integration/modules/UseShapes.hs");
+            Test ("Prelude.skix: a cross-module import resolves against "
+                  & "an imaged Prelude",
+                  "16", H2.Evaluate ("area (Square 4)"));
+
+            H2.Load_Module
+              ("./share/leander/tests/integration/modules/Qualified.hs");
+            Test ("Prelude.skix: a qualified name resolves against an "
+                  & "imaged Prelude",
+                  "27", H2.Evaluate ("qualCircleArea"));
+
             H2.Close;
          end;
 
@@ -255,6 +280,99 @@ package body Leander.Tests.Images is
             Ada.Directories.Delete_File (Image_Path);
          end if;
       end;
+
+      Test_Export_Round_Trip;
    end Run_Tests;
+
+   -----------------------------
+   -- Test_Export_Round_Trip --
+   -----------------------------
+
+   procedure Test_Export_Round_Trip is
+      Path : constant String := "test_hidden.skix";
+      Hr   : Skit.Handles.Handle;
+
+      Saw_Meta   : Boolean := False;
+      Restricted : Boolean := False;
+      Has_Public : Boolean := False;
+      Has_Secret : Boolean := False;
+
+      procedure On_Annotation
+        (Export_Name : String;
+         Bytes       : Ada.Streams.Stream_Element_Array);
+
+      -------------------
+      -- On_Annotation --
+      -------------------
+
+      procedure On_Annotation
+        (Export_Name : String;
+         Bytes       : Ada.Streams.Stream_Element_Array)
+      is
+         package BB renames Leander.Byte_Buffers;
+         C : BB.Offset := Bytes'First;
+      begin
+         if Export_Name /= "__leander_meta__:Hidden" then
+            return;
+         end if;
+
+         Saw_Meta := True;
+
+         --  Decoded by hand rather than through Try_Load_Image, which
+         --  only ever runs for the Prelude: what is under test is the
+         --  payload itself.
+         if BB.Get_U8 (Bytes, C) = 2 then
+            Restricted := BB.Get_U8 (Bytes, C) = 0;
+            declare
+               Count : constant Natural := BB.Get_U32 (Bytes, C);
+            begin
+               for I in 1 .. Count loop
+                  declare
+                     N : constant String := BB.Get_String (Bytes, C);
+                  begin
+                     if N = "visible" then
+                        Has_Public := True;
+                     elsif N = "secret" then
+                        Has_Secret := True;
+                     end if;
+                  end;
+               end loop;
+            end;
+         end if;
+      end On_Annotation;
+
+   begin
+      declare
+         H : Leander.Handle := Leander.Create;
+      begin
+         H.Load_Module
+           ("./share/leander/tests/integration/modules/Hidden.hs");
+         H.Dump_Module (Path, "Hidden");
+         H.Close;
+      end;
+
+      Hr := Skit.Handles.New_Handle (Core_Size => 512 * 1024);
+      --  The module's code reaches Prelude arithmetic, so the machine
+      --  primitives have to be in place before the image's imports can
+      --  resolve. "#error" is bound specially by Handles.Create rather
+      --  than by Load_Primitives; a dummy satisfies the import, since
+      --  nothing here evaluates.
+      Leander.Primitives.Load_Primitives (Hr);
+      Hr.Bind ("#error", Skit.Combinators.I);
+      Skit.Handles.Images.Read (Hr, Path, On_Annotation'Access);
+
+      Test ("skix: a module's meta payload is present", Saw_Meta);
+      Test ("skix: an export list survives the image", Restricted);
+      Test ("skix: an exported name is in the restored list", Has_Public);
+      Test ("skix: an unexported name is not", not Has_Secret);
+
+      if Ada.Directories.Exists (Path) then
+         Ada.Directories.Delete_File (Path);
+      end if;
+   exception
+      when E : others =>
+         Error ("skix: export round trip",
+                Ada.Exceptions.Exception_Message (E));
+   end Test_Export_Round_Trip;
 
 end Leander.Tests.Images;

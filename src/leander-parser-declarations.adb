@@ -1,3 +1,5 @@
+with GCS.Constraints;
+
 with Leander.Core.Kinds;
 with Leander.Core.Predicates;
 with Leander.Core.Schemes;
@@ -54,8 +56,12 @@ package body Leander.Parser.Declarations is
 
    function At_Declaration return Boolean is
    begin
+      --  Tok_Import is here only so that an import written after other
+      --  declarations is reported as being in the wrong place rather than
+      --  silently ending the module. Parse_Module has already consumed
+      --  every correctly placed one.
       return At_Variable or else At_Constructor or else
-        Tok <= [Tok_Class, Tok_Data, Tok_Foreign,
+        Tok <= [Tok_Class, Tok_Data, Tok_Foreign, Tok_Import,
                 Tok_Infix, Tok_Infixl, Tok_Infixr,
                 Tok_Instance, Tok_Newtype, Tok_Type,
                 Tok_Left_Bracket, Tok_Left_Paren];
@@ -525,6 +531,20 @@ package body Leander.Parser.Declarations is
                   Scan;
                end loop;
             end if;
+         elsif Tok = Tok_Import then
+            Error ("import declarations must precede other declarations");
+            --  Skip_Declaration advances only while the indent exceeds 1,
+            --  and an import sits at column 1, so it would not move at all
+            --  and At_Declaration would still be true: skip the line.
+            declare
+               Line : constant GCS.Constraints.Line_Number := Tok_Line;
+            begin
+               while Tok /= Tok_End_Of_File
+                 and then Tok_Line = Line
+               loop
+                  Scan;
+               end loop;
+            end;
          elsif Tok in Tok_Infix | Tok_Infixl | Tok_Infixr then
             declare
                Assoc    : constant Expressions.Associativity_Type :=
