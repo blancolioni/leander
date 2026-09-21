@@ -70,6 +70,12 @@ Key files: [src/leander-core-inference.ads](src/leander-core-inference.ads), [sr
 
 Full details in [share/leander/docs/type-inference.md](share/leander/docs/type-inference.md).
 
+## Modules
+
+A module is named by its own header, which may be dotted; `import Data.List` resolves to `Data/List.hs` under the importing file's directory, then each `-i` directory, then [share/leander/modules/](share/leander/modules/). Scope and linkage are deliberately separate: an import or export list decides what a module may *write*, never what a compiled binding may *reach*. It works by naming rather than filtering — a module's own declarations arrive in an importer as `Shapes.area`, and additionally as `area` only when the declaration makes them visible. The Prelude is unprefixed.
+
+Full details in [share/leander/docs/modules.md](share/leander/docs/modules.md).
+
 ## Integration Tests
 
 Integration tests live in [share/leander/tests/integration/](share/leander/tests/integration/) and are driven by [src/leander-tests-integration.adb](src/leander-tests-integration.adb). There are three test patterns:
@@ -77,6 +83,7 @@ Integration tests live in [share/leander/tests/integration/](share/leander/tests
 - `Test_Eval` — parse and evaluate a single expression against the Prelude environment; check inferred type and SKI result value.
 - `Test_Module` — load a `.hs` file, evaluate an expression in its environment; check the SKI result.
 - `Test_Main` — load a `.hs` file and evaluate `runIO main`; pass if the result is `"I"` (the SKI identity, representing `()`).
+- `Test_Module_Fails` / `Test_Module_Clean` — assert that a module is rejected, or that it is not. Error state is sticky and process-global, so these clear it first; each negative fixture needs a module name no other uses, because the module cache keeps a module that parsed with errors.
 
 SKI machine values are shown in combinator notation: `K` = `True`, `K I` = `False`, `I` = `()` / unit.
 
