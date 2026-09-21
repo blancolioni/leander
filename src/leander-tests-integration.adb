@@ -1,4 +1,5 @@
 with Ada.Exceptions;
+with Leander.Errors;
 with Leander.Handles;
 with Leander.Syntax;
 with Skit;
@@ -73,6 +74,57 @@ package body Leander.Tests.Integration is
          Error (Label,
                 Ada.Exceptions.Exception_Message (E));
    end Test_Module;
+
+   -----------------------
+   -- Test_Module_Clean --
+   -----------------------
+
+   procedure Test_Module_Clean
+     (Label       : String;
+      Module_Path : String)
+   is
+      H : Leander.Handle := Leander.Create (256 * 1024);
+   begin
+      Leander.Clear_Errors;
+      H.Load_Module (Module_Path);
+      Test (Label, not Leander.Had_Errors);
+      Leander.Clear_Errors;
+      H.Close;
+   exception
+      when E : others =>
+         Error (Label, Ada.Exceptions.Exception_Message (E));
+   end Test_Module_Clean;
+
+   -----------------------
+   -- Test_Module_Fails --
+   -----------------------
+
+   procedure Test_Module_Fails
+     (Label       : String;
+      Module_Path : String)
+   is
+      H : Leander.Handle := Leander.Create (256 * 1024);
+   begin
+      --  Error state is sticky and process-global, so clearing first is
+      --  not optional -- without it every case after the first would pass
+      --  on somebody else's failure.
+      Leander.Clear_Errors;
+
+      begin
+         H.Load_Module (Module_Path);
+      exception
+         when others =>
+            --  Refusing the module outright counts as rejecting it.
+            Leander.Errors.Note_Error;
+      end;
+
+      Test (Label, Leander.Had_Errors);
+      Leander.Clear_Errors;
+      H.Close;
+   exception
+      when E : others =>
+         Error (Label, Ada.Exceptions.Exception_Message (E));
+   end Test_Module_Fails;
 
    ---------------
    -- Test_Main --
@@ -776,6 +828,52 @@ package body Leander.Tests.Integration is
       Test_Main
         ("--main: a module that imports another",
          Modules_Root & "UseShapes.hs");
+
+      --  "Shape(..)" in an import list has to expand to the type's
+      --  constructors, which only the exporting module can name.
+      Test_Module
+        ("module: an import list expands T(..) to its constructors",
+         Modules_Root & "WellFormed.hs",
+         "wellFormedArea", "11",
+         Handle);
+
+      --  The control for everything below: a module doing correctly what
+      --  each rejection case does wrongly. Without it those cases could
+      --  all be passing on error state left behind by something else.
+      Test_Module_Clean
+        ("module: a well-formed module reports no errors",
+         Modules_Root & "WellFormed.hs");
+
+      --  Programs that must be rejected. Each fixture has a module name
+      --  no other uses, because Loaded_Module_Map is global and caches a
+      --  module even when it parsed with errors.
+      Test_Module_Fails
+        ("module: an unknown module is rejected",
+         Modules_Root & "bad/BadUnknown.hs");
+
+      Test_Module_Fails
+        ("module: an import cycle is rejected",
+         Modules_Root & "bad/BadCycleA.hs");
+
+      Test_Module_Fails
+        ("module: a module re-export is rejected",
+         Modules_Root & "bad/BadReExport.hs");
+
+      Test_Module_Fails
+        ("module: exporting an undeclared name is rejected",
+         Modules_Root & "bad/BadExportName.hs");
+
+      Test_Module_Fails
+        ("module: an unqualified use of a qualified import is rejected",
+         Modules_Root & "bad/BadQualified.hs");
+
+      Test_Module_Fails
+        ("module: naming a non-exported import is rejected",
+         Modules_Root & "bad/BadHiddenName.hs");
+
+      Test_Module_Fails
+        ("module: an import after other declarations is rejected",
+         Modules_Root & "bad/BadLateImport.hs");
 
       --  Minimal crash reproducer:
       --  a module-level binding that uses (==)

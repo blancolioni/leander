@@ -91,6 +91,22 @@ package Leander.Syntax.Modules is
      (This : in out Import_Declaration'Class;
       Name : String);
 
+   procedure Add_Wildcard_Name
+     (This : in out Import_Declaration'Class;
+      Name : String);
+   --  A name written "T(..)". The type itself goes through Add_Name like
+   --  any other; this records that its constructors were asked for too,
+   --  which cannot be resolved here -- only the exporting module knows
+   --  what they are.
+
+   function Wildcard_Count (This : Import_Declaration'Class) return Natural;
+
+   function Wildcard
+     (This  : Import_Declaration'Class;
+      Index : Positive)
+      return String
+     with Pre => Index <= This.Wildcard_Count;
+
    function Module_Name (This : Import_Declaration'Class) return String;
 
    function Is_Qualified (This : Import_Declaration'Class) return Boolean;
@@ -147,6 +163,7 @@ private
          Name_List   : Boolean := False;
          Hiding      : Boolean := False;
          Names       : String_Vectors.Vector;
+         Wildcards   : String_Vectors.Vector;
       end record;
 
 end Leander.Syntax.Modules;

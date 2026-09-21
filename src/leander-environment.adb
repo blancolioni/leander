@@ -10,6 +10,7 @@ with Leander.Core.Qualifiers;
 with Leander.Core.Substitutions;
 with Leander.Core.Types.Unification;
 with Leander.Environment.Prelude;
+with Leander.Errors;
 with Leander.Names.Maps;
 with Leander.Source;
 with WL.String_Maps;
@@ -1024,6 +1025,11 @@ package body Leander.Environment is
                  .Update_Type (Context);
             end loop;
          end;
+      else
+         --  Inference_Context.Error has already printed whatever went
+         --  wrong; without this the module would go on to report itself
+         --  loaded regardless.
+         Leander.Errors.Note_Error;
       end if;
 
       --  Compile each class's own default method implementations (if it
@@ -1205,6 +1211,7 @@ package body Leander.Environment is
       Ada.Text_IO.Put_Line
         (Ada.Text_IO.Standard_Error,
          Message);
+      Leander.Errors.Note_Error;
    end Error;
 
    ------------

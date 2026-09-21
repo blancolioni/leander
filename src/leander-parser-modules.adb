@@ -128,6 +128,9 @@ package body Leander.Parser.Modules is
    is
       use type Leander.Environment.Reference;
 
+      Imported : constant Leander.Environment.Reference :=
+                   Context.Load_Module_By_Name (Name, From_Dir);
+
       Mode : constant Leander.Environment.Import_Visibility :=
                (if Import.Is_Qualified then Leander.Environment.No_Names
                 elsif not Import.Has_Name_List
@@ -136,12 +139,76 @@ package body Leander.Parser.Modules is
                 then Leander.Environment.Except_Names
                 else Leander.Environment.Only_Names);
 
-      Names : constant Leander.Names.Name_Array :=
-                [for I in 1 .. Import.Name_Count =>
-                   Leander.Names.To_Leander_Name (Import.Name (I))];
+      function Visible_Names return Leander.Names.Name_Array;
+      function Constructors_Of (Type_Name : String)
+        return Leander.Names.Name_Array;
+      function Wildcard_Constructors (From : Positive)
+        return Leander.Names.Name_Array;
 
-      Imported : constant Leander.Environment.Reference :=
-                   Context.Load_Module_By_Name (Name, From_Dir);
+      ---------------------
+      -- Constructors_Of --
+      ---------------------
+
+      function Constructors_Of (Type_Name : String)
+        return Leander.Names.Name_Array
+      is
+      begin
+         if not Imported.Exists
+           (Leander.Names.To_Leander_Name (Type_Name),
+            Leander.Environment.Type_Constructor)
+         then
+            return [];
+         end if;
+
+         declare
+            DT : constant Leander.Data_Types.Reference :=
+                   Imported.Data_Type (Leander.Core.To_Conid (Type_Name));
+         begin
+            return R : Leander.Names.Name_Array (1 .. DT.Constructor_Count) do
+               for J in R'Range loop
+                  R (J) :=
+                    Leander.Names.To_Leander_Name
+                      (Leander.Core.To_String (DT.Constructor_Name (J)));
+               end loop;
+            end return;
+         end;
+      end Constructors_Of;
+
+      ---------------------------
+      -- Wildcard_Constructors --
+      ---------------------------
+
+      function Wildcard_Constructors (From : Positive)
+        return Leander.Names.Name_Array
+      is
+         use type Leander.Names.Name_Array;
+      begin
+         if From > Import.Wildcard_Count then
+            return [];
+         else
+            return Constructors_Of (Import.Wildcard (From))
+              & Wildcard_Constructors (From + 1);
+         end if;
+      end Wildcard_Constructors;
+
+      -------------------
+      -- Visible_Names --
+      -------------------
+
+      function Visible_Names return Leander.Names.Name_Array is
+         use type Leander.Names.Name_Array;
+         Written : Leander.Names.Name_Array (1 .. Import.Name_Count);
+      begin
+         for I in Written'Range loop
+            Written (I) := Leander.Names.To_Leander_Name (Import.Name (I));
+         end loop;
+
+         --  "T(..)" asks for whatever constructors T turns out to have,
+         --  which only the module being imported can say -- so it is
+         --  expanded here rather than where it was written.
+         return Written & Wildcard_Constructors (1);
+      end Visible_Names;
+
    begin
       if Imported = null then
          if Leander.Parser.Module_Is_Loading (Name) then
@@ -153,7 +220,7 @@ package body Leander.Parser.Modules is
       elsif Imported = Env then
          Error ("module " & Name & " cannot import itself");
       else
-         Env.Import (Imported, Mode, Names);
+         Env.Import (Imported, Mode, Visible_Names);
          Context.Scope.Add_Module (Alias, Imported);
 
       end if;
@@ -377,6 +444,8 @@ package body Leander.Parser.Modules is
                if Tok = Tok_Left_Paren then
                   Scan;
                   if Tok = Tok_Dot_Dot then
+                     Import.Add_Wildcard_Name
+                       (Import.Name (Import.Name_Count));
                      Scan;
                   else
                      while At_Name loop

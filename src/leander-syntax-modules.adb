@@ -51,6 +51,35 @@ package body Leander.Syntax.Modules is
       This.Names.Append (Name);
    end Add_Name;
 
+   -----------------------
+   -- Add_Wildcard_Name --
+   -----------------------
+
+   procedure Add_Wildcard_Name
+     (This : in out Import_Declaration'Class;
+      Name : String)
+   is
+   begin
+      This.Wildcards.Append (Name);
+   end Add_Wildcard_Name;
+
+   --------------------
+   -- Wildcard_Count --
+   --------------------
+
+   function Wildcard_Count (This : Import_Declaration'Class) return Natural
+   is (Natural (This.Wildcards.Length));
+
+   --------------
+   -- Wildcard --
+   --------------
+
+   function Wildcard
+     (This  : Import_Declaration'Class;
+      Index : Positive)
+      return String
+   is (This.Wildcards.Element (Index));
+
    ---------------------
    -- Add_Type_Export --
    ---------------------
