@@ -719,10 +719,11 @@ package body Leander.Tests.Integration is
          "doubled", "42",
          Handle);
 
-      --  Every import shape the grammar accepts, in one module. The
-      --  qualified, aliased and selective ones warn that they are not yet
-      --  enforced; what is asserted here is that they parse and that the
-      --  module still compiles around them.
+      --  Every import shape the grammar accepts, in one module. "tally"
+      --  comes in through the import list that names it; "area" is
+      --  hidden and the qualified import contributes nothing unqualified,
+      --  so this also checks that a restricted import still lets the
+      --  module compile around what it did bring in.
       Test_Module
         ("module: qualified, aliased and selective imports all parse",
          Modules_Root & "AllForms.hs",
@@ -739,6 +740,28 @@ package body Leander.Tests.Integration is
         ("module: a qualified constructor and type name",
          Modules_Root & "Qualified.hs",
          "qualCircleArea", "27",
+         Handle);
+
+      --  A module's own declaration wins over an import of the same
+      --  name, and the imported one is still reachable by qualifier --
+      --  the two are under different keys once the import has renamed
+      --  Tagged's own names.
+      Test_Module
+        ("module: a local declaration shadows an imported name",
+         Modules_Root & "Shadowing.hs",
+         "mine", "2",
+         Handle);
+
+      Test_Module
+        ("module: the shadowed import is still reachable qualified",
+         Modules_Root & "Shadowing.hs",
+         "theirs", "1",
+         Handle);
+
+      Test_Module
+        ("module: a qualified-only import is usable through its alias",
+         Modules_Root & "Enforced.hs",
+         "enforcedArea", "12",
          Handle);
 
       Test_Main

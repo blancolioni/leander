@@ -1,5 +1,6 @@
 with Leander.Environment.Prelude;
 
+with Leander.Names;
 with Leander.Scopes;
 with Leander.Syntax.Modules;
 
@@ -39,7 +40,8 @@ package body Leander.Parser.Modules is
       Env      : Leander.Environment.Reference;
       Name     : String;
       Alias    : String;
-      From_Dir : String);
+      From_Dir : String;
+      Import   : Leander.Syntax.Modules.Import_Declaration);
    --  Load Name and bring it into Env. The environment copy is deliberately
    --  unfiltered even for a selective import: a name list says what the
    --  programmer may write, not what the linker may reach, and pruning the
@@ -56,9 +58,23 @@ package body Leander.Parser.Modules is
       Env      : Leander.Environment.Reference;
       Name     : String;
       Alias    : String;
-      From_Dir : String)
+      From_Dir : String;
+      Import   : Leander.Syntax.Modules.Import_Declaration)
    is
       use type Leander.Environment.Reference;
+
+      Mode : constant Leander.Environment.Import_Visibility :=
+               (if Import.Is_Qualified then Leander.Environment.No_Names
+                elsif not Import.Has_Name_List
+                then Leander.Environment.All_Names
+                elsif Import.Is_Hiding
+                then Leander.Environment.Except_Names
+                else Leander.Environment.Only_Names);
+
+      Names : constant Leander.Names.Name_Array :=
+                [for I in 1 .. Import.Name_Count =>
+                   Leander.Names.To_Leander_Name (Import.Name (I))];
+
       Imported : constant Leander.Environment.Reference :=
                    Context.Load_Module_By_Name (Name, From_Dir);
    begin
@@ -72,8 +88,9 @@ package body Leander.Parser.Modules is
       elsif Imported = Env then
          Error ("module " & Name & " cannot import itself");
       else
-         Env.Import (Imported);
+         Env.Import (Imported, Mode, Names);
          Context.Scope.Add_Module (Alias, Imported);
+
       end if;
    end Do_Import;
 
@@ -122,8 +139,13 @@ package body Leander.Parser.Modules is
       --  import rather than a special case is what will later let
       --  "import Prelude ()" and "import qualified Prelude" mean anything.
       if Name /= "Prelude" then
-         Do_Import (Context, Env, "Prelude", Alias => "Prelude",
-                    From_Dir => "");
+         declare
+            Implicit : Leander.Syntax.Modules.Import_Declaration;
+         begin
+            Implicit.Start_Import ("Prelude", Qualified => False);
+            Do_Import (Context, Env, "Prelude", Alias => "Prelude",
+                       From_Dir => "", Import => Implicit);
+         end;
       end if;
 
       while Tok = Tok_Import loop
@@ -319,15 +341,8 @@ package body Leander.Parser.Modules is
          end if;
       end if;
 
-      --  Everything above is recorded; only an unrestricted import can be
-      --  acted on in full today, so say plainly when one cannot be.
-      if Import.Is_Selective then
-         Warning ("qualified, aliased and selective imports are parsed but "
-                  & "not yet enforced; " & Import.Module_Name
-                  & " is imported in full and unqualified");
-      end if;
-
-      Do_Import (Context, Env, Import.Module_Name, Import.Alias, From_Dir);
+      Do_Import (Context, Env, Import.Module_Name, Import.Alias,
+                 From_Dir, Import);
    end Parse_Import;
 
    ------------------------
