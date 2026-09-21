@@ -161,13 +161,25 @@ private
       Scope : Leander.Scopes.Reference);
 
    function Resolve
-     (This    : Parse_Context'Class;
-      Written : String;
-      Space   : Leander.Scopes.Name_Space)
+     (This     : Parse_Context'Class;
+      Written  : String;
+      Space    : Leander.Scopes.Name_Space;
+      Location : Leander.Source.Source_Location)
       return String;
-   --  The name to use for Written, reporting at the current source
-   --  location if it cannot be resolved. Falls back to Written on failure
-   --  so that one bad name does not derail the rest of the parse.
+   --  The name to use for Written, reported at Location if it cannot be
+   --  resolved. Falls back to Written on failure so that one bad name
+   --  does not derail the rest of the parse. Location is passed in rather
+   --  than read from the lexer because the name has already been
+   --  consumed by the time this is called, so the parser is sitting on
+   --  whatever follows it.
+
+   procedure Report
+     (Location : Leander.Source.Source_Location;
+      Message  : String);
+   --  Report an error against a location captured earlier. Lexical.Error
+   --  reads the current token, which is no use once a construct has been
+   --  consumed, and raises outright at end of file: Tok_Column is 0
+   --  there, outside Column_Number.
 
    function Scan_Dotted_Name return String
      with Pre => At_Name;

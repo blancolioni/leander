@@ -4,6 +4,7 @@ with Ada.Directories;
 with Ada.Strings.Fixed;
 
 with GCS.Constraints;
+with GCS.Errors;
 
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
@@ -486,9 +487,10 @@ package body Leander.Parser is
    -------------
 
    function Resolve
-     (This    : Parse_Context'Class;
-      Written : String;
-      Space   : Leander.Scopes.Name_Space)
+     (This     : Parse_Context'Class;
+      Written  : String;
+      Space    : Leander.Scopes.Name_Space;
+      Location : Leander.Source.Source_Location)
       return String
    is
       use Ada.Strings.Unbounded;
@@ -503,11 +505,29 @@ package body Leander.Parser is
       This.Scope.Resolve (Written, Space, Name, Message);
 
       if Message /= Null_Unbounded_String then
-         Error (To_String (Message));
+         Report (Location, To_String (Message));
       end if;
 
       return To_String (Name);
    end Resolve;
+
+   ------------
+   -- Report --
+   ------------
+
+   procedure Report
+     (Location : Leander.Source.Source_Location;
+      Message  : String)
+   is
+   begin
+      GCS.Errors.Error
+        (GCS.Errors.Error,
+         Leander.Source.Simple_File_Name (Location),
+         GCS.Constraints.Line_Number (Leander.Source.Line_Number (Location)),
+         GCS.Constraints.Column_Count
+           (Leander.Source.Column_Number (Location)),
+         Message);
+   end Report;
 
    -------------------------
    -- Scan_Qualified_Name --

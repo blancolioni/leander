@@ -70,6 +70,8 @@ package body Leander.Environment is
          Classes               : Type_Class_Maps.Map;
          Instances             : Instance_Maps.Map;
          Own                   : WL.String_Sets.Set;
+         Exports               : WL.String_Sets.Set;
+         Exports_All           : Boolean := True;
       end record;
       --  Own holds the names this module declares itself, as opposed to
       --  the ones it inherited through an Import. Only a module's own
@@ -203,6 +205,17 @@ package body Leander.Environment is
       Name : String)
       return String;
 
+   overriding procedure Start_Exports (This : in out Instance);
+
+   overriding procedure Add_Export
+     (This : in out Instance;
+      Name : String);
+
+   overriding function Is_Exported
+     (This : Instance;
+      Name : String)
+      return Boolean;
+
    overriding function Declared_Names
      (This : Instance)
       return Leander.Names.Name_Array;
@@ -295,6 +308,58 @@ package body Leander.Environment is
       return (for some Ch of Name =>
                 Ch in 'a' .. 'z' | 'A' .. 'Z' | '_');
    end Is_Prefixable;
+
+   ----------------
+   -- Add_Export --
+   ----------------
+
+   overriding procedure Add_Export
+     (This : in out Instance;
+      Name : String)
+   is
+   begin
+      This.Exports.Include (Name);
+   end Add_Export;
+
+   -----------------
+   -- Is_Exported --
+   -----------------
+
+   overriding function Is_Exported
+     (This : Instance;
+      Name : String)
+      return Boolean
+   is
+   begin
+      if Name = "" then
+         return False;
+      elsif Name (Name'First) = '#' then
+         --  A Skit primitive is an FFI symbol, not a Haskell entity, and
+         --  is private to the module that imported it however that
+         --  module's export list reads.
+         return False;
+      elsif not Is_Prefixable (Name) then
+         --  Built-in syntax -- [] : () (,) -> -- and the synthetic names
+         --  dictionary passing matches by string. Every list or tuple
+         --  literal is an ECon on one of these, so they are in scope
+         --  everywhere and no export list mentions them. Real Haskell's
+         --  Prelude does not list them either, for the same reason.
+         return True;
+      elsif This.Exports_All then
+         return This.Own.Contains (Name);
+      else
+         return This.Exports.Contains (Name);
+      end if;
+   end Is_Exported;
+
+   --------------------
+   -- Start_Exports --
+   --------------------
+
+   overriding procedure Start_Exports (This : in out Instance) is
+   begin
+      This.Exports_All := False;
+   end Start_Exports;
 
    ----------------
    -- Local_Name --
@@ -1167,6 +1232,18 @@ package body Leander.Environment is
       -- Visible --
       -------------
 
+      Wholesale : constant Boolean :=
+                    Mode = All_Names and then E.Exports_All;
+
+      function Exported (Name : String) return Boolean
+      is (not E.Own.Contains (Name) or else E.Is_Exported (Name));
+      --  What the exporting module inherited is left alone: its export
+      --  list speaks about its own declarations, and the copies it
+      --  carries are already under whatever key they should have. That
+      --  they travel one module further than Haskell would re-export is
+      --  a known looseness, harmless while every module imports the
+      --  Prelude for itself.
+
       function Visible (Name : String) return Boolean is
          Listed : Boolean := False;
       begin
@@ -1238,9 +1315,11 @@ package body Leander.Environment is
          declare
             Bare : constant String := Tycon_Maps.Key (Position);
          begin
-            Add_Tycon (Canonical (Bare), Tycon_Maps.Element (Position));
-            if Visible (Bare) then
-               Add_Tycon (Bare, Tycon_Maps.Element (Position));
+            if Exported (Bare) then
+               Add_Tycon (Canonical (Bare), Tycon_Maps.Element (Position));
+               if Visible (Bare) then
+                  Add_Tycon (Bare, Tycon_Maps.Element (Position));
+               end if;
             end if;
          end;
       end loop;
@@ -1249,9 +1328,11 @@ package body Leander.Environment is
          declare
             Bare : constant String := Con_Maps.Key (Position);
          begin
-            Add_Con (Canonical (Bare), Con_Maps.Element (Position));
-            if Visible (Bare) then
-               Add_Con (Bare, Con_Maps.Element (Position));
+            if Exported (Bare) then
+               Add_Con (Canonical (Bare), Con_Maps.Element (Position));
+               if Visible (Bare) then
+                  Add_Con (Bare, Con_Maps.Element (Position));
+               end if;
             end if;
          end;
       end loop;
@@ -1260,17 +1341,21 @@ package body Leander.Environment is
          declare
             Bare : constant String := Type_Class_Maps.Key (Position);
          begin
-            Add_Class (Canonical (Bare), Type_Class_Maps.Element (Position));
-            if Visible (Bare) then
-               Add_Class (Bare, Type_Class_Maps.Element (Position));
+            if Exported (Bare) then
+               Add_Class (Canonical (Bare), Type_Class_Maps.Element (Position));
+               if Visible (Bare) then
+                  Add_Class (Bare, Type_Class_Maps.Element (Position));
+               end if;
             end if;
          end;
       end loop;
 
-      if Mode = All_Names then
-         --  The whole chain in one link. Composing the Prelude's ~250
-         --  names individually would build a chain that deep, and Lookup
-         --  walks it linearly on every inference miss.
+      --  The whole chain in one link, when nothing has to be held back.
+      --  Composing the Prelude's ~250 names individually would build a
+      --  chain that deep, and Lookup walks it linearly on every inference
+      --  miss. An import list or an export list means going name by name
+      --  instead, because the chain cannot be composed selectively.
+      if Wholesale then
          This.Type_Env := This.Type_Env.Compose (E.Type_Env);
       end if;
 
@@ -1281,14 +1366,14 @@ package body Leander.Environment is
             Scheme : constant Leander.Core.Type_Env.Nullable_Scheme_Reference
               := E.Type_Env.Lookup (N);
          begin
-            if Scheme /= null then
+            if Scheme /= null and then Exported (Bare) then
                if Key /= Bare then
                   This.Type_Env :=
                     This.Type_Env.Compose
                       (Key, Leander.Core.Schemes.Reference (Scheme));
                end if;
 
-               if Mode /= All_Names and then Visible (Bare) then
+               if not Wholesale and then Visible (Bare) then
                   This.Type_Env :=
                     This.Type_Env.Compose
                       (Bare, Leander.Core.Schemes.Reference (Scheme));

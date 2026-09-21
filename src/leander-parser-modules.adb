@@ -1,4 +1,7 @@
+with Leander.Core;
+with Leander.Data_Types;
 with Leander.Environment.Prelude;
+with Leander.Source;
 
 with Leander.Names;
 with Leander.Scopes;
@@ -30,6 +33,11 @@ package body Leander.Parser.Modules is
    procedure Parse_Export_List
      (Exports : in out Leander.Syntax.Modules.Export_List);
 
+   procedure Apply_Exports
+     (Env      : Leander.Environment.Reference;
+      Exports  : Leander.Syntax.Modules.Export_List;
+      Location : Leander.Source.Source_Location);
+
    procedure Parse_Import
      (Context  : in out Parse_Context'Class;
       Env      : Leander.Environment.Reference;
@@ -42,12 +50,69 @@ package body Leander.Parser.Modules is
       Alias    : String;
       From_Dir : String;
       Import   : Leander.Syntax.Modules.Import_Declaration);
-   --  Load Name and bring it into Env. The environment copy is deliberately
-   --  unfiltered even for a selective import: a name list says what the
-   --  programmer may write, not what the linker may reach, and pruning the
-   --  constructor and class maps would break a binding compiled in the
-   --  imported module that resolves its own constructors against the
-   --  importer. Enforcing what may be written is the scope table's job.
+   --  Load Name and bring it into Env. What the import declaration
+   --  restricts is what may be written, so the decision it carries is
+   --  passed to Environment.Import, which acts on it by choosing which
+   --  keys a name arrives under rather than by removing anything.
+
+   -------------------
+   -- Apply_Exports --
+   -------------------
+
+   procedure Apply_Exports
+     (Env      : Leander.Environment.Reference;
+      Exports  : Leander.Syntax.Modules.Export_List;
+      Location : Leander.Source.Source_Location)
+   is
+      procedure Export (Item : String);
+
+      ------------
+      -- Export --
+      ------------
+
+      procedure Export (Item : String) is
+      begin
+         if Env.Declares (Item) then
+            Env.Add_Export (Item);
+         else
+            Report (Location,
+                    "module " & Env.Name & " exports " & Item
+                    & ", which it does not declare");
+         end if;
+      end Export;
+
+   begin
+      Env.Start_Exports;
+
+      for I in 1 .. Exports.Count loop
+         declare
+            Item : constant String := Exports.Name (I);
+         begin
+            Export (Item);
+
+            if Exports.Exports_Constructors (I) then
+               --  "T(..)": the constructors can only be named now that the
+               --  data type exists.
+               if Env.Exists (Leander.Names.To_Leander_Name (Item),
+                              Leander.Environment.Type_Constructor)
+               then
+                  declare
+                     DT : constant Leander.Data_Types.Reference :=
+                            Env.Data_Type (Leander.Core.To_Conid (Item));
+                  begin
+                     for J in 1 .. DT.Constructor_Count loop
+                        Export (Leander.Core.To_String (DT.Constructor_Name (J)));
+                     end loop;
+                  end;
+               end if;
+            else
+               for J in 1 .. Exports.Constructor_Count (I) loop
+                  Export (Exports.Constructor (I, J));
+               end loop;
+            end if;
+         end;
+      end loop;
+   end Apply_Exports;
 
    ---------------
    -- Do_Import --
@@ -104,8 +169,10 @@ package body Leander.Parser.Modules is
       From_Dir : String)
       return Leander.Environment.Reference
    is
-      Exports : Leander.Syntax.Modules.Export_List;
-      Env     : constant Leander.Environment.Reference :=
+      Exports    : Leander.Syntax.Modules.Export_List;
+      Export_Loc : Leander.Source.Source_Location :=
+                     Leander.Source.No_Location;
+      Env        : constant Leander.Environment.Reference :=
                   (if Name = "Prelude"
                    then Leander.Environment.Prelude.Create
                    else Leander.Environment.New_Environment (Name));
@@ -119,14 +186,8 @@ package body Leander.Parser.Modules is
       Context.Set_Scope (Leander.Scopes.New_Scope);
 
       if Tok = Tok_Left_Paren then
+         Export_Loc := Current_Source_Location;
          Parse_Export_List (Exports);
-
-         --  Reported here rather than once the declarations are in: at
-         --  end of file Tok_Column is 0, which is outside Column_Number,
-         --  so Lexical.Warning raises there. Pointing at the list is the
-         --  better diagnostic anyway.
-         Warning ("export lists are parsed but not yet enforced; "
-                  & Name & " still exports everything it declares");
       end if;
 
       Expect (Tok_Where,
@@ -165,6 +226,9 @@ package body Leander.Parser.Modules is
       --  Applying Exports belongs here, after the declarations exist:
       --  "T(..)" cannot name its constructors, and "exports a name this
       --  module never declared" cannot be detected, any earlier.
+      if Exports.Is_Present then
+         Apply_Exports (Env, Exports, Export_Loc);
+      end if;
 
       return Env;
    end Parse_Module;

@@ -82,7 +82,10 @@ package body Leander.Scopes is
                      Env : constant Leander.Environment.Reference :=
                              This.Modules (Qualifier);
                   begin
-                     if Env.Declares (Simple) then
+                     --  Is_Exported, not Declares: a name the module
+                     --  keeps to itself is no more reachable behind a
+                     --  qualifier than it is bare.
+                     if Env.Is_Exported (Simple) then
                         Name :=
                           To_Unbounded_String (Env.Canonical_Name (Simple));
                      else

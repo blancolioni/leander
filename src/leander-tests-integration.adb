@@ -764,6 +764,15 @@ package body Leander.Tests.Integration is
          "enforcedArea", "12",
          Handle);
 
+      --  An export list restricts what an importer may name, while the
+      --  exporting module still uses its own unexported names freely:
+      --  Hidden exports only "visible", which is "secret + 1".
+      Test_Module
+        ("module: an exported name crosses the boundary",
+         Modules_Root & "UseHidden.hs",
+         "throughExport", "42",
+         Handle);
+
       Test_Main
         ("--main: a module that imports another",
          Modules_Root & "UseShapes.hs");

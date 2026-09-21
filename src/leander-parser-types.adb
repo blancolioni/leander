@@ -92,7 +92,7 @@ package body Leander.Parser.Types is
                declare
                   Key : constant String :=
                           Context.Resolve
-                            (Written, Leander.Scopes.Type_Space);
+                            (Written, Leander.Scopes.Type_Space, Loc);
                begin
                   --  Resolving settles whether the name may be written
                   --  here -- an import that hides a type never inserts it

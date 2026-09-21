@@ -438,13 +438,13 @@ package body Leander.Parser.Expressions is
                  Constructor
                    (Loc,
                     Context.Resolve
-                      (Written, Leander.Scopes.Constructor_Space));
+                      (Written, Leander.Scopes.Constructor_Space, Loc));
             else
                return Var : constant Reference :=
                  Variable
                    (Loc,
                     Context.Resolve
-                      (Written, Leander.Scopes.Value_Space));
+                      (Written, Leander.Scopes.Value_Space, Loc));
             end if;
          end;
       elsif At_Variable_Name then

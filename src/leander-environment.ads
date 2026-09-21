@@ -166,6 +166,28 @@ package Leander.Environment is
    --  cannot answer this: Import copies into them, so by the time anyone
    --  asks, an inherited name looks exactly like a declared one.
 
+   procedure Start_Exports (This : in out Abstraction) is abstract;
+   procedure Add_Export
+     (This : in out Abstraction;
+      Name : String)
+      is abstract;
+   --  Record that this module has an export list, and add one name to it.
+   --  A module that never calls Start_Exports exports everything it
+   --  declares, which is Haskell's default for a module with no list.
+   --  These must be called only once the declarations are in: "T(..)"
+   --  cannot name its constructors, and an export naming something the
+   --  module never declared cannot be spotted, any earlier.
+
+   function Is_Exported
+     (This : Abstraction;
+      Name : String)
+      return Boolean
+      is abstract;
+   --  Whether another module may see Name. Always False for a machine
+   --  primitive, which is an FFI symbol rather than a Haskell entity, and
+   --  always True for built-in syntax and for the synthetic names that
+   --  dictionary passing resolves by string.
+
    function Canonical_Name
      (This : Abstraction;
       Name : String)
