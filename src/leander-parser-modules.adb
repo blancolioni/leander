@@ -91,8 +91,9 @@ package body Leander.Parser.Modules is
             Export (Item);
 
             if Exports.Exports_Constructors (I) then
-               --  "T(..)": the constructors can only be named now that the
-               --  data type exists.
+               --  "T(..)" means a data type's constructors or a class's
+               --  methods, depending on what T turns out to be, and
+               --  neither can be named until the declarations are in.
                if Env.Exists (Leander.Names.To_Leander_Name (Item),
                               Leander.Environment.Type_Constructor)
                then
@@ -101,9 +102,18 @@ package body Leander.Parser.Modules is
                             Env.Data_Type (Leander.Core.To_Conid (Item));
                   begin
                      for J in 1 .. DT.Constructor_Count loop
-                        Export (Leander.Core.To_String (DT.Constructor_Name (J)));
+                        Export
+                          (Leander.Core.To_String (DT.Constructor_Name (J)));
                      end loop;
                   end;
+               elsif Env.Exists (Leander.Names.To_Leander_Name (Item),
+                                 Leander.Environment.Class_Binding)
+               then
+                  for M of Env.Get_Class (Leander.Core.To_Conid (Item))
+                             .Methods
+                  loop
+                     Export (Leander.Core.To_String (M));
+                  end loop;
                end if;
             else
                for J in 1 .. Exports.Constructor_Count (I) loop
@@ -140,39 +150,60 @@ package body Leander.Parser.Modules is
                 else Leander.Environment.Only_Names);
 
       function Visible_Names return Leander.Names.Name_Array;
-      function Constructors_Of (Type_Name : String)
+      function Sub_Names_Of (Name : String)
         return Leander.Names.Name_Array;
       function Wildcard_Constructors (From : Positive)
         return Leander.Names.Name_Array;
 
-      ---------------------
-      -- Constructors_Of --
-      ---------------------
+      -------------------
+      -- Sub_Names_Of --
+      -------------------
 
-      function Constructors_Of (Type_Name : String)
+      function Sub_Names_Of (Name : String)
         return Leander.Names.Name_Array
       is
+         Id : constant Leander.Core.Conid := Leander.Core.To_Conid (Name);
       begin
-         if not Imported.Exists
-           (Leander.Names.To_Leander_Name (Type_Name),
+         --  What "(..)" stands for depends on what was named: a data
+         --  type's constructors, or a class's methods.
+         if Imported.Exists
+           (Leander.Names.To_Leander_Name (Name),
             Leander.Environment.Type_Constructor)
          then
+            declare
+               DT : constant Leander.Data_Types.Reference :=
+                      Imported.Data_Type (Id);
+            begin
+               return R : Leander.Names.Name_Array
+                            (1 .. DT.Constructor_Count)
+               do
+                  for J in R'Range loop
+                     R (J) :=
+                       Leander.Names.To_Leander_Name
+                         (Leander.Core.To_String (DT.Constructor_Name (J)));
+                  end loop;
+               end return;
+            end;
+         elsif Imported.Exists
+           (Leander.Names.To_Leander_Name (Name),
+            Leander.Environment.Class_Binding)
+         then
+            declare
+               Methods : constant Leander.Core.Varid_Array :=
+                           Imported.Get_Class (Id).Methods;
+            begin
+               return R : Leander.Names.Name_Array (Methods'Range) do
+                  for J in R'Range loop
+                     R (J) :=
+                       Leander.Names.To_Leander_Name
+                         (Leander.Core.To_String (Methods (J)));
+                  end loop;
+               end return;
+            end;
+         else
             return [];
          end if;
-
-         declare
-            DT : constant Leander.Data_Types.Reference :=
-                   Imported.Data_Type (Leander.Core.To_Conid (Type_Name));
-         begin
-            return R : Leander.Names.Name_Array (1 .. DT.Constructor_Count) do
-               for J in R'Range loop
-                  R (J) :=
-                    Leander.Names.To_Leander_Name
-                      (Leander.Core.To_String (DT.Constructor_Name (J)));
-               end loop;
-            end return;
-         end;
-      end Constructors_Of;
+      end Sub_Names_Of;
 
       ---------------------------
       -- Wildcard_Constructors --
@@ -186,7 +217,7 @@ package body Leander.Parser.Modules is
          if From > Import.Wildcard_Count then
             return [];
          else
-            return Constructors_Of (Import.Wildcard (From))
+            return Sub_Names_Of (Import.Wildcard (From))
               & Wildcard_Constructors (From + 1);
          end if;
       end Wildcard_Constructors;

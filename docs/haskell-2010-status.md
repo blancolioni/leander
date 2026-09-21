@@ -122,7 +122,7 @@ core rejects is marked by its effective (worst) status.
 | Feature | Status | Note |
 |---|---|---|
 | `module Name where` header | ✅ | Dotted names. The header names the module; the file base name must match its last component. |
-| Export lists | ✅ | `name`, `(op)`, `T(..)`, `T(C1,C2)`. A name kept back is unreachable even qualified. `module M` re-export rejected. |
+| Export lists | ✅ | `name`, `(op)`, `T(..)`, `T(C1,C2)`, `C(..)`, `C(m1,m2)`. A name kept back is unreachable even qualified. `module M` re-export rejected. |
 | `import` declarations | ✅ | Resolved by name: `Data.List` is `Data/List.hs` under the importing file's directory, then each `-i` directory, then the installed module directory. Cycles are reported. |
 | Qualified / `hiding` / `as` / import lists | 🟡 | All enforced, including `T(..)` expansion. Qualified operators work in a section (`(M.+)`) but not infix (`a M.+ b`). |
 | Multiple modules / separate compilation | 🟡 | Several modules load and link together. Separate compilation is not there yet: a `.skix` is written per module but only the Prelude's is read back. |
