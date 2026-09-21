@@ -61,8 +61,6 @@ package body Leander.Parser is
        then Directory & Relative
        else Directory & '/' & Relative);
 
-   function Last_Component (Name : String) return String;
-   --  The part of a dotted module name after its final dot.
 
    ------------------
    -- Add_Fixity --
@@ -193,16 +191,16 @@ package body Leander.Parser is
       Include_Path_List.Append (Dir);
    end Add_Include_Path;
 
-   --------------------
-   -- Last_Component --
-   --------------------
+   -------------------------
+   -- Last_Name_Component --
+   -------------------------
 
-   function Last_Component (Name : String) return String is
+   function Last_Name_Component (Name : String) return String is
       Dot : constant Natural :=
               Ada.Strings.Fixed.Index (Name, ".", Ada.Strings.Backward);
    begin
       return (if Dot = 0 then Name else Name (Dot + 1 .. Name'Last));
-   end Last_Component;
+   end Last_Name_Component;
 
    -----------------
    -- Load_Module --
@@ -250,9 +248,9 @@ package body Leander.Parser is
          --  The header is what names the module, but a file claiming a
          --  name its own file name contradicts would poison the cache for
          --  anything later importing either name, so say so.
-         if Last_Component (Module) /= Base then
+         if Last_Name_Component (Module) /= Base then
             Error ("module " & Module & " should be in a file named "
-                   & Last_Component (Module) & ".hs");
+                   & Last_Name_Component (Module) & ".hs");
          end if;
 
          if Loaded_Module_Map.Contains (Module) then
@@ -312,7 +310,8 @@ package body Leander.Parser is
       --  building, so a load started from inside a parse would otherwise
       --  leave the importer parsing against the imported module's
       --  environment.
-      Saved : constant Leander.Environment.Reference := Context.Env;
+      Saved       : constant Leander.Environment.Reference := Context.Env;
+      Saved_Scope : constant Leander.Scopes.Reference := Context.Scope;
    begin
       if Loaded_Module_Map.Contains (Name) then
          return Loaded_Module_Map (Name);
@@ -333,10 +332,12 @@ package body Leander.Parser is
            Context.Load_Module (Path)
          do
             Context.Env := Saved;
+            Context.Scope := Saved_Scope;
          end return;
       exception
          when others =>
             Context.Env := Saved;
+            Context.Scope := Saved_Scope;
             raise;
       end;
    end Load_Module_By_Name;
@@ -479,6 +480,133 @@ package body Leander.Parser is
          Close;
       end return;
    end Parse_Expression;
+
+   -------------
+   -- Resolve --
+   -------------
+
+   function Resolve
+     (This    : Parse_Context'Class;
+      Written : String;
+      Space   : Leander.Scopes.Name_Space)
+      return String
+   is
+      use Ada.Strings.Unbounded;
+      use type Leander.Scopes.Reference;
+      Name    : Unbounded_String;
+      Message : Unbounded_String;
+   begin
+      if This.Scope = null then
+         return Written;
+      end if;
+
+      This.Scope.Resolve (Written, Space, Name, Message);
+
+      if Message /= Null_Unbounded_String then
+         Error (To_String (Message));
+      end if;
+
+      return To_String (Name);
+   end Resolve;
+
+   -------------------------
+   -- Scan_Qualified_Name --
+   -------------------------
+
+   function Scan_Qualified_Name return String is
+      use Ada.Strings.Unbounded;
+
+      Result    : Unbounded_String;
+      Line      : GCS.Constraints.Line_Number;
+      Next_Col  : GCS.Constraints.Column_Count;
+      Qualifier : Boolean;
+
+      procedure Take_Component;
+      function Adjacent return Boolean;
+
+      --------------
+      -- Adjacent --
+      --------------
+
+      function Adjacent return Boolean
+      is (Tok = Tok_Identifier
+          and then Tok_Line = Line
+          and then Tok_Column = Next_Col);
+      --  Tok_Info.Finish is never assigned (gcs-lexer.adb), so the end of
+      --  a token is its column plus its length. Gating on Tok_Identifier
+      --  is what keeps "[A..B]" safe: ".." lexes as Tok_Dot_Dot.
+
+      --------------------
+      -- Take_Component --
+      --------------------
+
+      procedure Take_Component is
+      begin
+         Append (Result, Tok_Text);
+         Line := Tok_Line;
+         Next_Col := Tok_Column + Tok_Text'Length;
+         Scan;
+      end Take_Component;
+
+   begin
+      Qualifier := Is_Constructor (Tok_Text);
+      Take_Component;
+
+      while Qualifier and then Adjacent loop
+         declare
+            Run : constant String := Tok_Text;
+         begin
+            exit when Run (Run'First) /= '.';
+
+            if Run'Length > 1 then
+               --  The lexer groups a run of symbolic characters together,
+               --  so "S.+" arrives as "S" then ".+" -- one token holding
+               --  both the dot and the operator it qualifies. A run
+               --  starting ".." is Tok_Dot_Dot's shape and never a name.
+               exit when Run (Run'First + 1) = '.';
+               Append (Result, Run);
+               Scan;
+               exit;
+            end if;
+
+            Line := Tok_Line;
+            Next_Col := Tok_Column + 1;
+            Scan;
+
+            if not Adjacent then
+               --  The dot is consumed and the lexer cannot push a token
+               --  back, so there is nothing to do but report it.
+               Error ("expected a name after '.'");
+               exit;
+            end if;
+
+            Append (Result, ".");
+            Qualifier := Is_Constructor (Tok_Text);
+            Take_Component;
+         end;
+      end loop;
+
+      return To_String (Result);
+   end Scan_Qualified_Name;
+
+   ---------------
+   -- Set_Scope --
+   ---------------
+
+   procedure Set_Scope
+     (This  : in out Parse_Context'Class;
+      Scope : Leander.Scopes.Reference)
+   is
+   begin
+      This.Scope := Scope;
+   end Set_Scope;
+
+   -----------------------
+   -- Tok_Is_Identifier --
+   -----------------------
+
+   function Tok_Is_Identifier return Boolean
+   is (Tok = Tok_Identifier);
 
    ----------------------
    -- Scan_Dotted_Name --

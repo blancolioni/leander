@@ -1,5 +1,6 @@
 with Leander.Environment.Prelude;
 
+with Leander.Scopes;
 with Leander.Syntax.Modules;
 
 with Leander.Parser.Declarations;
@@ -37,6 +38,7 @@ package body Leander.Parser.Modules is
      (Context  : in out Parse_Context'Class;
       Env      : Leander.Environment.Reference;
       Name     : String;
+      Alias    : String;
       From_Dir : String);
    --  Load Name and bring it into Env. The environment copy is deliberately
    --  unfiltered even for a selective import: a name list says what the
@@ -53,6 +55,7 @@ package body Leander.Parser.Modules is
      (Context  : in out Parse_Context'Class;
       Env      : Leander.Environment.Reference;
       Name     : String;
+      Alias    : String;
       From_Dir : String)
    is
       use type Leander.Environment.Reference;
@@ -70,6 +73,7 @@ package body Leander.Parser.Modules is
          Error ("module " & Name & " cannot import itself");
       else
          Env.Import (Imported);
+         Context.Scope.Add_Module (Alias, Imported);
       end if;
    end Do_Import;
 
@@ -90,6 +94,12 @@ package body Leander.Parser.Modules is
                    else Leander.Environment.New_Environment (Name));
    begin
       Context.New_Environment (Env);
+
+      --  A scope table per module, so that one module's aliases are not
+      --  visible from another. Load_Module_By_Name saves and restores it
+      --  alongside the environment, which is what makes a module loaded
+      --  partway through another module's parse safe.
+      Context.Set_Scope (Leander.Scopes.New_Scope);
 
       if Tok = Tok_Left_Paren then
          Parse_Export_List (Exports);
@@ -112,7 +122,8 @@ package body Leander.Parser.Modules is
       --  import rather than a special case is what will later let
       --  "import Prelude ()" and "import qualified Prelude" mean anything.
       if Name /= "Prelude" then
-         Do_Import (Context, Env, "Prelude", From_Dir => "");
+         Do_Import (Context, Env, "Prelude", Alias => "Prelude",
+                    From_Dir => "");
       end if;
 
       while Tok = Tok_Import loop
@@ -316,7 +327,7 @@ package body Leander.Parser.Modules is
                   & " is imported in full and unqualified");
       end if;
 
-      Do_Import (Context, Env, Import.Module_Name, From_Dir);
+      Do_Import (Context, Env, Import.Module_Name, Import.Alias, From_Dir);
    end Parse_Import;
 
    ------------------------

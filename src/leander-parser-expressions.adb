@@ -11,6 +11,7 @@ with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
 with Leander.Parser.Bindings;
 with Leander.Parser.Sequences;
+with Leander.Scopes;
 with Leander.Source;
 with Leander.Syntax.Bindings;
 with Leander.Syntax.Expressions;
@@ -422,7 +423,31 @@ package body Leander.Parser.Expressions is
       end Parse_Rest_Of_Tuple;
 
    begin
-      if At_Variable_Name then
+      if Tok = Tok_Identifier and then Is_Alphanumeric_Identifier (Tok_Text)
+      then
+         --  Consume, then classify. "A.B.c" is five tokens against three
+         --  of usable lookahead, and At_Constructor would read only the
+         --  first component -- so a qualified name has to be assembled
+         --  before anything can be decided about it.
+         declare
+            Written : constant String := Scan_Qualified_Name;
+            Simple  : constant String := Last_Name_Component (Written);
+         begin
+            if Is_Constructor (Simple) then
+               return Con : constant Reference :=
+                 Constructor
+                   (Loc,
+                    Context.Resolve
+                      (Written, Leander.Scopes.Constructor_Space));
+            else
+               return Var : constant Reference :=
+                 Variable
+                   (Loc,
+                    Context.Resolve
+                      (Written, Leander.Scopes.Value_Space));
+            end if;
+         end;
+      elsif At_Variable_Name then
          return Var : constant Reference :=
            Variable (Loc, Scan_Identifier);
       elsif At_Constructor_Name then

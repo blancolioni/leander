@@ -1,6 +1,7 @@
 with Ada.Strings.Unbounded;
 
 with Leander.Environment;
+with Leander.Scopes;
 with Leander.Syntax.Expressions;
 
 with Leander.Source;
@@ -141,6 +142,33 @@ private
    function Scan_Identifier return String
      with Pre => At_Identifier;
 
+   function Scan_Qualified_Name return String
+     with Pre => Tok_Is_Identifier;
+   --  Consume a name that may carry a module qualifier and return it as
+   --  written, qualifier included: "Data.Map.insert", "S.Square", "S.+".
+   --
+   --  A dot joins the run only when it is written with no space either
+   --  side and the component before it looks like a module name, which is
+   --  Haskell's own rule and is what leaves "f . g" and "f.g" as
+   --  composition. The run cannot be classified before it is consumed --
+   --  "A.B.c" is five tokens against three of usable lookahead -- so
+   --  callers must decide what they have from the result, not from the
+   --  token they started on.
+
+   function Scope (This : Parse_Context'Class) return Leander.Scopes.Reference;
+   procedure Set_Scope
+     (This  : in out Parse_Context'Class;
+      Scope : Leander.Scopes.Reference);
+
+   function Resolve
+     (This    : Parse_Context'Class;
+      Written : String;
+      Space   : Leander.Scopes.Name_Space)
+      return String;
+   --  The name to use for Written, reporting at the current source
+   --  location if it cannot be resolved. Falls back to Written on failure
+   --  so that one bad name does not derail the rest of the parse.
+
    function Scan_Dotted_Name return String
      with Pre => At_Name;
    --  Consume a maximal run of adjacent identifiers joined by dots and
@@ -151,10 +179,22 @@ private
    --  the caller's decision: in a module header or an import declaration
    --  there is nothing else it could be.
 
+   function Last_Name_Component (Name : String) return String;
+   --  The part of a dotted name after its final dot, i.e. the name itself
+   --  with any module qualifier removed.
+
+   function Tok_Is_Identifier return Boolean;
+   --  Tok = Tok_Identifier, exposed so that Scan_Qualified_Name can state
+   --  its precondition without the token type being visible here.
+
    type Parse_Context is tagged
       record
-         Env : Leander.Environment.Reference;
+         Env   : Leander.Environment.Reference;
+         Scope : Leander.Scopes.Reference;
       end record;
+
+   function Scope (This : Parse_Context'Class) return Leander.Scopes.Reference
+   is (This.Scope);
 
    function Environment
      (This : Parse_Context'Class)

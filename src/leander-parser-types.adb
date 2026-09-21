@@ -5,6 +5,7 @@ with Leander.Core.Types;
 with Leander.Core.Tyvars;
 with Leander.Environment;
 with Leander.Names;
+with Leander.Scopes;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
@@ -78,7 +79,27 @@ package body Leander.Parser.Types is
       end Scan_Rest_Of_Tuple;
 
    begin
-      if At_Variable then
+      if Tok = Tok_Identifier and then Is_Alphanumeric_Identifier (Tok_Text)
+      then
+         --  This site reads Tok_Text and scans directly rather than going
+         --  through Scan_Identifier, so a hook placed there alone would
+         --  leave qualified type names silently unqualified.
+         declare
+            Written : constant String := Scan_Qualified_Name;
+            Simple  : constant String := Last_Name_Component (Written);
+         begin
+            if Is_Constructor (Simple) then
+               return Constructor
+                 (Loc,
+                  Context.Resolve (Written, Leander.Scopes.Type_Space));
+            else
+               --  A type variable is never qualified, and
+               --  Scan_Qualified_Name will not have joined a run behind a
+               --  lowercase component anyway.
+               return Variable (Loc, Written);
+            end if;
+         end;
+      elsif At_Variable then
          return T : constant Reference := Variable (Loc, Tok_Text) do
             Scan;
          end return;

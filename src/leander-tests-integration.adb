@@ -254,6 +254,16 @@ package body Leander.Tests.Integration is
                  "Int", "3",
                  Handle);
 
+      --  A dot only joins a qualified name when it is written tight
+      --  against a module-shaped component either side, so composition
+      --  keeps working whether or not it is spaced.
+      Test_Eval ("(negate . negate) 5",
+                 "Int", "5",
+                 Handle);
+      Test_Eval ("(negate.negate) 5",
+                 "Int", "5",
+                 Handle);
+
       --  Phase 2: Module tests (non-IO)
       --  Simple function definition
 
@@ -717,6 +727,18 @@ package body Leander.Tests.Integration is
         ("module: qualified, aliased and selective imports all parse",
          Modules_Root & "AllForms.hs",
          "value", "6",
+         Handle);
+
+      Test_Module
+        ("module: a qualified function name",
+         Modules_Root & "Qualified.hs",
+         "qualSquareArea", "25",
+         Handle);
+
+      Test_Module
+        ("module: a qualified constructor and type name",
+         Modules_Root & "Qualified.hs",
+         "qualCircleArea", "27",
          Handle);
 
       Test_Main
