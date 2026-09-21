@@ -64,6 +64,17 @@ package Leander.Core.Type_Env is
 
    type Builder is tagged private;
 
+   procedure Iterate
+     (This    : Instance;
+      Process : not null access
+        procedure (Name   : Leander.Names.Leander_Name;
+                   Scheme : Leander.Core.Schemes.Reference));
+   --  Every distinct name this chain can resolve, nearest link first, so
+   --  a name shadowed further along is reported once with the binding
+   --  that wins. The way to take a filtered copy of an environment:
+   --  a chain cannot have anything removed from it, only a new link put
+   --  in front, so a restricted import builds its own link from this.
+
    procedure Insert
      (This   : in out Builder;
       Name   : String;

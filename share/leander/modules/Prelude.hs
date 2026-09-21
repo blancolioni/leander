@@ -1,4 +1,18 @@
-module Prelude where
+module Prelude
+  ( Bool(..), Either(..), IO(..), Maybe(..), Ordering(..), Applicative,
+    Bounded, Enum, Eq, Functor, Monad, Num, Ord, Show, abs, all, and,
+    any, break, compare, concat, const, curry, cycle, div, drop,
+    dropWhile, elem, enumFrom, enumFromThen, enumFromThenTo, enumFromTo,
+    error, filter, flip, fmap, foldl, foldl', foldl1, foldr, fromEnum,
+    fromInteger, fst, head, id, init, iterate, last, length, lookup,
+    map, mapM, mapM_, max, maxBound, maximum, min, minBound, minimum,
+    mod, negate, not, notElem, null, or, otherwise, pred, print,
+    product, pure, putChar, putStr, putStrLn, repeat, replicate, return,
+    reverse, runIO, seq, sequence, sequence_, showMaybe, signum, snd,
+    span, subtract, succ, sum, tail, take, takeWhile, toEnum, uncurry,
+    zip, zipWith, (!!), ($), ($!), (&&), (*), (+), (++), (-), (.), (/=),
+    (<), (<*>), (<=), (==), (>), (>=), (>>), (>>=), (||)
+  ) where
 
 type String = [Char]
 

@@ -1245,6 +1245,7 @@ package body Leander.Environment is
       This.Values.Insert
         (Leander.Names.To_Leander_Name (Name),
          Leander.Calculus.Symbol (Foreign_Name));
+      This.Own.Include (Name);
       This.Type_Env :=
         This.Type_Env.Compose
           (Core.To_Varid (Name),
@@ -1275,7 +1276,6 @@ package body Leander.Environment is
       Mode    : Import_Visibility := All_Names;
       Names   : Leander.Names.Name_Array := [])
    is
-      use type Leander.Core.Type_Env.Nullable_Scheme_Reference;
       E : Instance'Class renames Instance'Class (Env.all);
 
       function Visible (Name : String) return Boolean;
@@ -1421,30 +1421,44 @@ package body Leander.Environment is
       declare
          Imported : Leander.Core.Type_Env.Builder;
          Any      : Boolean := False;
-      begin
-         for N of E.Declared_Names loop
-            declare
-               Bare   : constant String := Leander.Names.To_String (N);
-               Key    : constant String := Canonical (Bare);
-               Scheme : constant
-                 Leander.Core.Type_Env.Nullable_Scheme_Reference
-                   := E.Type_Env.Lookup (N);
-            begin
-               if Scheme /= null and then Exported (Bare) then
-                  if Key /= Bare then
-                     Imported.Insert
-                       (Key, Leander.Core.Schemes.Reference (Scheme));
-                     Any := True;
-                  end if;
 
-                  if not Wholesale and then Visible (Bare) then
-                     Imported.Insert
-                       (Bare, Leander.Core.Schemes.Reference (Scheme));
-                     Any := True;
-                  end if;
-               end if;
-            end;
-         end loop;
+         procedure Take
+           (Name   : Leander.Names.Leander_Name;
+            Scheme : Leander.Core.Schemes.Reference);
+
+         ----------
+         -- Take --
+         ----------
+
+         procedure Take
+           (Name   : Leander.Names.Leander_Name;
+            Scheme : Leander.Core.Schemes.Reference)
+         is
+            Bare : constant String := Leander.Names.To_String (Name);
+            Key  : constant String := Canonical (Bare);
+         begin
+            if not Exported (Bare) then
+               return;
+            end if;
+
+            if Key /= Bare then
+               Imported.Insert (Key, Scheme);
+               Any := True;
+            end if;
+
+            if not Wholesale and then Visible (Bare) then
+               Imported.Insert (Bare, Scheme);
+               Any := True;
+            end if;
+         end Take;
+
+      begin
+         --  Taken from the chain itself rather than from Declared_Names:
+         --  a module's Type_Env also carries entries nothing declared by
+         --  name -- instance dictionaries, generic defaults, the schemes
+         --  inference saved -- and rebuilding from the declared set alone
+         --  silently drops every one of them.
+         E.Type_Env.Iterate (Take'Access);
 
          if Any then
             This.Type_Env := This.Type_Env.Compose (Imported);

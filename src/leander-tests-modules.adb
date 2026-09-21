@@ -1,4 +1,6 @@
 with Ada.Exceptions;
+with Ada.Strings.Fixed;
+with Ada.Strings.Unbounded;
 
 with Leander.Calculus;
 with Leander.Environment;
@@ -14,6 +16,7 @@ package body Leander.Tests.Modules is
    procedure Test_Resolution;
    procedure Test_Load_By_Name;
    procedure Test_Value_Names;
+   procedure Test_Prelude_Exports;
 
    function Ends_With (Value, Suffix : String) return Boolean
    is (Value'Length >= Suffix'Length
@@ -49,6 +52,7 @@ package body Leander.Tests.Modules is
       Test_Resolution;
       Test_Load_By_Name;
       Test_Value_Names;
+      Test_Prelude_Exports;
    end Run_Tests;
 
    ------------------------
@@ -240,5 +244,74 @@ package body Leander.Tests.Modules is
          Error ("module: value names",
                 Ada.Exceptions.Exception_Message (E));
    end Test_Value_Names;
+
+   ---------------------------
+   -- Test_Prelude_Exports --
+   ---------------------------
+
+   procedure Test_Prelude_Exports is
+      use Ada.Strings.Unbounded;
+
+      --  The Prelude withholds these deliberately. Everything else it
+      --  declares has to be in its export list, so that the list is
+      --  verifiably "the whole API" rather than whatever someone
+      --  remembered to add. Adding a name here is how to withhold
+      --  something on purpose; the alternative is a list that quietly
+      --  drifts out of date.
+      Withheld : constant String :=
+                   "|mcons"            --  sequence's fold helper
+                   & "|small|zero"     --  arithmetic helpers
+                   & "|showUnsignedInt"  --  show helper
+                   & "|bindIO|returnIO"  --  IO's Monad methods
+                   & "|";
+
+      Context : Leander.Parser.Parse_Context;
+      Prelude : constant Leander.Environment.Reference :=
+                  Context.Load_Module
+                    ("./share/leander/modules/Prelude.hs");
+      Missing : Unbounded_String;
+
+      function Is_Withheld (Name : String) return Boolean
+      is (Ada.Strings.Fixed.Index (Withheld, "|" & Name & "|") > 0);
+
+   begin
+      for N of Prelude.Declared_Names loop
+         declare
+            Item : constant String := Leander.Names.To_String (N);
+         begin
+            --  A #-prefixed name is an FFI symbol and is private by
+            --  construction, never by listing.
+            if Item'Length > 0
+              and then Item (Item'First) /= '#'
+              and then not Is_Withheld (Item)
+              and then not Prelude.Is_Exported (Item)
+            then
+               Append (Missing, " " & Item);
+            end if;
+         end;
+      end loop;
+
+      if Missing = Null_Unbounded_String then
+         Test ("prelude: every declaration it does not withhold is "
+               & "exported", True);
+      else
+         Fail ("prelude: every declaration it does not withhold is "
+               & "exported",
+               "an export list covering all of them",
+               "missing:" & To_String (Missing));
+      end if;
+
+      Test ("prelude: a withheld name really is withheld",
+            not Prelude.Is_Exported ("mcons"));
+      Test ("prelude: a primitive is never exported",
+            not Prelude.Is_Exported ("#primIntAdd"));
+      Test ("prelude: built-in syntax is always exported",
+            Prelude.Is_Exported (":")
+            and then Prelude.Is_Exported ("[]"));
+   exception
+      when E : others =>
+         Error ("prelude: exports",
+                Ada.Exceptions.Exception_Message (E));
+   end Test_Prelude_Exports;
 
 end Leander.Tests.Modules;

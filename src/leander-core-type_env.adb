@@ -184,6 +184,47 @@ package body Leander.Core.Type_Env is
       return Local_Empty_Env'Access;
    end Empty;
 
+   -------------
+   -- Iterate --
+   -------------
+
+   procedure Iterate
+     (This    : Instance;
+      Process : not null access
+        procedure (Name   : Leander.Names.Leander_Name;
+                   Scheme : Leander.Core.Schemes.Reference))
+   is
+      Seen : Scheme_Maps.Map;
+      It   : Reference := This'Unrestricted_Access;
+
+      procedure Visit
+        (Key     : Leander.Names.Leander_Name;
+         Element : Nullable_Scheme_Reference);
+
+      -----------
+      -- Visit --
+      -----------
+
+      procedure Visit
+        (Key     : Leander.Names.Leander_Name;
+         Element : Nullable_Scheme_Reference)
+      is
+      begin
+         if not Seen.Contains (Key) then
+            Seen.Insert (Key, Element);
+            if Element /= null then
+               Process (Key, Leander.Core.Schemes.Reference (Element));
+            end if;
+         end if;
+      end Visit;
+
+   begin
+      while It /= null loop
+         It.Map.Iterate (Visit'Access);
+         It := It.Next;
+      end loop;
+   end Iterate;
+
    ------------
    -- Insert --
    ------------
