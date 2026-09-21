@@ -8,6 +8,11 @@ package body Leander.Tests.Integration is
    Test_Root : constant String :=
      "./share/leander/tests/integration/";
 
+   Modules_Root : constant String := Test_Root & "modules/";
+   --  The multi-module fixtures live in their own directory because an
+   --  import resolves against the importing file's directory first, which
+   --  needs a directory that is not shared with unrelated fixtures.
+
    procedure Test_Eval
      (Expression     : String;
       Expected_Type  : String;
@@ -680,6 +685,43 @@ package body Leander.Tests.Integration is
       Test_Main
         ("--main: RunTests",
          "./share/leander/tests/RunTests.hs");
+
+      --  Cross-module imports. UseShapes names Shapes, which sits beside
+      --  it; UseData names Data.List, which is Data/List.hs under the same
+      --  directory. Both exercise a whole module being loaded and imported
+      --  partway through the importer's own parse.
+
+      Test_Module
+        ("module: a function imported from another module",
+         Modules_Root & "UseShapes.hs",
+         "area (Square 4)", "16",
+         Handle);
+
+      Test_Module
+        ("module: a constructor imported from another module",
+         Modules_Root & "UseShapes.hs",
+         "area (Circle 2)", "12",
+         Handle);
+
+      Test_Module
+        ("module: a dotted module name is imported from a subdirectory",
+         Modules_Root & "UseData.hs",
+         "doubled", "42",
+         Handle);
+
+      --  Every import shape the grammar accepts, in one module. The
+      --  qualified, aliased and selective ones warn that they are not yet
+      --  enforced; what is asserted here is that they parse and that the
+      --  module still compiles around them.
+      Test_Module
+        ("module: qualified, aliased and selective imports all parse",
+         Modules_Root & "AllForms.hs",
+         "value", "6",
+         Handle);
+
+      Test_Main
+        ("--main: a module that imports another",
+         Modules_Root & "UseShapes.hs");
 
       --  Minimal crash reproducer:
       --  a module-level binding that uses (==)

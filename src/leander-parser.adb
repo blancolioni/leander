@@ -270,26 +270,14 @@ package body Leander.Parser is
 
          Loading_Modules.Include (Module);
 
-         --  Load Prelude first so the module's environment can see
-         --  Prelude's classes and constructors while its declarations are
-         --  parsed. Doing that with this file's lexer frame already open
-         --  is the same nesting an import declaration needs, and the lexer
-         --  keeps its token state per open file.
-         declare
-            use type Leander.Environment.Reference;
-            Prelude_Env : Leander.Environment.Reference;
+         --  Parse_Module imports the Prelude and then whatever the module's
+         --  own import declarations name, all with this file's lexer frame
+         --  already open. That nesting is safe: the lexer keeps its token
+         --  state per open file.
          begin
-            if Module /= "Prelude" then
-               Prelude_Env :=
-                 Context.Load_Module_By_Name ("Prelude", From_Dir => "");
-               if Prelude_Env = null then
-                  Error ("could not find the Prelude (looked for "
-                         & Module_Source_Name ("Prelude") & ")");
-               end if;
-            end if;
-
             Env := Leander.Parser.Modules.Parse_Module
-              (Context, Module, Prelude_Env);
+              (Context, Module,
+               From_Dir => Ada.Directories.Containing_Directory (Full));
          exception
             when others =>
                --  Parse_Module absorbs Parse_Error itself, but anything it
@@ -352,6 +340,13 @@ package body Leander.Parser is
             raise;
       end;
    end Load_Module_By_Name;
+
+   -----------------------
+   -- Module_Is_Loading --
+   -----------------------
+
+   function Module_Is_Loading (Name : String) return Boolean
+   is (Loading_Modules.Contains (Name));
 
    ------------------------
    -- Module_Source_Name --

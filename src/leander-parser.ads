@@ -47,6 +47,12 @@ package Leander.Parser is
    --  inside a parse -- the caller's current environment is restored
    --  before returning.
 
+   function Module_Is_Loading (Name : String) return Boolean;
+   --  True when module Name is partway through its own parse, i.e. a
+   --  request for it now closes an import cycle. Load_Module_By_Name
+   --  returns null for this as it does for a module that does not exist;
+   --  this is how a caller tells the two apart in its diagnostic.
+
    procedure Add_Include_Path (Dir : String);
    --  Append Dir to the directories searched for an imported module's
    --  source, after the importing file's own directory and before the
