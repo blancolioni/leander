@@ -248,6 +248,26 @@ package body Leander.Tests.Images is
             Test ("Prelude.skix: a downstream instance omitting a "
                   & "defaulted method still works",
                   "K", H2.Evaluate ("Foo 1 /= Foo 2"));
+
+            --  Issue #66: a module that imports another, against a Prelude
+            --  that came from an image rather than from source. The
+            --  importing module's own names stay bare while the imported
+            --  module's arrive under its name, and the Prelude's stay
+            --  unprefixed -- so this is the combination where a
+            --  disagreement about keys between the image and the parser
+            --  would show up.
+            H2.Load_Module
+              ("./share/leander/tests/integration/modules/UseShapes.hs");
+            Test ("Prelude.skix: a cross-module import resolves against "
+                  & "an imaged Prelude",
+                  "16", H2.Evaluate ("area (Square 4)"));
+
+            H2.Load_Module
+              ("./share/leander/tests/integration/modules/Qualified.hs");
+            Test ("Prelude.skix: a qualified name resolves against an "
+                  & "imaged Prelude",
+                  "27", H2.Evaluate ("qualCircleArea"));
+
             H2.Close;
          end;
 

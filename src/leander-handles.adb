@@ -474,6 +474,23 @@ package body Leander.Handles is
       end Annotation_Of;
 
    begin
+      --  An image's export set is this module's link surface, not its API
+      --  surface, so it is deliberately NOT filtered through
+      --  Is_Exported (see issue #66). In the full-coverage path
+      --  (Handles.Create) the module's source is never opened, so its
+      --  environment has Bindings = null and no Values at all, and
+      --  Skit_Handle.Lookup -- primed from exactly these names -- is the
+      --  only way anything in the image can be reached. An export list
+      --  says what another module may write; it has no business deciding
+      --  what the loader can still find.
+      --
+      --  This costs nothing today: a module with no export list exports
+      --  all of its own declarations anyway, and the one kind of name
+      --  Is_Exported would additionally withhold -- a #-prefixed
+      --  primitive -- is already skipped below via Is_Primitive_Function.
+      --  It becomes load-bearing once the Prelude carries a list of its
+      --  own, which is the point at which to re-test an image round trip.
+      --
       --  Binding_Groups.Varids (behind Value_Names) over-approximates: it
       --  also surfaces clause-pattern variables from equation desugaring
       --  (e.g. the "xs" in "map f (x:xs) = ..."), which have no top-level

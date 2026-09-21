@@ -476,8 +476,27 @@ package body Leander.Environment is
          declare
             Declared : constant Leander.Names.Name_Array :=
               [for V of This.Bindings.Varids => Leander.Names.Leander_Name (V)];
+            Forced   : constant Leander.Names.Name_Array :=
+                         This.Values.Get_Keys;
+            Union    : constant Leander.Names.Name_Array :=
+                         Declared & Forced;
+            Seen     : WL.String_Sets.Set;
+            Result   : Leander.Names.Name_Array
+                         (1 .. Declared'Length + Forced'Length);
+            Count    : Natural := 0;
          begin
-            return Declared & This.Values.Get_Keys;
+            --  Forcing a binding compiles it into Values while it stays in
+            --  Bindings, so the two overlap as soon as anything has been
+            --  evaluated. Dump_Module turns this list into an image's
+            --  export set, and an export named twice is at best wasted.
+            for N of Union loop
+               if not Seen.Contains (Leander.Names.To_String (N)) then
+                  Seen.Include (Leander.Names.To_String (N));
+                  Count := Count + 1;
+                  Result (Count) := N;
+               end if;
+            end loop;
+            return Result (1 .. Count);
          end;
       end if;
    end Value_Names;

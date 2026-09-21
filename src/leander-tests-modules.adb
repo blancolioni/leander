@@ -1,6 +1,8 @@
 with Ada.Exceptions;
 
+with Leander.Calculus;
 with Leander.Environment;
+with Leander.Names;
 with Leander.Parser;
 
 package body Leander.Tests.Modules is
@@ -11,6 +13,7 @@ package body Leander.Tests.Modules is
    procedure Test_Repeated_Import;
    procedure Test_Resolution;
    procedure Test_Load_By_Name;
+   procedure Test_Value_Names;
 
    function Ends_With (Value, Suffix : String) return Boolean
    is (Value'Length >= Suffix'Length
@@ -45,6 +48,7 @@ package body Leander.Tests.Modules is
       Test_Repeated_Import;
       Test_Resolution;
       Test_Load_By_Name;
+      Test_Value_Names;
    end Run_Tests;
 
    ------------------------
@@ -196,5 +200,45 @@ package body Leander.Tests.Modules is
          Error ("module: resolution",
                 Ada.Exceptions.Exception_Message (E));
    end Test_Resolution;
+
+   -----------------------
+   -- Test_Value_Names --
+   -----------------------
+
+   procedure Test_Value_Names is
+      Context   : Leander.Parser.Parse_Context;
+      Prelude   : constant Leander.Environment.Reference :=
+                    Context.Load_Module
+                      ("./share/leander/modules/Prelude.hs");
+      Forced    : Leander.Calculus.Tree;
+      Duplicate : Boolean := False;
+   begin
+      --  Value_Names unions the statically declared binders with whatever
+      --  has been compiled into Values so far, and forcing a binding puts
+      --  it in both. Dump_Module turns this list into an image's export
+      --  set, where a repeat is at best a wasted entry.
+      Forced := Prelude.Get_Bound_Calculus ("not");
+      pragma Unreferenced (Forced);
+
+      declare
+         Names : constant Leander.Names.Name_Array := Prelude.Value_Names;
+      begin
+         for I in Names'Range loop
+            for J in I + 1 .. Names'Last loop
+               if Leander.Names.To_String (Names (I))
+                 = Leander.Names.To_String (Names (J))
+               then
+                  Duplicate := True;
+               end if;
+            end loop;
+         end loop;
+      end;
+
+      Test ("module: a forced binding is not named twice", not Duplicate);
+   exception
+      when E : others =>
+         Error ("module: value names",
+                Ada.Exceptions.Exception_Message (E));
+   end Test_Value_Names;
 
 end Leander.Tests.Modules;
