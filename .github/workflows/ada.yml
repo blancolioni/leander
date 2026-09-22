@@ -39,5 +39,5 @@ jobs:
       run: alr build
       
     - name: Run tests
-      run: ./bin/leander
+      run: ./bin/leander --main=./share/leander/tests/RunTests.hs
       
