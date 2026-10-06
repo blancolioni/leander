@@ -2,6 +2,7 @@ with Ada.Containers;
 with Ada.Containers.Vectors;
 with Leander.Calculus;
 with Leander.Core.Inference;
+with Leander.Core.Predicates;
 with Leander.Data_Types;
 with Leander.Environment;
 
@@ -25,6 +26,10 @@ package Leander.Core.Alts.Compiler is
    function To_Calculus
      (This : in out Builder'Class)
       return Leander.Calculus.Tree;
+
+   function Raised_Predicates
+     (This : Builder'Class)
+      return Leander.Core.Predicates.Predicate_Array;
 
 private
 
@@ -56,5 +61,10 @@ private
          Con_Pats     : Con_Pat_Expr_Vectors.Vector;
          Con_Dfl      : Con_Pat_Expr;
       end record;
+
+   function Raised_Predicates
+     (This : Builder'Class)
+      return Leander.Core.Predicates.Predicate_Array
+   is (This.Context.Current_Predicates);
 
 end Leander.Core.Alts.Compiler;

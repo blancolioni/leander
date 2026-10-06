@@ -180,7 +180,18 @@ package body Leander.Core.Bindings is
    is
    begin
       if not This.Alts (1).Has_Pattern then
-         return This.Alts (1).Expression.To_Calculus (Types, Env);
+         declare
+            E : constant Leander.Calculus.Tree :=
+                  This.Alts (1).Expression.To_Calculus (Types, Env);
+         begin
+            if This.Alts (1).Has_Reference (This.Name) then
+               return Leander.Calculus.Apply
+                 (Leander.Calculus.Symbol ("Y"),
+                  Leander.Calculus.Lambda
+                    (Leander.Names.Leander_Name (This.Name), E));
+            end if;
+            return E;
+         end;
       elsif This.Alts (1).Pattern.Is_Variable then
          declare
             Pat : constant Leander.Core.Patterns.Reference :=
@@ -219,7 +230,15 @@ package body Leander.Core.Bindings is
             Builder.Add_Name (This.Name);
          end if;
          Builder.Add (This.Alts);
-         return Builder.To_Calculus;
+         declare
+            Base   : constant Natural := Types.Predicate_Count;
+            Result : constant Leander.Calculus.Tree := Builder.To_Calculus;
+            Raised : constant Leander.Core.Predicates.Predicate_Array :=
+                       Builder.Raised_Predicates;
+         begin
+            Types.Save_Predicates (Raised (Base + 1 .. Raised'Last));
+            return Result;
+         end;
       end;
    end To_Calculus;
 
