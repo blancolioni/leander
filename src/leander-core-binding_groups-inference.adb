@@ -76,6 +76,12 @@ package body Leander.Core.Binding_Groups.Inference is
                       (Gs, Qualified_Types.Qualified_Type (Q1, T1));
          begin
             pragma Unreferenced (Sc1);
+
+            --  The declared context, as this body's own type variables:
+            --  a use site applies one dictionary per predicate, in scheme
+            --  order, and a local binding is elaborated with a lambda for
+            --  each (see the ELet case of Expressions.To_Calculus).
+            Explicit.Set_Dictionaries (Q1.Predicates);
          end;
       exception
          when others =>

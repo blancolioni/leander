@@ -1517,7 +1517,9 @@ package body Leander.Environment is
                   This.Context.Clear_Predicates;
                   declare
                      Tree : Leander.Calculus.Tree :=
-                               Binding.To_Calculus (This.Context, This'Access);
+                               Binding.To_Calculus
+                                 (This.Context, This'Access,
+                                  Tie_Recursion => not Binding.Is_Explicit);
                      Seen : WL.String_Sets.Set;
                   begin
                      for P of This.Context.Current_Predicates loop
@@ -1536,6 +1538,12 @@ package body Leander.Environment is
                            end;
                         end if;
                      end loop;
+                     --  An explicit binding's recursive uses apply its
+                     --  dictionaries, so its name must denote the binding
+                     --  outside the dictionary lambdas just added.
+                     if Binding.Is_Explicit and then Binding.Is_Recursive then
+                        Tree := Binding.Tie (Tree);
+                     end if;
                      This.Values.Insert (L, Tree);
                      return Tree;
                   end;
