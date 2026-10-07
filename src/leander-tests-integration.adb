@@ -542,6 +542,42 @@ package body Leander.Tests.Integration is
          Handle);
 
       Test_Module
+        ("module: a self-referential where binding is tied with Y",
+         Test_Root & "test_21_recursive_bindings.hs",
+         "rbOnes", "3",
+         Handle);
+      Test_Module
+        ("module: a constraint used only in a case alternative",
+         Test_Root & "test_21_recursive_bindings.hs",
+         "rbAlt", "1",
+         Handle);
+      Test_Module
+        ("module: a recursive constrained binding finds a match",
+         Test_Root & "test_21_recursive_bindings.hs",
+         "rbFound", "1",
+         Handle);
+      Test_Module
+        ("module: a recursive constrained binding finds no match",
+         Test_Root & "test_21_recursive_bindings.hs",
+         "rbMissing", "0",
+         Handle);
+      Test_Module
+        ("module: a local recursive constrained binding finds a match",
+         Test_Root & "test_21_recursive_bindings.hs",
+         "rbLocalFound", "1",
+         Handle);
+      Test_Module
+        ("module: a local recursive constrained binding finds no match",
+         Test_Root & "test_21_recursive_bindings.hs",
+         "rbLocalMissing", "0",
+         Handle);
+      Test_Module
+        ("module: a local constrained binding takes its dictionary",
+         Test_Root & "test_21_recursive_bindings.hs",
+         "rbLocalSame", "1",
+         Handle);
+
+      Test_Module
         ("module: synonym with two parameters",
          Test_Root & "test_19_type_synonym.hs",
          "keyed", "3",

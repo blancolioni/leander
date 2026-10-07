@@ -327,7 +327,10 @@ package body Leander.Core.Expressions is
                        Leander.Core.Predicates.Predicate_Array :=
                          B.Dictionaries;
                      Base  : constant Natural := Types.Predicate_Count;
-                     Calc  : Tree := B.To_Calculus (Types, Env);
+                     Calc  : Tree :=
+                               B.To_Calculus
+                                 (Types, Env,
+                                  Tie_Recursion => not B.Is_Explicit);
                   begin
                      --  One dictionary lambda per predicate the binding's
                      --  scheme retains.  Wrapped in reverse, so the outermost
@@ -336,6 +339,13 @@ package body Leander.Core.Expressions is
                      for P of reverse Dicts loop
                         Calc := Lambda (Dict_Name (Types, P), Calc);
                      end loop;
+
+                     --  An explicit binding's recursive uses apply those
+                     --  dictionaries themselves, so its name is bound
+                     --  outside them (see Bindings.To_Calculus).
+                     if B.Is_Explicit and then B.Is_Recursive then
+                        Calc := B.Tie (Calc);
+                     end if;
 
                      --  Compiling the body re-raised its predicates into the
                      --  context.  The ones this binding just took as its own

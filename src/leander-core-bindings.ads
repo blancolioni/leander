@@ -62,11 +62,32 @@ package Leander.Core.Bindings is
       Scheme : Leander.Core.Schemes.Reference)
       return Reference;
 
+   function Is_Explicit (This : Instance'Class) return Boolean;
+   --  True for a binding with a declared type signature.  A recursive use
+   --  of such a binding is typed by its declared scheme, so it applies the
+   --  binding's dictionaries itself; an implicit binding is monomorphic
+   --  within its own group and its recursive uses apply none.
+
+   function Is_Recursive (This : Instance'Class) return Boolean;
+
    function To_Calculus
-     (This  : Instance'Class;
-      Types : in out Leander.Core.Inference.Inference_Context'Class;
-      Env   : not null access constant Leander.Environment.Abstraction'Class)
+     (This          : Instance'Class;
+      Types         : in out Leander.Core.Inference.Inference_Context'Class;
+      Env           : not null access constant
+        Leander.Environment.Abstraction'Class;
+      Tie_Recursion : Boolean := True)
       return Leander.Calculus.Tree;
+   --  With Tie_Recursion, a recursive binding's own name is bound by Y
+   --  around the result.  Without it the name is left free, for a caller
+   --  that must first wrap the binding's dictionary lambdas and then tie
+   --  the knot outside them with Tie -- as an explicit binding needs, since
+   --  its recursive uses apply the dictionaries again.
+
+   function Tie
+     (This : Instance'Class;
+      Tree : Leander.Calculus.Tree)
+      return Leander.Calculus.Tree;
+   --  Y (\Name. Tree)
 
    procedure Update_Type
      (This    : Instance'Class;
@@ -111,5 +132,11 @@ private
 
    function Monomorphic (This : Instance) return Boolean
    is (This.Monomorphic);
+
+   function Is_Explicit (This : Instance'Class) return Boolean
+   is (This.Scheme /= null);
+
+   function Is_Recursive (This : Instance'Class) return Boolean
+   is (for some Alt of This.Alts => Alt.Has_Reference (This.Name));
 
 end Leander.Core.Bindings;

@@ -173,14 +173,24 @@ package body Leander.Core.Bindings is
    -----------------
 
    function To_Calculus
-     (This  : Instance'Class;
-      Types : in out Leander.Core.Inference.Inference_Context'Class;
-      Env   : not null access constant Leander.Environment.Abstraction'Class)
+     (This          : Instance'Class;
+      Types         : in out Leander.Core.Inference.Inference_Context'Class;
+      Env           : not null access constant
+        Leander.Environment.Abstraction'Class;
+      Tie_Recursion : Boolean := True)
       return Leander.Calculus.Tree
    is
    begin
       if not This.Alts (1).Has_Pattern then
-         return This.Alts (1).Expression.To_Calculus (Types, Env);
+         declare
+            E : constant Leander.Calculus.Tree :=
+                  This.Alts (1).Expression.To_Calculus (Types, Env);
+         begin
+            if Tie_Recursion and then This.Is_Recursive then
+               return This.Tie (E);
+            end if;
+            return E;
+         end;
       elsif This.Alts (1).Pattern.Is_Variable then
          declare
             Pat : constant Leander.Core.Patterns.Reference :=
@@ -197,14 +207,11 @@ package body Leander.Core.Bindings is
                  Leander.Calculus.Lambda
                    (Leander.Names.Leander_Name (Pat.Variable), E);
             end if;
-            if not Pat.Has_Reference (This.Name)
-              and then This.Alts (1).Has_Reference (This.Name)
+            if Tie_Recursion
+              and then not Pat.Has_Reference (This.Name)
+              and then This.Is_Recursive
             then
-               E := Leander.Calculus.Apply
-                 (Leander.Calculus.Symbol ("Y"),
-                  Leander.Calculus.Lambda
-                    (Leander.Names.Leander_Name (This.Name),
-                     E));
+               E := This.Tie (E);
             end if;
 
             return E;
@@ -215,13 +222,34 @@ package body Leander.Core.Bindings is
          Builder : Leander.Core.Alts.Compiler.Builder;
       begin
          Builder.Initialize (Types, Env);
-         if (for some Alt of This.Alts => Alt.Has_Reference (This.Name)) then
+         if Tie_Recursion and then This.Is_Recursive then
             Builder.Add_Name (This.Name);
          end if;
          Builder.Add (This.Alts);
-         return Builder.To_Calculus;
+         declare
+            Base   : constant Natural := Types.Predicate_Count;
+            Result : constant Leander.Calculus.Tree := Builder.To_Calculus;
+            Raised : constant Leander.Core.Predicates.Predicate_Array :=
+                       Builder.Raised_Predicates;
+         begin
+            Types.Save_Predicates (Raised (Base + 1 .. Raised'Last));
+            return Result;
+         end;
       end;
    end To_Calculus;
+
+   ---------
+   -- Tie --
+   ---------
+
+   function Tie
+     (This : Instance'Class;
+      Tree : Leander.Calculus.Tree)
+      return Leander.Calculus.Tree
+   is (Leander.Calculus.Apply
+         (Leander.Calculus.Symbol ("Y"),
+          Leander.Calculus.Lambda
+            (Leander.Names.Leander_Name (This.Name), Tree)));
 
    -----------------
    -- Update_Type --
