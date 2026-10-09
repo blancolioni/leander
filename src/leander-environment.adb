@@ -1077,15 +1077,23 @@ package body Leander.Environment is
                      Scheme  : constant Leander.Core.Schemes.Reference :=
                                  Leander.Core.Schemes.Quantify
                                    (QT.all.Get_Tyvars, QT);
-                     Explicit : constant Leander.Core.Bindings.Reference :=
-                                  Leander.Core.Bindings.Explicit_Binding
-                                    (Methods (I), B.Alts, Scheme);
-                     Builder      : Leander.Core.Binding_Groups
-                       .Instance_Builder;
-                     Group        : Leander.Core.Binding_Groups.Reference;
                      Default_Name : constant String :=
                        "default:" & Core.To_String (Class.Id) & ":"
                        & Core.To_String (Methods (I));
+                     --  Named for the default, not the method: a default
+                     --  that uses its own method -- Enum's enumFromTo,
+                     --  through [fromEnum x .. fromEnum y] -- means the
+                     --  method at whatever type it is used at, found
+                     --  through a dictionary. Under the method's own name
+                     --  the binding would look recursive and be tied to
+                     --  itself, looping at this type forever (#94).
+                     Explicit : constant Leander.Core.Bindings.Reference :=
+                                  Leander.Core.Bindings.Explicit_Binding
+                                    (Core.To_Varid (Default_Name),
+                                     B.Alts, Scheme);
+                     Builder      : Leander.Core.Binding_Groups
+                       .Instance_Builder;
+                     Group        : Leander.Core.Binding_Groups.Reference;
                   begin
                      Builder.Add_Explicit_Bindings ([Explicit]);
                      Group := Builder.Get_Binding_Group;

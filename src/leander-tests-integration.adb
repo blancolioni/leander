@@ -768,6 +768,22 @@ package body Leander.Tests.Integration is
          "Foo 1 /= Foo 2", "K",
          Handle);
       Test_Module
+        ("module: a default using its own method at another type",
+         Test_Root & "test_23_default_uses_own_method.hs",
+         "dmDoubled", "20",
+         Handle);
+      Test_Module
+        ("module: Enum's default enumFromTo on a user type",
+         Test_Root & "test_23_default_uses_own_method.hs",
+         "dmColors == [0,1,2]", "K",
+         Handle);
+      Test_Module
+        ("module: a Char range",
+         Test_Root & "test_23_default_uses_own_method.hs",
+         "dmLetters == ""abcde""", "K",
+         Handle);
+
+      Test_Module
         ("module: instance omits a defaulted method (equal)",
          Test_Root & "test_17_default_method.hs",
          "Foo 1 /= Foo 1", "K I",

@@ -46,7 +46,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Tuples | 🟡 | Pairs only. `(1,2,3)` fails with "unbound constructor: (,,)". |
 | List literals | ✅ | |
 | List comprehensions | ❌ | No generator/guard syntax. |
-| Arithmetic sequences `[a..]`,`[a..b]`,`[a,b..c]` | 🟡 | Work on `Int` via `enumFrom*`. `['a' .. 'e']` runs out of memory. |
+| Arithmetic sequences `[a..]`,`[a..b]`,`[a,b..c]` | ✅ | Via `enumFrom*`, on `Int`, `Char`, and any `Enum` instance that relies on the class defaults. `['a' ..]` never ends: the default `enumFrom` counts up through `Int` past code 255. |
 ## Patterns
 
 | Feature | Status | Note |
@@ -188,7 +188,7 @@ These are wrong answers or crashes in forms that are otherwise supported.
 
 - **`last` returns a singleton list.** `last (x:xs) = if null xs then [x] else …` in `Prelude.hs`; should be `x`. It type-checks only because signature generality isn't enforced (item 8). Tracked in [#83](https://github.com/blancolioni/leander/issues/83).
 - **Guarded functions that return different parameters lose their dictionary**, even at `Int` (see Patterns → Guards). [#93](https://github.com/blancolioni/leander/issues/93)
-- **`['a' .. 'e']` runs out of memory.** `Enum Char` relies on the class's default `enumFromTo`. [#94](https://github.com/blancolioni/leander/issues/94)
+- ~~**`['a' .. 'e']` runs out of memory.**~~ Fixed in [#94](https://github.com/blancolioni/leander/issues/94). Any class default that used its own method was compiled as a call to itself; `Enum`'s `enumFromTo` was the case the Prelude hit.
 - ~~**`[1..5]` lexes `1.` as a float.**~~ Fixed by the new lexer ([#99](https://github.com/blancolioni/leander/issues/99)). [#95](https://github.com/blancolioni/leander/issues/95)
 - ~~**Char literal lexing.**~~ Fixed in [#96](https://github.com/blancolioni/leander/issues/96). Most of what was reported came from the Windows argument layer; the real faults were an end-of-line crash and missing Haskell escapes.
 - **`fromInteger` for `Int` returns `0`.** Harmless today because literals never go through it, but it will bite as soon as item 7 lands. Tracked in [#82](https://github.com/blancolioni/leander/issues/82).
