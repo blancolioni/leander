@@ -1,4 +1,4 @@
-private package Leander.Parser.Tokens is
+package Leander.Parser.Tokens is
 
    type Token is
       (Tok_None, Tok_End_Of_File, Tok_Bad_Character,

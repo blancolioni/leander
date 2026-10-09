@@ -3,9 +3,7 @@ with Ada.Containers.Indefinite_Vectors;
 with Ada.Directories;
 with Ada.Strings.Fixed;
 
-with GCS.Constraints;
-with GCS.Errors;
-
+with Leander.Errors;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 
@@ -166,8 +164,9 @@ package body Leander.Parser is
 
    function Current_Source_Location return Leander.Source.Source_Location is
    begin
+      --  The end-of-file token has column 0; see Leander.Parser.Lexer.
       return Leander.Source.Create_Location
-        (Tok_File_Name, Tok_Line, Tok_Column);
+        (Tok_File_Name, Tok_Line, Positive'Max (Tok_Column, 1));
    end Current_Source_Location;
 
    --------------------
@@ -212,10 +211,8 @@ package body Leander.Parser is
       Path    : String)
       return Leander.Environment.Reference
    is
-      --  GCS prepends the directory of the first file it ever opened to
-      --  any later relative name (gcs-file_manager.adb), which for us is
-      --  wherever Prelude came from. Resolving to a full name first keeps
-      --  a module's own path meaning what it says.
+      --  Keyed and opened by full name, so that the same file reached by
+      --  two relative paths is still one module.
       Full : constant String := Ada.Directories.Full_Name (Path);
       Name : Ada.Strings.Unbounded.Unbounded_String;
       Env  : Leander.Environment.Reference;
@@ -520,12 +517,10 @@ package body Leander.Parser is
       Message  : String)
    is
    begin
-      GCS.Errors.Error
-        (GCS.Errors.Error,
-         Leander.Source.Simple_File_Name (Location),
-         GCS.Constraints.Line_Number (Leander.Source.Line_Number (Location)),
-         GCS.Constraints.Column_Count
-           (Leander.Source.Column_Number (Location)),
+      Leander.Errors.Report
+        (Leander.Source.Simple_File_Name (Location),
+         Leander.Source.Line_Number (Location),
+         Leander.Source.Column_Number (Location),
          Message);
    end Report;
 
@@ -537,8 +532,8 @@ package body Leander.Parser is
       use Ada.Strings.Unbounded;
 
       Result    : Unbounded_String;
-      Line      : GCS.Constraints.Line_Number;
-      Next_Col  : GCS.Constraints.Column_Count;
+      Line      : Natural;
+      Next_Col  : Natural;
       Qualifier : Boolean;
 
       procedure Take_Component;
@@ -552,9 +547,9 @@ package body Leander.Parser is
       is (Tok = Tok_Identifier
           and then Tok_Line = Line
           and then Tok_Column = Next_Col);
-      --  Tok_Info.Finish is never assigned (gcs-lexer.adb), so the end of
-      --  a token is its column plus its length. Gating on Tok_Identifier
-      --  is what keeps "[A..B]" safe: ".." lexes as Tok_Dot_Dot.
+      --  An identifier's text is exactly what was written, so its end is
+      --  its column plus its length. Gating on Tok_Identifier is what
+      --  keeps "[A..B]" safe: ".." lexes as Tok_Dot_Dot.
 
       --------------------
       -- Take_Component --
@@ -635,8 +630,8 @@ package body Leander.Parser is
    function Scan_Dotted_Name return String is
       use Ada.Strings.Unbounded;
       Result   : Unbounded_String;
-      Line     : GCS.Constraints.Line_Number;
-      Next_Col : GCS.Constraints.Column_Count;
+      Line     : Natural;
+      Next_Col : Natural;
    begin
       loop
          Line := Tok_Line;
@@ -646,8 +641,8 @@ package body Leander.Parser is
 
          --  The lexer hands back "." as an ordinary symbolic identifier,
          --  so adjacency is the only thing that distinguishes a qualified
-         --  name from a composition. Tok_Info.Finish is never assigned
-         --  (gcs-lexer.adb), hence the column arithmetic.
+         --  name from a composition, and a token ends at its column plus
+         --  the length of its text.
          exit when Tok /= Tok_Identifier
            or else Tok_Text /= "."
            or else Tok_Line /= Line

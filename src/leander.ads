@@ -46,9 +46,8 @@ package Leander is
    procedure Clear_Errors;
    function Had_Errors return Boolean;
    --  Whether anything has been reported since the last Clear_Errors,
-   --  across both GCS's location-carrying diagnostics and the ones
-   --  Leander raises without one. Sticky and process-global, so clearing
-   --  before each load is not optional.
+   --  with a source position or without one. Sticky and process-global,
+   --  so clearing before each load is not optional.
 
    procedure Dump_Module
      (This        : Handle'Class;

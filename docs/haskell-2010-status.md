@@ -18,16 +18,16 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 
 | Feature | Status | Note |
 |---|---|---|
-| Integer literals (decimal) | ✅ | No hex/octal: `0x1F` lexes as `0` applied to `x1F`. |
-| Floating literals | 🟡 | Typed `Double`, but the value **rounds to an integer** (`3.7` gives `4`), and nothing has a `Double` instance, so `3.7 + 1` fails to type-check (see Numeric). `1..5` lexes `1.` as a float, so `[1..5]` must be written `[1 .. 5]`. |
-| Char literals | 🟡 | `'\\'` and `'\''` are rejected or crash the lexer, and so does `'a' == 'b'` (two char literals separated by an operator). `'a'` alone, and in tuples, is fine. |
-| String literals | ✅ | |
-| Escape sequences | 🟡 | `\a \b \f \n \r \t \"` work. `\\` is wrong (`"a\\b"` gives `a` then a backspace). Any other escape just gives the next character (`\&` → `&`, `\SOH` → `SOH`). No numeric `\65`/`\x41` and no gaps. |
+| Integer literals | ✅ | Decimal, hex (`0x1F`) and octal (`0o17`). |
+| Floating literals | 🟡 | Lexed per the Report (`1.5`, `2e3`, `2.5E-1`; `[1..5]` is a range). Typed `Double`, but the value **rounds to an integer** (`3.7` gives `4`), and nothing has a `Double` instance, so `3.7 + 1` fails to type-check (see Numeric). |
+| Char literals | ✅ | Latin-1 only. On Windows, `leander -e "'a'"` loses the quotes before leander sees them (GNAT's runtime strips a leading quote pair from an argument); the same literal in a source file is fine. |
+| String literals | ✅ | Latin-1 only. |
+| Escape sequences | ✅ | All of Report 2.6: `\a \b \f \n \r \t \v \\ \" \'`, ASCII control names (`\SOH`, longest match), `\^A`, `\65`/`\x41`/`\o101`, and in strings `\&` and gaps, including gaps across lines. A code above 255 is rejected. |
 | Negative literals | ❌ | `-` is a binary operator only; Prelude spells it `0 - x`. |
 | Layout / offside rule | 🟡 | Ad-hoc per-construct indent checks; no real layout algorithm, no virtual braces, no parse-error close. |
 | Explicit braces / semicolons | ✅ | |
-| Line comments `--` | ✅ | |
-| Block comments `{- -}` | ❌ | Never wired into the lexer: at the top of a module the parse fails, and inside an expression it gives the wrong result. |
+| Line comments `--` | ✅ | Per the Report, `-->` and the like are operators, not comments. |
+| Block comments `{- -}` | ✅ | Nested. Pragmas (`{-# … #-}`) are skipped as comments. |
 | User-defined operators | ✅ | |
 | Fixity (`infix`/`infixl`/`infixr`) | ✅ | Prec 0–9, shunting-yard. |
 
@@ -46,7 +46,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Tuples | 🟡 | Pairs only. `(1,2,3)` fails with "unbound constructor: (,,)". |
 | List literals | ✅ | |
 | List comprehensions | ❌ | No generator/guard syntax. |
-| Arithmetic sequences `[a..]`,`[a..b]`,`[a,b..c]` | 🟡 | Work on `Int` via `enumFrom*`, but numeric bounds need spaces (`[1 .. 5]`, see Lexical). `['a' .. 'e']` runs out of memory. |
+| Arithmetic sequences `[a..]`,`[a..b]`,`[a,b..c]` | 🟡 | Work on `Int` via `enumFrom*`. `['a' .. 'e']` runs out of memory. |
 ## Patterns
 
 | Feature | Status | Note |
@@ -189,8 +189,8 @@ These are wrong answers or crashes in forms that are otherwise supported.
 - **`last` returns a singleton list.** `last (x:xs) = if null xs then [x] else …` in `Prelude.hs`; should be `x`. It type-checks only because signature generality isn't enforced (item 8). Tracked in [#83](https://github.com/blancolioni/leander/issues/83).
 - **Guarded functions that return different parameters lose their dictionary**, even at `Int` (see Patterns → Guards). [#93](https://github.com/blancolioni/leander/issues/93)
 - **`['a' .. 'e']` runs out of memory.** `Enum Char` relies on the class's default `enumFromTo`. [#94](https://github.com/blancolioni/leander/issues/94)
-- **`[1..5]` lexes `1.` as a float.** The lexer should not take `.` as a decimal point unless a digit follows it. [#95](https://github.com/blancolioni/leander/issues/95)
-- **Char literal lexing.** `'\\'`, `'\''` and `'a' == 'b'` fail or crash the lexer; `"\\"` in strings is wrong. [#96](https://github.com/blancolioni/leander/issues/96)
+- ~~**`[1..5]` lexes `1.` as a float.**~~ Fixed by the new lexer ([#99](https://github.com/blancolioni/leander/issues/99)). [#95](https://github.com/blancolioni/leander/issues/95)
+- ~~**Char literal lexing.**~~ Fixed in [#96](https://github.com/blancolioni/leander/issues/96). Most of what was reported came from the Windows argument layer; the real faults were an end-of-line crash and missing Haskell escapes.
 - **`fromInteger` for `Int` returns `0`.** Harmless today because literals never go through it, but it will bite as soon as item 7 lands. Tracked in [#82](https://github.com/blancolioni/leander/issues/82).
 
 ### Tier 1 — cheap, high-frequency (do first)
@@ -215,4 +215,4 @@ These are wrong answers or crashes in forms that are otherwise supported.
 9. ~~**Module imports/exports** (multi-file programs).~~ Landed — see `share/leander/docs/modules.md`. What is left is separate compilation: reading a module's `.skix` back rather than only the Prelude's.
 10. **Input IO** (`getLine`/`getChar`).
 11. **Real layout algorithm** (replace ad-hoc indent checks) — foundational but higher risk; do when the ad-hoc rules start failing real code.
-12. **Char/String literal patterns**, **block comments**, **numeric escapes**, **left sections**, **multi-arg/pattern lambdas**, **triples**, **`where` on case alternatives**, **instances with no `where`** — small polish items.
+12. **Char/String literal patterns**, **left sections**, **multi-arg/pattern lambdas**, **triples**, **`where` on case alternatives**, **instances with no `where`** — small polish items.

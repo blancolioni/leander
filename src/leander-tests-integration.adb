@@ -95,6 +95,30 @@ package body Leander.Tests.Integration is
          Error (Label, Ada.Exceptions.Exception_Message (E));
    end Test_Module_Clean;
 
+   -------------------------
+   -- Test_Module_Reports --
+   -------------------------
+
+   procedure Test_Module_Reports
+     (Label       : String;
+      Module_Path : String)
+   is
+      H : Leander.Handle := Leander.Create (256 * 1024);
+   begin
+      --  As Test_Module_Fails, but the module has to be rejected with a
+      --  reported error: an exception on the way is a test error, not a
+      --  rejection.
+      Leander.Clear_Errors;
+      H.Load_Module (Module_Path);
+      Test (Label, Leander.Had_Errors);
+      Leander.Clear_Errors;
+      H.Close;
+   exception
+      when E : others =>
+         Leander.Clear_Errors;
+         Error (Label, Ada.Exceptions.Exception_Message (E));
+   end Test_Module_Reports;
+
    -----------------------
    -- Test_Module_Fails --
    -----------------------
@@ -577,6 +601,59 @@ package body Leander.Tests.Integration is
          "rbLocalSame", "1",
          Handle);
 
+      --  Escapes in string and character literals (issue #96)
+
+      Test_Module
+        ("module: single-character escapes",
+         Test_Root & "test_22_escapes.hs",
+         "esSimple", "K",
+         Handle);
+      Test_Module
+        ("module: decimal, hex and octal escapes",
+         Test_Root & "test_22_escapes.hs",
+         "esNumeric", "K",
+         Handle);
+      Test_Module
+        ("module: ASCII control names take the longest match",
+         Test_Root & "test_22_escapes.hs",
+         "esNames", "K",
+         Handle);
+      Test_Module
+        ("module: the empty escape",
+         Test_Root & "test_22_escapes.hs",
+         "esEmpty", "K",
+         Handle);
+      Test_Module
+        ("module: caret escapes",
+         Test_Root & "test_22_escapes.hs",
+         "esCaret", "K",
+         Handle);
+      Test_Module
+        ("module: control-backslash before the closing quote",
+         Test_Root & "test_22_escapes.hs",
+         "esCaretBackslash", "K",
+         Handle);
+      Test_Module
+        ("module: a string gap on one line",
+         Test_Root & "test_22_escapes.hs",
+         "esGap", "K",
+         Handle);
+      Test_Module
+        ("module: a string gap across lines",
+         Test_Root & "test_22_escapes.hs",
+         "esLongGap", "K",
+         Handle);
+      Test_Module
+        ("module: escapes in character literals",
+         Test_Root & "test_22_escapes.hs",
+         "esChar", "K",
+         Handle);
+      Test_Module
+        ("module: quote characters as literals",
+         Test_Root & "test_22_escapes.hs",
+         "esQuotes", "73",
+         Handle);
+
       Test_Module
         ("module: synonym with two parameters",
          Test_Root & "test_19_type_synonym.hs",
@@ -928,6 +1005,14 @@ package body Leander.Tests.Integration is
       Test_Module_Fails
         ("module: an import after other declarations is rejected",
          Modules_Root & "bad/BadLateImport.hs");
+
+      Test_Module_Reports
+        ("module: an unknown escape is reported",
+         Test_Root & "test_22_bad_escape.hs");
+
+      Test_Module_Reports
+        ("module: a character literal cut off by the line end is reported",
+         Test_Root & "test_22_unterminated_char.hs");
 
       --  Minimal crash reproducer:
       --  a module-level binding that uses (==)
