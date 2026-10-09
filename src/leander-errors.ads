@@ -8,9 +8,19 @@ package Leander.Errors is
    --  That is tolerable for a REPL and useless for a test that wants to
    --  assert a program is rejected.
    --
-   --  GCS.Errors already tracks its own, for anything reported against a
-   --  source location. This covers the rest, and Leander.Had_Errors is
-   --  the union.
+   --  Report is for anything with a source position; Note_Error is for
+   --  failures that have already been described some other way. Either
+   --  one makes Had_Errors true.
+
+   procedure Report
+     (File_Name  : String;
+      Line       : Natural;
+      Column     : Natural;
+      Message    : String;
+      Is_Warning : Boolean := False);
+   --  Write "file:line:column: message" to standard error. A zero Line or
+   --  Column is left out, and so is an empty File_Name. A warning is
+   --  written with "warning: " in front and is not counted as an error.
 
    procedure Note_Error;
    procedure Clear;

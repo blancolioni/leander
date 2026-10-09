@@ -83,6 +83,8 @@ tests =
     , ("any", any (> 3) [1,2,3,4] == True)
     , ("span", fst (span (< 5) [1 ..]) == [1,2,3,4])
     , ("break", fst (break (> 5) [1 ..]) == [1,2,3,4,5])
+    , ("[1..5] is a range, not a float", [1..5] == [1,2,3,4,5])
+    , ("hex and octal literals", 0x1F + 0o17 == 46)
     ]
 
 test_where_1 :: Int

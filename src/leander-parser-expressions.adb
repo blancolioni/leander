@@ -6,7 +6,6 @@ with Ada.Strings.Fixed.Hash;
 with Ada.Text_IO;
 
 with Leander.Names;
-with Leander.Parser.Escapes;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
@@ -467,38 +466,17 @@ package body Leander.Parser.Expressions is
             Scan;
          end return;
       elsif Tok = Tok_Character_Literal then
-         declare
-            use Ada.Strings.Unbounded;
-            Value   : Character;
-            Message : Unbounded_String;
-         begin
-            Leander.Parser.Escapes.Decode_Character
-              (Tok_Text, Value, Message);
-            if Message /= Null_Unbounded_String then
-               Error (To_String (Message));
-            end if;
-            return Lit : constant Reference :=
-              Character_Literal (Loc, Character'Pos (Value))
-            do
-               Scan;
-            end return;
-         end;
+         return Lit : constant Reference :=
+           Character_Literal (Loc, Character'Pos (Tok_Character_Value))
+         do
+            Scan;
+         end return;
       elsif Tok = Tok_String_Literal then
-         declare
-            use Ada.Strings.Unbounded;
-            Value   : Unbounded_String;
-            Message : Unbounded_String;
-         begin
-            Leander.Parser.Escapes.Decode_String (Tok_Text, Value, Message);
-            if Message /= Null_Unbounded_String then
-               Error (To_String (Message));
-            end if;
-            return Lit : constant Reference :=
-              String_Literal (Loc, To_String (Value))
-            do
-               Scan;
-            end return;
-         end;
+         return Lit : constant Reference :=
+           String_Literal (Loc, Tok_Text)
+         do
+            Scan;
+         end return;
       elsif Tok = Tok_Left_Paren then
          Scan;
          if Tok = Tok_Right_Paren then

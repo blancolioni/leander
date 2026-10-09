@@ -14,12 +14,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Checkout GCS
-      uses: actions/checkout@v4
-      with:
-        repository: blancolioni/gcs
-        path: ./gcs
-        
     - name: Checkout Skit
       uses: actions/checkout@v4
       with:

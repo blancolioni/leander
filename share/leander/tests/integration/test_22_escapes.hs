@@ -24,6 +24,10 @@ esEmpty = esCodes "\SO\&H\1\&2" == [14,72,1,50]
 
 esCaret = esCodes "\^@\^A\^Z\^[\^_" == [0,1,26,27,31]
 
+--  \^ takes exactly one character, even a backslash before the quote.
+
+esCaretBackslash = esCodes "\^\" == [28]
+
 --  A gap, on one line and across two.
 
 esGap = "ab\    \cd" == "abcd"

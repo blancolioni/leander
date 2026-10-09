@@ -1,5 +1,3 @@
-with GCS.Constraints;
-
 with Leander.Core.Kinds;
 with Leander.Core.Predicates;
 with Leander.Core.Schemes;
@@ -537,7 +535,7 @@ package body Leander.Parser.Declarations is
             --  and an import sits at column 1, so it would not move at all
             --  and At_Declaration would still be true: skip the line.
             declare
-               Line : constant GCS.Constraints.Line_Number := Tok_Line;
+               Line : constant Natural := Tok_Line;
             begin
                while Tok /= Tok_End_Of_File
                  and then Tok_Line = Line

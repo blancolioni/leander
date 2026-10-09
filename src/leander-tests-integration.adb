@@ -629,6 +629,11 @@ package body Leander.Tests.Integration is
          "esCaret", "K",
          Handle);
       Test_Module
+        ("module: control-backslash before the closing quote",
+         Test_Root & "test_22_escapes.hs",
+         "esCaretBackslash", "K",
+         Handle);
+      Test_Module
         ("module: a string gap on one line",
          Test_Root & "test_22_escapes.hs",
          "esGap", "K",

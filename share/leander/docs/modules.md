@@ -73,7 +73,7 @@ name, with a second cache keyed by full path so that loading the same file
 twice does not reopen it merely to re-read its header.
 
 A module partway through its own parse is recorded, so an import cycle is
-a diagnostic instead of a recursion down to GCS's 500-open-file limit.
+a diagnostic instead of an endless recursion.
 `Load_Module_By_Name` returns null for both a cycle and a missing module
 and reports neither: the useful source location belongs to the import
 declaration that asked, so the caller reports.
@@ -196,9 +196,6 @@ a module writes its own, so `import Prelude ()` cannot restrict it.
 - A module's `.skix` embeds everything reachable from its exports by graph
   reachability, including the Prelude cells it uses. Not a regression, but
   a visible size problem now that any module can be dumped.
-- `Max_Source_Files` is 10,000 and `Next_File` increments on every `Open`,
-  including `Open_String`. Recursive loading consumes slots faster than
-  before.
 - Staleness is decided by mtime alone, so editing a module's export list
   against a newer-but-stale `.skix` loads the old set. No `.skix` is
   committed.

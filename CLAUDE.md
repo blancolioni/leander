@@ -33,6 +33,7 @@ There is no way to run a single named test suite from the CLI. Individual test s
 
 ```
 String
+  → Leander.Parser.Lexer    (leander-parser-lexer.adb)   — token vector
   → Leander.Parser          (leander-parser-*.adb)
   → Leander.Syntax          (leander-syntax-*.ads/adb)   — parse tree
   → .To_Core                (leander-syntax-*.adb)
