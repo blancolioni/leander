@@ -33,4 +33,5 @@ private package Leander.Parser.Lexical is
                  Line_Comment_Start => "--",
                  Escape_Character   => '\',
                  Properties         => [Case_Sensitive_Identifiers => True,
+                                        Raw_Escapes                => True,
                                         others => False]);

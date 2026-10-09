@@ -3,6 +3,7 @@ with Ada.Text_IO;
 
 with Leander.Core;
 with Leander.Syntax;
+with Leander.Tests.Escapes;
 with Leander.Tests.Evaluation;
 with Leander.Tests.Expressions;
 with Leander.Tests.Inference;
@@ -84,6 +85,7 @@ package body Leander.Tests is
       Leander.Tests.Tyvars.Run_Tests;
       Leander.Tests.Types.Run_Tests;
       Leander.Tests.Schemes.Run_Tests;
+      Leander.Tests.Escapes.Run_Tests;
       Leander.Tests.Expressions.Run_Tests;
       Leander.Tests.Inference.Run_Tests;
       Leander.Tests.Prelude.Run_Tests;
