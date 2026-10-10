@@ -1371,6 +1371,39 @@ package body Leander.Tests.Integration is
          "scThroughInstance", "K",
          Handle);
 
+      --  Equations are tried in order, and fall through (issue #120)
+
+      Test_Module
+        ("module: equation order: eoIndex",
+         Test_Root & "test_34_equation_order.hs",
+         "eoIndex", "K",
+         Handle);
+      Test_Module
+        ("module: equation order: eoNthLater",
+         Test_Root & "test_34_equation_order.hs",
+         "eoNthLater", "K",
+         Handle);
+      Test_Module
+        ("module: equation order: eoFallThrough",
+         Test_Root & "test_34_equation_order.hs",
+         "eoFallThrough", "K",
+         Handle);
+      Test_Module
+        ("module: equation order: eoVariableFirst",
+         Test_Root & "test_34_equation_order.hs",
+         "eoVariableFirst", "K",
+         Handle);
+      Test_Module
+        ("module: equation order: eoSameConstructor",
+         Test_Root & "test_34_equation_order.hs",
+         "eoSameConstructor", "K",
+         Handle);
+      Test_Module
+        ("module: equation order: eoDeeper",
+         Test_Root & "test_34_equation_order.hs",
+         "eoDeeper", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
