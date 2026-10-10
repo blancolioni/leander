@@ -55,6 +55,11 @@ package Leander.Calculus is
       Name : String)
       return Boolean;
 
+   function Free_References
+     (This : Tree)
+      return Leander.Names.Name_Array;
+   --  The names This refers to without binding them, each once.
+
    function To_String (This : Tree) return String;
 
 private

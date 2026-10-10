@@ -1,11 +1,14 @@
 with Ada.Calendar;
+with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers.Vectors;
 with Ada.Directories;
 with Ada.Streams;
+with Ada.Strings.Hash;
 with Ada.Text_IO;
 with Leander.Byte_Buffers;
 with Leander.Calculus;
 
+with Leander.Core.Expressions;
 with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
 with Leander.Core.Predicates;
@@ -211,6 +214,11 @@ package body Leander.Handles is
    end Decode_Synonyms;
 
    procedure Evaluate_Error (H : Handle'Class);
+
+   procedure Link
+     (This : Instance'Class;
+      Root : String);
+   --  Install Root, and every name it reaches that is not installed yet.
    procedure Evaluate_Error_Char (H : Handle'Class);
    procedure Evaluate_Error_Raise (H : Handle'Class);
 
@@ -902,27 +910,210 @@ package body Leander.Handles is
               "undefined: " & Name;
          end if;
 
-         declare
-            T             : constant Leander.Calculus.Tree :=
-                              This.Env.Get_Bound_Calculus (Name);
-            Term          : constant Skit.Terms.Term :=
-                              Leander.Calculus.Compile (T);
-            Compiled_Term : constant Skit.Terms.Term :=
-                              Skit.Compiler.Compile (Term);
-            function Resolve (Name : String) return Skit.Object
-            is (This.Resolve (Name));
-
-            Value         : constant Skit.Object :=
-                              This.Skit_Handle.Install
-                                (Compiled_Term, Resolve'Access);
-         begin
-            This.Skit_Handle.Bind (Name, Value);
-            return Value;
-         end;
+         Link (This, Name);
+         return This.Skit_Handle.Lookup (Name);
       else
          return Binding;
       end if;
    end Resolve;
+
+   ----------
+   -- Link --
+   ----------
+
+   procedure Link
+     (This : Instance'Class;
+      Root : String)
+   is
+      --  Installing a term resolves every name it refers to first, so names
+      --  that refer to each other -- two instance dictionaries whose
+      --  methods use one another, say -- cannot be installed one at a time
+      --  (issue #130).  Instead, the names not yet installed that Root
+      --  reaches are split into strongly connected components (Tarjan),
+      --  and each component is installed as it closes, which is after
+      --  everything it depends on.  A component of one name that does not
+      --  refer to itself is installed as before; any other is tied into
+      --  one recursive tuple, as Expressions.Recursive_Component does for
+      --  mutually recursive bindings, and each name bound to its field.
+
+      type Node is
+         record
+            Name     : Ada.Strings.Unbounded.Unbounded_String;
+            Tree     : Leander.Calculus.Tree;
+            Index    : Positive;
+            Low      : Positive;
+            On_Stack : Boolean;
+         end record;
+
+      package Node_Vectors is
+        new Ada.Containers.Vectors (Positive, Node);
+
+      package Index_Maps is
+        new Ada.Containers.Indefinite_Hashed_Maps
+          (Key_Type        => String,
+           Element_Type    => Positive,
+           Hash            => Ada.Strings.Hash,
+           Equivalent_Keys => "=");
+
+      package Positive_Vectors is
+        new Ada.Containers.Vectors (Positive, Positive);
+
+      Nodes : Node_Vectors.Vector;
+      Index : Index_Maps.Map;
+      Stack : Positive_Vectors.Vector;
+
+      function Pending (Name : String) return Boolean
+      is (Skit.Is_Undefined (This.Skit_Handle.Lookup (Name))
+          and then This.Env.Variable_Binding_Exists (Name));
+
+      function Resolve (Name : String) return Skit.Object
+      is (This.Resolve (Name));
+
+      procedure Install
+        (Name : String;
+         Tree : Leander.Calculus.Tree);
+
+      procedure Install_Group (Members : Positive_Vectors.Vector);
+
+      function Visit (Name : String) return Positive;
+      --  The node for Name, after visiting it and what it reaches.
+
+      -------------
+      -- Install --
+      -------------
+
+      procedure Install
+        (Name : String;
+         Tree : Leander.Calculus.Tree)
+      is
+         Term     : constant Skit.Terms.Term :=
+                      Leander.Calculus.Compile (Tree);
+         Compiled : constant Skit.Terms.Term :=
+                      Skit.Compiler.Compile (Term);
+         Value    : constant Skit.Object :=
+                      This.Skit_Handle.Install (Compiled, Resolve'Access);
+      begin
+         This.Skit_Handle.Bind (Name, Value);
+      end Install;
+
+      -------------------
+      -- Install_Group --
+      -------------------
+
+      procedure Install_Group (Members : Positive_Vectors.Vector) is
+         use Leander.Calculus;
+         use Ada.Strings.Unbounded;
+         Count    : constant Positive := Natural (Members.Length);
+         Group    : constant String :=
+                      "$group" & Leander.Names.To_String
+                                   (Leander.Names.New_Name);
+         Tuple    : constant String :=
+                      Leander.Names.To_String (Leander.Names.New_Name);
+         Selector : constant String :=
+                      Leander.Names.To_String (Leander.Names.New_Name);
+         Fields   : Leander.Calculus.Tree := Symbol (Selector);
+
+         function Field (I : Positive) return Leander.Calculus.Tree
+         is (Leander.Core.Expressions.Projection (I, Count));
+
+         Body_Tree : Leander.Calculus.Tree;
+      begin
+         --  Y (\t. (\m1 .. mN. \s. s e1 .. eN) (t pi1) .. (t piN))
+         for M of Members loop
+            Fields := Apply (Fields, Nodes (M).Tree);
+         end loop;
+         Body_Tree := Lambda (Selector, Fields);
+         for M of reverse Members loop
+            Body_Tree := Lambda (To_String (Nodes (M).Name), Body_Tree);
+         end loop;
+         for I in 1 .. Count loop
+            Body_Tree := Apply (Body_Tree, Apply (Symbol (Tuple), Field (I)));
+         end loop;
+
+         Install (Group, Apply (Symbol ("Y"), Lambda (Tuple, Body_Tree)));
+
+         for I in 1 .. Count loop
+            Install
+              (To_String (Nodes (Members (I)).Name),
+               Apply (Symbol (Group), Field (I)));
+         end loop;
+      end Install_Group;
+
+      -----------
+      -- Visit --
+      -----------
+
+      function Visit (Name : String) return Positive is
+         V : constant Positive := Nodes.Last_Index + 1;
+      begin
+         Nodes.Append
+           (Node'
+              (Name     => Ada.Strings.Unbounded.To_Unbounded_String (Name),
+               Tree     => This.Env.Get_Bound_Calculus (Name),
+               Index    => V,
+               Low      => V,
+               On_Stack => True));
+         Index.Insert (Name, V);
+         Stack.Append (V);
+
+         for Ref of Leander.Calculus.Free_References (Nodes (V).Tree) loop
+            declare
+               Ref_Name : constant String := Leander.Names.To_String (Ref);
+            begin
+               if Index.Contains (Ref_Name) then
+                  declare
+                     W : constant Positive := Index.Element (Ref_Name);
+                  begin
+                     if Nodes (W).On_Stack then
+                        Nodes (V).Low :=
+                          Positive'Min (Nodes (V).Low, Nodes (W).Index);
+                     end if;
+                  end;
+               elsif Pending (Ref_Name) then
+                  declare
+                     W : constant Positive := Visit (Ref_Name);
+                  begin
+                     Nodes (V).Low :=
+                       Positive'Min (Nodes (V).Low, Nodes (W).Low);
+                  end;
+               end if;
+            end;
+         end loop;
+
+         if Nodes (V).Low = Nodes (V).Index then
+            declare
+               Members : Positive_Vectors.Vector;
+            begin
+               loop
+                  declare
+                     W : constant Positive := Stack.Last_Element;
+                  begin
+                     Stack.Delete_Last;
+                     Nodes (W).On_Stack := False;
+                     Members.Prepend (W);
+                     exit when W = V;
+                  end;
+               end loop;
+
+               if Natural (Members.Length) = 1
+                 and then not Leander.Calculus.Has_Reference
+                   (Nodes (V).Tree, Name)
+               then
+                  Install (Name, Nodes (V).Tree);
+               else
+                  Install_Group (Members);
+               end if;
+            end;
+         end if;
+
+         return V;
+      end Visit;
+
+      Root_Node : constant Positive := Visit (Root);
+      pragma Unreferenced (Root_Node);
+   begin
+      null;
+   end Link;
 
    ----------------
    -- Send_Value --
