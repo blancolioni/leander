@@ -1,3 +1,4 @@
+with Leander.Core.Binding_Groups;
 with Leander.Core.Kinds;
 with Leander.Core.Predicates;
 with Leander.Core.Schemes;
@@ -602,6 +603,27 @@ package body Leander.Parser.Declarations is
          end if;
       end loop;
       Context.Environment.Bindings (Bindings.To_Core);
+
+   exception
+      when Parse_Error =>
+         --  The error has been reported, and the module counts as failed,
+         --  but the environment still needs its bindings: elaborating it,
+         --  and anything importing it, looks them up (issue #113).  It
+         --  gets the ones parsed before the error, or none if even those
+         --  cannot be made into a binding group -- a signature whose
+         --  equations never arrived, say.
+         declare
+            Group : Leander.Core.Binding_Groups.Reference;
+         begin
+            begin
+               Group := Bindings.To_Core;
+            exception
+               when others =>
+                  Group := Leander.Syntax.Bindings.Empty.To_Core;
+            end;
+            Context.Environment.Bindings (Group);
+         end;
+         raise;
    end Parse_Declarations;
 
    --------------------------

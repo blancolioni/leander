@@ -1772,6 +1772,15 @@ package body Leander.Tests.Integration is
         ("module: an instance without its superclass's instance is reported",
          Test_Root & "test_33_missing_superclass.hs");
 
+      --  A syntax error partway through a module (issue #113)
+
+      Test_Module_Reports
+        ("module: a syntax error inside a declaration is reported",
+         Test_Root & "test_35_syntax_error.hs");
+      Test_Module_Reports
+        ("module: importing a module with a syntax error is reported",
+         Test_Root & "test_35_imports_syntax_error.hs");
+
       --  Explicit signatures are checked against their bodies (issue #83)
 
       Test_Module_Reports

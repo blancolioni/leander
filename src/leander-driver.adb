@@ -73,9 +73,16 @@ begin
          H : Leander.Handle := Leander.Create (Core_Size);
       begin
          H.Load_Module (Command_Line.Main);
-         H.Execute ("main");
-         if Command_Line.Report then
-            H.Report;
+
+         --  A module that was reported as wrong is not run: its main may
+         --  not even have been parsed (issue #113).
+         if Leander.Had_Errors then
+            Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
+         else
+            H.Execute ("main");
+            if Command_Line.Report then
+               H.Report;
+            end if;
          end if;
 
          H.Close;
