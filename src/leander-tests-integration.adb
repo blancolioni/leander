@@ -1272,6 +1272,44 @@ package body Leander.Tests.Integration is
          "cdSuperclass", "K",
          Handle);
 
+      --  Applicative is Monad's superclass (issue #125)
+
+      Test_Module
+        ("module: a user monad gets return from pure",
+         Test_Root & "test_31_monad.hs",
+         "mnBoxReturn", "K",
+         Handle);
+      Test_Module
+        ("module: do in a user monad",
+         Test_Root & "test_31_monad.hs",
+         "mnBoxDo", "K",
+         Handle);
+      Test_Module
+        ("module: the list monad",
+         Test_Root & "test_31_monad.hs",
+         "mnListBind", "K",
+         Handle);
+      Test_Module
+        ("module: do in the list monad",
+         Test_Root & "test_31_monad.hs",
+         "mnListDo", "K",
+         Handle);
+      Test_Module
+        ("module: Maybe's return is the default",
+         Test_Root & "test_31_monad.hs",
+         "mnMaybe", "K",
+         Handle);
+      Test_Module
+        ("module: IO's return is the default",
+         Test_Root & "test_31_monad.hs",
+         "mnIO", "K",
+         Handle);
+      Test_Module
+        ("module: IO's <*>",
+         Test_Root & "test_31_monad.hs",
+         "mnIOAp", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module

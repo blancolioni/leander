@@ -163,10 +163,14 @@ class (Functor f) => Applicative f where
     pure :: a -> f a
     (<*>) :: f (a -> b) -> f a -> f b
 
-class Monad m where
+-- Applicative is Monad's superclass, as in base (the Applicative-Monad
+-- Proposal) rather than the Haskell 2010 Report, which has no
+-- Applicative.  So a monad's return is its pure unless it says otherwise.
+class Applicative m => Monad m where
     return :: a -> m a
     (>>=) :: m a -> (a -> m b) -> m b
     (>>) :: m a -> m b -> m b
+    return = pure
     m >> k = m >>= \_ -> k
 
 instance Eq Bool where
@@ -280,6 +284,9 @@ instance Functor [] where
 instance Applicative [] where
     pure x = [x]
     fs <*> xs = concat (map (\f -> map f xs) fs)
+
+instance Monad [] where
+    xs >>= f = concat (map f xs)
 
 instance (Show a) => Show [a] where
     showsPrec _ = showList
@@ -618,7 +625,6 @@ instance Applicative Maybe where
     (Just f) <*> mx = fmap f mx
 
 instance Monad Maybe where
-    return = Just
     Nothing >>= _ = Nothing
     (Just x) >>= f = f x
 
@@ -664,15 +670,14 @@ instance Functor IO where
         x <- a
         return (f x)
 
+-- Written with bindIO rather than do: do would use Monad IO, whose return
+-- is Applicative IO's pure, and two dictionaries that refer to each other
+-- by name are linked by recursing forever (#130).
 instance Applicative IO where
-    pure = return
-    mf <*> mx = do
-        f <- mf
-        x <- mx
-        return (f x)
+    pure = returnIO
+    mf <*> mx = bindIO mf (\f -> bindIO mx (\x -> returnIO (f x)))
 
 instance Monad IO where
-    return = returnIO
     (>>=) = bindIO
 
 returnIO x = IO (\ w -> (x, w))
