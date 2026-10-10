@@ -170,6 +170,22 @@ calculus tree to SKI machine instructions:
   compilation on first access).
 - **Number nodes** push integer objects directly.
 
+Installing a term resolves every global name it refers to first. So a
+global that is not installed yet is linked together with everything
+it reaches that isn't installed either (`Handles.Link`):
+- the names are split into strongly connected components by their
+  references;
+- each component is installed once everything it refers to is;
+- a single name is installed on its own;
+- a component of several names, or a name that refers to itself, is
+  installed as one tuple tied with `Y`, and each name is bound to its
+  own field.
+
+Without this, two globals that refer to each other would each wait for
+the other forever. Instance dictionaries do this routinely: an
+`Applicative` instance whose `<*>` uses the `Monad` instance, whose
+`return` is that `Applicative`'s `pure` (issue #130).
+
 At runtime, constructed values are chains of `Application_Object` cells
 in the SKI machine's heap. Matching a constructor value means reducing
 the application of a projection function to its continuation arguments,

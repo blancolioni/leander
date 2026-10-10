@@ -1,3 +1,4 @@
+with Ada.Containers.Vectors;
 with Ada.Unchecked_Deallocation;
 
 package body Leander.Calculus is
@@ -85,6 +86,54 @@ package body Leander.Calculus is
       end case;
       Free (This);
    end Dispose;
+
+   ---------------------
+   -- Free_References --
+   ---------------------
+
+   function Free_References
+     (This : Tree)
+      return Leander.Names.Name_Array
+   is
+      use type Leander.Names.Leander_Name;
+
+      package Name_Vectors is
+        new Ada.Containers.Vectors (Positive, Leander.Names.Leander_Name);
+
+      Found : Name_Vectors.Vector;
+      Bound : Name_Vectors.Vector;
+
+      procedure Walk (T : Tree);
+
+      ----------
+      -- Walk --
+      ----------
+
+      procedure Walk (T : Tree) is
+      begin
+         case T.Class is
+            when Integer_Constant | Long_Float_Constant =>
+               null;
+            when Reference =>
+               if not Bound.Contains (T.Ref)
+                 and then not Found.Contains (T.Ref)
+               then
+                  Found.Append (T.Ref);
+               end if;
+            when Apply =>
+               Walk (T.L);
+               Walk (T.R);
+            when Lambda =>
+               Bound.Append (T.X);
+               Walk (T.E);
+               Bound.Delete_Last;
+         end case;
+      end Walk;
+
+   begin
+      Walk (This);
+      return [for N of Found => N];
+   end Free_References;
 
    -------------------
    -- Has_Reference --

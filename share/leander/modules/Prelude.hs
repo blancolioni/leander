@@ -670,12 +670,15 @@ instance Functor IO where
         x <- a
         return (f x)
 
--- Written with bindIO rather than do: do would use Monad IO, whose return
--- is Applicative IO's pure, and two dictionaries that refer to each other
--- by name are linked by recursing forever (#130).
+-- (<*>) uses Monad IO, whose return is this instance's pure: the two
+-- dictionaries refer to each other, and are linked as one recursive group
+-- (#130).
 instance Applicative IO where
     pure = returnIO
-    mf <*> mx = bindIO mf (\f -> bindIO mx (\x -> returnIO (f x)))
+    mf <*> mx = do
+        f <- mf
+        x <- mx
+        return (f x)
 
 instance Monad IO where
     (>>=) = bindIO

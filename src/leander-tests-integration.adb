@@ -1310,6 +1310,24 @@ package body Leander.Tests.Integration is
          "mnIOAp", "K",
          Handle);
 
+      --  Values that refer to each other are linked as a group (#130)
+
+      Test_Module
+        ("module: dictionaries that use each other (<*>)",
+         Test_Root & "test_32_dictionary_cycle.hs",
+         "dcAp", "K",
+         Handle);
+      Test_Module
+        ("module: dictionaries that use each other (return)",
+         Test_Root & "test_32_dictionary_cycle.hs",
+         "dcReturn", "K",
+         Handle);
+      Test_Module
+        ("module: a ring through dictionaries and a function",
+         Test_Root & "test_32_dictionary_cycle.hs",
+         "dcRing", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
