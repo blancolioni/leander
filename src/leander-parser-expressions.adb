@@ -32,6 +32,16 @@ package body Leander.Parser.Expressions is
         Equivalent_Keys => "=");
 
    Fixities : Fixity_Maps.Map;
+   --  The declared fixities.  An operator with no declaration is infixl 9
+   --  (Haskell 2010, section 4.4.2), but it is not entered here: this
+   --  table is what a module image records as declared.
+
+   function Fixity_Of (Operator : String) return Fixity_Record
+   is (if Fixities.Contains (Operator) then Fixities.Element (Operator)
+       elsif Operator = ":" then (Right, 5)
+       else (others => <>));
+   --  (:) is built-in syntax and cannot be given a fixity declaration,
+   --  but the Report fixes it as infixr 5.
 
    function At_Atomic_Expression return Boolean;
 
@@ -790,20 +800,14 @@ package body Leander.Parser.Expressions is
       procedure Push_Operator
         (Op_Name : String)
       is
-         Op_Fixity : Fixity_Record;
+         Op_Fixity : constant Fixity_Record := Fixity_Of (Op_Name);
       begin
-         if Fixities.Contains (Op_Name) then
-            Op_Fixity := Fixities.Element (Op_Name);
-         else
-            Fixities.Insert (Op_Name, Op_Fixity);
-         end if;
 
          while not Operator_Stack.Is_Empty loop
             declare
                Top        : constant String :=
                               Operator_Stack.Last_Element;
-               Top_Fixity : constant Fixity_Record :=
-                              Fixities.Element (Top);
+               Top_Fixity : constant Fixity_Record := Fixity_Of (Top);
                Pop        : Boolean;
             begin
                Pop :=
