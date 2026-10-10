@@ -66,6 +66,29 @@ package Leander.Core.Expressions is
       Env   : not null access constant Leander.Environment.Abstraction'Class)
       return Leander.Calculus.Tree;
 
+   function Recursive_Component
+     (Group     : Leander.Core.Binding_Groups.Reference;
+      Component : Positive;
+      Types     : in out Leander.Core.Inference.Inference_Context'Class;
+      Env       : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree;
+   --  The bindings m1 .. mN of one of Group's components (see
+   --  Binding_Groups.Component), which refer to each other, as the tuple
+   --
+   --    Y (\t. (\m1 .. mN. \s. s e1 .. eN) (t pi1) .. (t piN))
+   --
+   --  where each ei is mi with its dictionary lambdas, and Projection
+   --  (I, N) is pii.  Every reference among the members goes through t,
+   --  so the result refers to none of them by name.
+
+   function Projection
+     (Index, Count : Positive)
+      return Leander.Calculus.Tree
+     with Pre => Index <= Count;
+   --  \x1 .. xCount. xIndex, which selects field Index of a Scott-encoded
+   --  tuple of Count fields.
+
    procedure Prune;
 
    procedure Report;

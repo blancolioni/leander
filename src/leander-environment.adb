@@ -1495,6 +1495,13 @@ package body Leander.Environment is
 
       function Do_Get return Leander.Calculus.Tree;
 
+      function Is_Mutually_Recursive
+        (Binding : Leander.Core.Bindings.Reference)
+         return Boolean
+      is (This.Bindings.Component
+            (This.Bindings.Component_Of (Binding.Name))'Length > 1);
+      --  Binding shares its dependency component with another binding.
+
       ------------
       -- Do_Get --
       ------------
@@ -1521,6 +1528,37 @@ package body Leander.Environment is
                   end loop;
                   raise Constraint_Error with
                     "undefined: " & Name;
+               elsif Is_Mutually_Recursive (Binding) then
+                  --  Each member refers to the others by name, so compiling
+                  --  them one by one would need each to be installed before
+                  --  the next.  Instead each is its own field of a tuple of
+                  --  the whole group, which refers to none of them.  Every
+                  --  member carries a copy of the group.
+                  This.Context.Clear_Predicates;
+                  declare
+                     C       : constant Positive :=
+                                 This.Bindings.Component_Of (Binding.Name);
+                     Members : constant Leander.Core.Bindings.Reference_Array :=
+                                 This.Bindings.Component (C);
+                     Index   : Positive := 1;
+                  begin
+                     while Members (Members'First + Index - 1) /= Binding loop
+                        Index := Index + 1;
+                     end loop;
+
+                     declare
+                        Tree : constant Leander.Calculus.Tree :=
+                                 Leander.Calculus.Apply
+                                   (Leander.Core.Expressions.Recursive_Component
+                                      (This.Bindings, C,
+                                       This.Context, This'Access),
+                                    Leander.Core.Expressions.Projection
+                                      (Index, Members'Length));
+                     begin
+                        This.Values.Insert (L, Tree);
+                        return Tree;
+                     end;
+                  end;
                else
                   This.Context.Clear_Predicates;
                   declare
