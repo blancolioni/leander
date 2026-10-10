@@ -261,7 +261,9 @@ package body Leander.Tests.Modules is
       Withheld : constant String :=
                    "|mcons"            --  sequence's fold helper
                    & "|small|zero"     --  arithmetic helpers
-                   & "|showUnsignedInt"  --  show helper
+                   & "|showUnsignedInt|showSignedInt"  --  Show Int helpers
+                   & "|showLitChar|showLitString|protectEsc"
+                   & "|isDecDigit|asciiTab"  --  Show Char helpers
                    & "|bindIO|returnIO"  --  IO's Monad methods
                    & "|fst3|snd3|thd3"   --  unzip3's selectors
                    & "|thenCmp"          --  tuple Ord helper

@@ -7,7 +7,8 @@ module Prelude
     last, length, lookup, map, mapM, mapM_, maximum, minimum, mod, not,
     notElem, null, or, otherwise, print, product, putChar, putStr,
     putStrLn, repeat, replicate, reverse, runIO, seq, sequence,
-    sequence_, showMaybe, snd, span, subtract, sum, tail, take,
+    sequence_, showChar, showParen, showString, shows, snd, span,
+    subtract, sum, tail, take,
     takeWhile, uncurry, unzip, unzip3, zip, zip3, zipWith, zipWith3,
     (!!), ($), ($!), (&&), (++), (.),
     (||)
@@ -75,8 +76,40 @@ class Eq a => Ord a where
     max x y           =  if x <= y then y else x
     min x y           =  if x <= y then x else y
     
+-- Show, as in the Haskell 2010 Report (section 6.3.3 and the
+-- PreludeText module of chapter 9).  An instance defines show or
+-- showsPrec; showList is what lets a list of Char show as a string.
+
+type ShowS = String -> String
+
 class Show a where
-    show :: a -> [Char]
+    showsPrec :: Int -> a -> ShowS
+    show      :: a -> String
+    showList  :: [a] -> ShowS
+
+        -- Minimal complete definition: show or showsPrec
+    showsPrec _ x s = show x ++ s
+    show x          = showsPrec 0 x ""
+
+    -- Only class methods and exported names here: a module that imports
+    -- the Prelude compiles these defaults again, and sees only what the
+    -- Prelude exports.
+    showList []     = showString "[]"
+    showList (x:xs) = showChar '[' . shows x . showl xs
+        where showl []     = showChar ']'
+              showl (y:ys) = showChar ',' . shows y . showl ys
+
+shows :: Show a => a -> ShowS
+shows = showsPrec 0
+
+showChar :: Char -> ShowS
+showChar = (:)
+
+showString :: String -> ShowS
+showString = (++)
+
+showParen :: Bool -> ShowS -> ShowS
+showParen b p = if b then showChar '(' . p . showChar ')' else p
 
 class  Enum a  where  
     succ, pred       :: a -> a  
@@ -158,11 +191,14 @@ instance Enum Int where
                           else n : enumFromThenTo n' (n' + n' - n) m
 
 instance Show Int where
-  show x = if x == 0
-           then "0"
-           else if x < 0
-           then '-' : reverse (showUnsignedInt (0 - x))
-           else reverse (showUnsignedInt x)
+  showsPrec d x = showParen (x < 0 && d > 6) (showString (showSignedInt x))
+
+showSignedInt :: Int -> String
+showSignedInt x = if x == 0
+                  then "0"
+                  else if x < 0
+                  then '-' : reverse (showUnsignedInt (0 - x))
+                  else reverse (showUnsignedInt x)
                 
 showUnsignedInt :: Int -> [Char]
 showUnsignedInt 0 = ""
@@ -179,6 +215,58 @@ instance Ord Char where
 instance Enum Char where
   toEnum = #primIntToChar
   fromEnum = #primCharToInt
+
+instance Show Char where
+  showsPrec _ c = if c == '\''
+                  then showString "'\\''"
+                  else showChar '\'' . showLitChar c . showChar '\''
+
+  showList cs = showChar '"' . showLitString cs . showChar '"'
+
+-- How a character is written inside a literal (Haskell 2010, section
+-- 2.6).  Written with guards rather than character patterns, which the
+-- compiler does not take yet.
+
+showLitChar :: Char -> ShowS
+showLitChar c
+  | c > '\DEL'  = showChar '\\' . protectEsc isDecDigit (shows (fromEnum c))
+  | c == '\DEL' = showString "\\DEL"
+  | c == '\\'   = showString "\\\\"
+  | c >= ' '    = showChar c
+  | c == '\a'   = showString "\\a"
+  | c == '\b'   = showString "\\b"
+  | c == '\f'   = showString "\\f"
+  | c == '\n'   = showString "\\n"
+  | c == '\r'   = showString "\\r"
+  | c == '\t'   = showString "\\t"
+  | c == '\v'   = showString "\\v"
+  | c == '\SO'  = protectEsc (\h -> h == 'H') (showString "\\SO")
+  | otherwise   = showString ('\\' : (asciiTab !! fromEnum c))
+
+-- Inside a string, a double quote is escaped too.
+showLitString :: String -> ShowS
+showLitString []     = id
+showLitString (c:cs) = if c == '"'
+                       then showString "\\\"" . showLitString cs
+                       else showLitChar c . showLitString cs
+
+-- A numeric escape followed by a digit, or \SO followed by H, needs \&
+-- between them so that it reads back the same.
+protectEsc :: (Char -> Bool) -> ShowS -> ShowS
+protectEsc p f = f . cont
+    where cont s = case s of
+                     []    -> s
+                     (c:_) -> if p c then "\\&" ++ s else s
+
+isDecDigit :: Char -> Bool
+isDecDigit c = c >= '0' && c <= '9'
+
+asciiTab :: [String]
+asciiTab = ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
+            "BS",  "HT",  "LF",  "VT",  "FF",  "CR",  "SO",  "SI",
+            "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
+            "CAN", "EM",  "SUB", "ESC", "FS",  "GS",  "RS",  "US",
+            "SP"]
   
 instance Functor [] where
     fmap f [] = []
@@ -187,6 +275,9 @@ instance Functor [] where
 instance Applicative [] where
     pure x = [x]
     fs <*> xs = concat (map (\f -> map f xs) fs)
+
+instance (Show a) => Show [a] where
+    showsPrec _ = showList
 
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
@@ -197,6 +288,14 @@ instance (Eq a) => Eq [a] where
                     (y:ys') -> x == y && xs == ys'
 
 data Ordering = LT | EQ | GT deriving (Eq)
+
+instance Show Ordering where
+    show LT = "LT"
+    show EQ = "EQ"
+    show GT = "GT"
+
+instance Show () where
+    show _ = "()"
 
 otherwise :: Bool
 otherwise = True
@@ -500,9 +599,9 @@ maybe :: b -> (a -> b) -> Maybe a -> b
 maybe n f Nothing  =  n
 maybe n f (Just x) =  f x
 
-showMaybe :: Show a => Maybe a -> [Char]
-showMaybe Nothing  = "Nothing"
-showMaybe (Just x) = "Just " ++ show x
+instance (Show a) => Show (Maybe a) where
+    showsPrec _ Nothing  = showString "Nothing"
+    showsPrec d (Just x) = showParen (d > 10) (showString "Just " . showsPrec 11 x)
 
 instance Functor Maybe where
     fmap f Nothing = Nothing
@@ -521,6 +620,10 @@ instance Monad Maybe where
  -- Either type  
  
 data  Either a b  =  Left a | Right b   deriving (Eq)
+
+instance (Show a, Show b) => Show (Either a b) where
+    showsPrec d (Left x)  = showParen (d > 10) (showString "Left " . showsPrec 11 x)
+    showsPrec d (Right y) = showParen (d > 10) (showString "Right " . showsPrec 11 y)
 
 either               :: (a -> c) -> (b -> c) -> Either a b -> c  
 either f g (Left x)  =  f x  
