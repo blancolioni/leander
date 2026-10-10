@@ -90,16 +90,6 @@ gdOther  = gdClassify 2
 --  A guard can raise a class constraint of its own.  The synthesised
 --  groups are monomorphic so that the constraint travels out to the
 --  enclosing binding rather than being stranded (issue #70).
---
---  Known limitation, not a guard one: if the result type is the same
---  constrained variable -- 'Ord a => a -> a -> a' returning one of its
---  arguments -- the dictionary is still stranded, and the same happens
---  with no guards in sight, e.g.
---    f :: Ord a => a -> a -> a
---    f a b = if a > b then a else (if otherwise then b else b)
---  An explicit binding never splits or discharges the predicates its
---  body raises (Infer_Explicit_Binding does no predicate work at all),
---  so they survive to elaboration attached to an unresolved variable.
 
 gdFirstWins :: Ord a => a -> a -> Int
 gdFirstWins a b | a > b = 1
@@ -108,6 +98,38 @@ gdFirstWins _ _ = 0
 gdOrdBigger  = gdFirstWins 8 3
 gdOrdSmaller = gdFirstWins 3 8
 gdOrdChar    = gdFirstWins 'z' 'a'
+
+--  Returning the parameters themselves ties the guard's type to both of
+--  them inside the synthesised groups, which unify straight into the
+--  inference context.  That used to collide with the substitution the
+--  enclosing application brought back, and the collision dropped the
+--  link that resolves the guard's Ord dictionary -- even at Int
+--  (issue #93).
+
+gdMax :: Int -> Int -> Int
+gdMax a b | a > b     = a
+          | otherwise = b
+
+gdMaxFirst  = gdMax 7 2
+gdMaxSecond = gdMax 2 7
+
+--  Falling out to an equation that binds the parameters again.
+
+gdPick :: Int -> Int -> Int
+gdPick a b | a > b = 1
+gdPick a b = b
+
+gdPickGuard = gdPick 3 1
+gdPickFall  = gdPick 1 5
+
+--  The same with the result type the constrained variable itself.
+
+gdMaxOrd :: Ord a => a -> a -> a
+gdMaxOrd a b | a > b     = a
+             | otherwise = b
+
+gdMaxOrdInt  = gdMaxOrd 4 9
+gdMaxOrdChar = gdMaxOrd 'z' 'a'
 
 --  A 'where' binds over the guards as well as over the bodies.
 

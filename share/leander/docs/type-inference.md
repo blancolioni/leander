@@ -101,9 +101,22 @@ The inference context carries all mutable state during inference:
 
 The `Env_Stack` implements lexical scoping: `Save_Type_Env` pushes
 the current environment before entering a scope, and `Restore_Type_Env`
-pops it on exit. Substitutions are composed into `Subst` via
-`Save_Substitution`, which composes the new substitution with the
-existing one.
+pops it on exit. Substitutions are added to `Subst` via
+`Save_Substitution`, one binding at a time:
+
+- A binding for a variable `Subst` does not yet bind is first resolved
+  against `Subst`, then composed in. This keeps `Subst` idempotent,
+  which matters because `Apply` looks each variable up only once.
+- A binding for a variable `Subst` already binds is an equation
+  between the two types, so they are unified rather than one replacing
+  the other.
+
+Both cases arise because `TI` returns substitutions in Algorithm W
+style, while binding groups and case alternatives unify straight into
+the context. A `let` nested inside an application can therefore bind a
+variable that the application's own substitution binds too. Plain
+composition would keep only one of the two bindings, and lose whatever
+the other one implied (issue #93).
 
 ## Expression inference (`leander-core-expressions-inference.adb`)
 

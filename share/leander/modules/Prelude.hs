@@ -422,7 +422,7 @@ tail (_:xs) = xs
 tail [] = error "Prelude.tail: empty list"
 
 last             :: [a] -> a  
-last (x:xs)      =  if null xs then [x] else last xs 
+last (x:xs)      =  if null xs then x else last xs 
 last []          =  error "Prelude.last: empty list"
 
 init             :: [a] -> [a]  

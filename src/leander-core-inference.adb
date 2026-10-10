@@ -1,5 +1,6 @@
 with Ada.Text_IO;
 
+with Leander.Core.Types.Unification;
 with Leander.Names;
 with Leander.Traverseable;
 
@@ -182,10 +183,64 @@ package body Leander.Core.Inference is
      (This  : in out Inference_Context;
       Subst : Leander.Core.Substitutions.Instance'Class)
    is
+      procedure Save
+        (Name : Leander.Names.Leander_Name;
+         Ty   : not null access constant Leander.Core.Types.Instance'Class);
+
+      ----------
+      -- Save --
+      ----------
+
+      procedure Save
+        (Name : Leander.Names.Leander_Name;
+         Ty   : not null access constant Leander.Core.Types.Instance'Class)
+      is
+         use type Leander.Core.Substitutions.Nullable_Type_Reference;
+         Bound : constant Leander.Core.Substitutions.Nullable_Type_Reference :=
+                   This.Subst.Lookup (Name);
+      begin
+         if Subst.Lookup (Name) /= Ty then
+            --  A later binding of a name Subst binds earlier: composition
+            --  eliminated Name before this was reached, so it says nothing.
+            null;
+         elsif Bound = null then
+            --  Resolved against the context first, so that substituting it
+            --  into the context's own bindings cannot bring back a variable
+            --  the context binds: every binding has to resolve in one step,
+            --  since Apply looks each variable up only once.
+            declare
+               Resolved : constant Leander.Core.Types.Reference :=
+                            Leander.Core.Types.Reference
+                              (Ty.Apply (This.Subst));
+            begin
+               if not Resolved.Is_Variable
+                 or else Resolved.Variable.Name /= Varid (Name)
+               then
+                  This.Subst :=
+                    Leander.Core.Substitutions.Compose
+                      (Name, Resolved, This.Subst);
+               end if;
+            end;
+         else
+            --  Both bind Name.  Composing would keep only one binding and
+            --  silently drop what the other says, so solve the two
+            --  together instead: Name is both, so they are equal.
+            This.Subst :=
+              Leander.Core.Types.Unification.Most_General_Unifier
+                (Bound.Apply (This.Subst), Ty.Apply (This.Subst))
+              .Compose (This.Subst);
+         end if;
+      end Save;
+
    begin
-      This.Subst :=
-        Leander.Core.Substitutions.Instance (Subst)
-        .Compose (This.Subst);
+      --  A substitution arrives here from an expression inferred on its own
+      --  (Algorithm W style), and can bind a type variable that the context
+      --  has meanwhile bound too -- as a let or case alternative nested
+      --  inside that expression does, unifying straight into the context.
+      --  Saving it binding by binding treats each binding as an equation
+      --  to solve against the context rather than as a replacement for it
+      --  (issue #93).
+      Subst.Iterate (Save'Access);
    end Save_Substitution;
 
    -------------------

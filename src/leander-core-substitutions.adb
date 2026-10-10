@@ -61,6 +61,22 @@ package body Leander.Core.Substitutions is
       return (others => <>);
    end Empty;
 
+   -------------
+   -- Iterate --
+   -------------
+
+   procedure Iterate
+     (This    : Instance;
+      Process : not null access procedure
+        (Name : Leander.Names.Leander_Name;
+         Ty   : not null access constant Leander.Core.Types.Instance'Class))
+   is
+   begin
+      for Element of This.List loop
+         Process (Element.Name, Element.Ref);
+      end loop;
+   end Iterate;
+
    ------------
    -- Lookup --
    ------------
