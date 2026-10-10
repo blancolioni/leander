@@ -35,7 +35,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 
 | Feature | Status | Note |
 |---|---|---|
-| Lambda | ✅ | Any number of atomic patterns: `\x y -> e`, `\(a,b) -> e`, `\(Just x) _ -> e`. Patterns nest only one level deep, as everywhere (#109). |
+| Lambda | ✅ | Any number of atomic patterns: `\x y -> e`, `\(a,b) -> e`, `\(Just x) _ -> e`. Patterns may nest. |
 | Application | ✅ | |
 | Operator sections | 🟡 | Right sections `(op e)`, backtick sections `` (`div` 2) `` and bare `(op)` work. **Left sections `(e op)` fail to parse.** |
 | Unary negation | ❌ | `(-1)` mis-parses as a right section, so it is a function. Use `negate`. |
@@ -43,7 +43,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | `if`/`then`/`else` | ✅ | |
 | `case` | 🟡 | Works, guards included. No `where` on alternatives. |
 | `do` notation | ✅ | Monad-generic desugar, including `let`. **No `MonadFail`**: a refutable bind that doesn't match is a hard error. |
-| Tuples | ✅ | Types, constructors and patterns up to size 15, including `(,,)` written alone. Patterns nest only one level, as for any constructor (`f (Just (a,b))` is rejected). |
+| Tuples | ✅ | Types, constructors and patterns up to size 15, including `(,,)` written alone. |
 | List literals | ✅ | |
 | List comprehensions | ❌ | No generator/guard syntax. |
 | Arithmetic sequences `[a..]`,`[a..b]`,`[a,b..c]` | ✅ | Via `enumFrom*`, on `Int`, `Char`, and any `Enum` instance that relies on the class defaults. `['a' ..]` never ends: the default `enumFrom` counts up through `Int` past code 255. |
@@ -55,7 +55,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Constructor patterns | ✅ | |
 | Cons / list patterns `(x:xs)` | ✅ | |
 | Literal patterns | 🟡 | **`Int` only.** Char and float literal patterns fail with "undefined constructor: Char/Double"; string literal patterns fail an assertion in `leander-core-patterns.ads`. |
-| Nested patterns | 🟡 | **One level only.** The core requires constructor arguments to be variables (`leander-core-patterns.ads`), so `Just (x:_)`, `[a,b]` and `(Just x, y)` all fail with "problem in binding". |
+| Nested patterns | ✅ | To any depth, in function equations, `case` and lambdas: `Just (x:_)`, `x:y:rest`, `[a,b]`, `(Just x, y)`, `Just 0`. The core still takes only variables as constructor arguments, so each equation with a nested pattern is matched one pattern at a time, an inner pattern being matched against a fresh variable once the outer match has bound it. |
 | Multiple equations | ✅ | Tried top to bottom, each falling through to the next when any of its patterns fails, including in a later column. Equations that can be told apart by their first column alone are dispatched in one step. |
 | As-patterns `@` | ❌ | `a@(Just x)` raises "invalid pattern". |
 | Irrefutable / lazy `~` | ❌ | `~` parses as an unbound variable. |
@@ -201,7 +201,7 @@ These are wrong answers or crashes in forms that are otherwise supported.
 
 ### Tier 2 — foundational
 
-4. **Nested pattern compilation.** Core requires constructor args be variables, so `Just (x:xs)`, `[a,b]`, `(Just x, y)` all fail. Desugar nested patterns into fresh vars + inner matches in the alts compiler. Unlocks idiomatic matching; prerequisite for a lot of real code.
+4. ~~**Nested pattern compilation.**~~ Landed: nested patterns are matched against fresh variables, one step at a time (#109).
 5. ~~**Type synonyms (`type`)** and **`newtype`.**~~ Both landed. Synonyms remain process-global rather than per module.
 6. **Expression type annotations `e :: T`.** Needed to disambiguate and to write idiomatic code; small AST + inference addition.
 

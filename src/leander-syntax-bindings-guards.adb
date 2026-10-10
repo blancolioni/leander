@@ -1,3 +1,4 @@
+with Ada.Containers.Vectors;
 with Ada.Strings.Unbounded;
 
 with Leander.Syntax.Expressions;
@@ -58,6 +59,16 @@ package body Leander.Syntax.Bindings.Guards is
         (Leander.Syntax.Expressions.Let
            (Loc, Group, Leander.Syntax.Expressions.Reference (Within)));
    end Let_Be;
+
+   -------------
+   -- Is_Flat --
+   -------------
+
+   function Is_Flat (Pat : Patterns.Reference) return Boolean
+   is (Pat.Is_Variable or else Pat.Is_Literal
+       or else (for all Arg of Pat.Constructor_Args => Arg.Is_Variable));
+   --  Whether Pat is what To_Alts and the alts compiler take: a variable,
+   --  a literal, or a constructor whose arguments are all variables.
 
    ---------------
    -- Groupable --
@@ -170,6 +181,15 @@ package body Leander.Syntax.Bindings.Guards is
          Staged := True;
       end if;
 
+      --  So are equations with a nested pattern, even just one: staging
+      --  matches the inner pattern as a further step (issue #109).
+      if Arity > 0
+        and then (for some E of Equations =>
+                    (for some Pat of E.Pats => not Is_Flat (Pat)))
+      then
+         Staged := True;
+      end if;
+
       if not Any_Fails and then not Staged then
          return;
       end if;
@@ -246,12 +266,74 @@ package body Leander.Syntax.Bindings.Guards is
             Next     : Positive)
             return Expression_Reference
          is
+            type Check is
+               record
+                  Var : Ada.Strings.Unbounded.Unbounded_String;
+                  Pat : Patterns.Reference;
+               end record;
+
+            package Check_Vectors is
+              new Ada.Containers.Vectors (Positive, Check);
+
+            Checks  : Check_Vectors.Vector;
             Matched : Expression_Reference := Equation.Expr;
          begin
             if Can_Fail (Equation) then
                Matched := Let_Be
                  (Loc, To_String (Equation.Fallthrough), K (Next), Matched);
             end if;
+
+            --  A parameter is matched against its pattern.  A pattern with
+            --  a constructor argument that is not a variable matches that
+            --  argument with a fresh variable instead, and the variable is
+            --  then matched against the argument as a further check, after
+            --  the one that binds it -- (x:(y:_)) is (x:v) and then v
+            --  against (y:_) (issue #109).
+            for I in 1 .. Arity loop
+               Checks.Append
+                 (Check'(To_Unbounded_String (Leander.Names.To_String (Vars (I))),
+                   Equation.Pats (I)));
+            end loop;
+
+            declare
+               Index : Positive := 1;
+            begin
+               while Index <= Checks.Last_Index loop
+                  declare
+                     Pat : constant Patterns.Reference := Checks (Index).Pat;
+                  begin
+                     if not Is_Flat (Pat) then
+                        declare
+                           Args : constant Patterns.Reference_Array :=
+                                    Pat.Constructor_Args;
+                           Flat : Patterns.Reference_Array (Args'Range);
+                        begin
+                           for J in Args'Range loop
+                              if Args (J).Is_Variable then
+                                 Flat (J) := Args (J);
+                              else
+                                 declare
+                                    Fresh : constant String :=
+                                              Leander.Names.To_String
+                                                (Leander.Names.New_Name);
+                                 begin
+                                    Flat (J) :=
+                                      Patterns.Variable (Pat.Location, Fresh);
+                                    Checks.Append
+                                      (Check'(To_Unbounded_String (Fresh),
+                                        Args (J)));
+                                 end;
+                              end if;
+                           end loop;
+                           Checks (Index).Pat :=
+                             Patterns.Constructor
+                               (Pat.Location, Pat.Constructor_Name, Flat);
+                        end;
+                     end if;
+                  end;
+                  Index := Index + 1;
+               end loop;
+            end;
 
             --  One column at a time, the first outermost, so that the
             --  variables each binds are in scope for the rest:
@@ -263,9 +345,9 @@ package body Leander.Syntax.Bindings.Guards is
             --  what the alts compiler gets right, wherever a later column
             --  fails.  Matching every column together instead could not
             --  fall out of a later one (issue #120).
-            for I in reverse 1 .. Arity loop
+            for C of reverse Checks loop
                declare
-                  Pat     : constant Patterns.Reference := Equation.Pats (I);
+                  Pat     : constant Patterns.Reference := C.Pat;
                   Group   : constant Reference := Empty (Monomorphic => True);
                   Matcher : constant String :=
                               Leander.Names.To_String (Leander.Names.New_Name);
@@ -288,7 +370,7 @@ package body Leander.Syntax.Bindings.Guards is
                            Leander.Syntax.Expressions.Variable
                              (Loc, Matcher),
                            Leander.Syntax.Expressions.Variable
-                             (Loc, Leander.Names.To_String (Vars (I))))));
+                             (Loc, To_String (C.Var)))));
                end;
             end loop;
 
