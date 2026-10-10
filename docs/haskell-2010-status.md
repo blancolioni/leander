@@ -60,7 +60,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | As-patterns `@` | ❌ | `a@(Just x)` raises "invalid pattern". |
 | Irrefutable / lazy `~` | ❌ | `~` parses as an unbound variable. |
 | Guards (function & case) | 🟡 | Boolean guards with `,` conjunction, fall-through to the next equation, and `where` over guards all work. Pattern guards and `let` in guards ❌. **A guarded function whose branches return different parameters loses its dictionary**, even at `Int` with a signature: `f :: Int -> Int -> Int; f a b \| a > b = a \| otherwise = b` fails at runtime with "undefined: <Ord $t>". So does a guard that falls through to `f a b = b`. The same happens for any constrained function that returns its own constrained variable, guards or not. |
-| Exhaustiveness / redundancy checks | ❌ | Unmatched → runtime `#error`; no static check. |
+| Exhaustiveness / redundancy checks | ❌ | No static check. An unmatched value is a run-time error that names where the match failed, e.g. `f.hs:3:7: Non-exhaustive patterns in f`. |
 
 ## Data types
 

@@ -31,7 +31,8 @@ foreign import skit "#mod" #primIntMod :: Int -> Int -> Int
 
 foreign import skit "#seq" #primSeq :: a -> b -> b
 foreign import skit "#trace" #trace :: a -> a
-foreign import skit "#error" #error :: [Char] -> a
+foreign import skit "#errorChar" #errorChar :: Char -> Int -> Int
+foreign import skit "#errorRaise" #errorRaise :: Int -> a
 
 foreign import skit "#putChar" #primPutChar :: Int -> Int -> Char -> Int
 
@@ -440,8 +441,11 @@ curry f x y      =  f (x, y)
 uncurry          :: (a -> b -> c) -> ((a, b) -> c)
 uncurry f p      =  f (fst p) (snd p)
 
+--  The message goes to the machine a character at a time: foldl' forces
+--  each #errorChar call before the next, so they run in order, and only
+--  then does #errorRaise raise what they built.
 error :: [Char] -> a
-error = #error
+error s = #errorRaise (foldl' (\count c -> #errorChar c count) 0 s)
 
 head :: [a] -> a
 head (x:_) = x

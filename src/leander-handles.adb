@@ -211,6 +211,8 @@ package body Leander.Handles is
    end Decode_Synonyms;
 
    procedure Evaluate_Error (H : Handle'Class);
+   procedure Evaluate_Error_Char (H : Handle'Class);
+   procedure Evaluate_Error_Raise (H : Handle'Class);
 
    function Try_Load_Image
      (This          : in out Instance'Class;
@@ -360,7 +362,8 @@ package body Leander.Handles is
                       Context     => Context,
                       User_Data   => User_Data_Reference (User_Data),
                       IO          => Leander.IO.Local_IO,
-                      Slots       => <>);
+                      Slots       => <>,
+                      Error_Text  => <>);
       Full_Coverage : Boolean;
    begin
       This.Skit_Handle :=
@@ -377,6 +380,27 @@ package body Leander.Handles is
             Arg_Types      => [String_Type],
             Res_Types      => [Boolean_Type],
             Eval           => Evaluate_Error'Access));
+
+      --  error's message, a character at a time.  A string cannot cross
+      --  the primitive interface once it has been evaluated (Send_Value
+      --  reads only the shape of an unevaluated literal), but each
+      --  character is an evaluated Int by the time it gets here.
+      This.Bind
+        ("#errorChar",
+         Binding_Instance'
+           (Argument_Count => 2,
+            Result_Count   => 1,
+            Arg_Types      => [Integer_Type, Integer_Type],
+            Res_Types      => [Integer_Type],
+            Eval           => Evaluate_Error_Char'Access));
+      This.Bind
+        ("#errorRaise",
+         Binding_Instance'
+           (Argument_Count => 1,
+            Result_Count   => 1,
+            Arg_Types      => [Integer_Type],
+            Res_Types      => [Integer_Type],
+            Eval           => Evaluate_Error_Raise'Access));
 
       --  Attempt a full offline load first: Env starts out as the hand-built
       --  Prelude scaffold (the builtin ()/(,)/Bool/[] types -- Prelude.hs's
@@ -646,10 +670,35 @@ package body Leander.Handles is
       Message : constant String :=
         H.Get_Slot (1);
    begin
-      Ada.Text_IO.Put_Line
-        (Ada.Text_IO.Standard_Error, Message);
-      raise Constraint_Error with Message;
+      raise Leander.Runtime_Error with Message;
    end Evaluate_Error;
+
+   -------------------------
+   -- Evaluate_Error_Char --
+   -------------------------
+
+   procedure Evaluate_Error_Char (H : Handle'Class) is
+      Code : constant Integer := H.Get_Slot (1);
+   begin
+      --  Slot 2 is the count so far, there only to make the calls happen
+      --  in order.
+      Ada.Strings.Unbounded.Append
+        (H.H.Error_Text,
+         (if Code in 0 .. 255 then Character'Val (Code) else '?'));
+      H.Set_Slot (1, Integer'(0));
+   end Evaluate_Error_Char;
+
+   --------------------------
+   -- Evaluate_Error_Raise --
+   --------------------------
+
+   procedure Evaluate_Error_Raise (H : Handle'Class) is
+      Message : constant String :=
+                  Ada.Strings.Unbounded.To_String (H.H.Error_Text);
+   begin
+      H.H.Error_Text := Ada.Strings.Unbounded.Null_Unbounded_String;
+      raise Leander.Runtime_Error with Message;
+   end Evaluate_Error_Raise;
 
    --------------
    -- Get_Slot --

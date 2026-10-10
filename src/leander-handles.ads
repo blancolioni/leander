@@ -146,6 +146,8 @@ private
          User_Data   : User_Data_Reference;
          Slots       : Foreign_Slots;
          IO          : Leander.IO.Reference;
+         Error_Text  : Ada.Strings.Unbounded.Unbounded_String;
+         --  The message #errorChar is building for #errorRaise.
       end record;
 
    function User_Data

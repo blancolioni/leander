@@ -1,3 +1,4 @@
+with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
 
@@ -65,6 +66,16 @@ package body Leander.Repl is
             when Leander.Compile_Error =>
                --  Already reported; carry on with the next line.
                null;
+            when E : Leander.Runtime_Error =>
+               Put_Line
+                 (Standard_Error, Ada.Exceptions.Exception_Message (E));
+
+               --  An error raised inside a primitive leaves the machine
+               --  mid-evaluation, and Skit cannot yet recover from that
+               --  (blancolioni/skit#36).
+               --  The REPL holds nothing but the Prelude, so start again.
+               Handle.Close;
+               Handle := Leander.Create (Core_Size);
          end;
       end loop;
       Handle.Close;

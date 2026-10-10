@@ -75,7 +75,15 @@ field variables, with the body being the corresponding case arm:
 When a constructor is missing from the case expression and a default
 clause exists, the default expression fills that slot instead.
 
-If there is no pattern and no default, `#error` is used.
+If there is no pattern and no default, the slot raises a run-time
+error naming where the match failed, and the function when it has a
+name of its own: `f.hs:3:7: Non-exhaustive patterns in f`. The message
+reaches the machine a character at a time, as
+`#errorRaise (#errorChar c_n (... (#errorChar c_1 0)))`. A string
+cannot cross the primitive interface once it has been evaluated, but
+each character is an evaluated `Int` (see `Alts.Compiler.Raise_Error`).
+Prelude's `error` uses the same two primitives, and the error reaches
+the caller as `Leander.Runtime_Error`.
 
 ### Example: length
 
