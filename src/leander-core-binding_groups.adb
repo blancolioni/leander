@@ -92,6 +92,26 @@ package body Leander.Core.Binding_Groups is
         or else Exists_In (This.Implicit_Bindings);
    end Has_Reference;
 
+   --------------------
+   -- Implicit_Group --
+   --------------------
+
+   function Implicit_Group
+     (This : Instance'Class;
+      Name : Varid)
+      return Leander.Core.Bindings.Reference_Array
+   is
+   begin
+      for Group of This.Implicit_Bindings loop
+         for B of Group loop
+            if B.Name = Name then
+               return Group;
+            end if;
+         end loop;
+      end loop;
+      return [];
+   end Implicit_Group;
+
    ------------
    -- Lookup --
    ------------

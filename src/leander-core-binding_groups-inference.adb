@@ -179,25 +179,33 @@ package body Leander.Core.Binding_Groups.Inference is
             --  deferred to whatever encloses the group.
 
             function Select_Preds
+              (From, To : Positive;
+               Want     : Boolean)
+               return Core.Predicates.Predicate_Array;
+            --  The predicates bindings From .. To raised, without
+            --  duplicates: those over Gs if Want, the others if not.
+
+            function Select_Preds
               (I    : Positive;
                Want : Boolean)
-               return Core.Predicates.Predicate_Array;
+               return Core.Predicates.Predicate_Array
+            is (Select_Preds (I, I, Want));
 
             ------------------
             -- Select_Preds --
             ------------------
 
             function Select_Preds
-              (I    : Positive;
-               Want : Boolean)
+              (From, To : Positive;
+               Want     : Boolean)
                return Core.Predicates.Predicate_Array
             is
                use type Core.Predicates.Instance;
                Result : Core.Predicates.Predicate_Array
-                 (1 .. Base (I + 1) - Base (I));
+                 (1 .. Base (To + 1) - Base (From));
                Last   : Natural := 0;
             begin
-               for K in Base (I) + 1 .. Base (I + 1) loop
+               for K in Base (From) + 1 .. Base (To + 1) loop
                   if Over_Gs (All_Ps (K)) = Want
                     and then (for all J in 1 .. Last =>
                                 Result (J) /= All_Ps (K))
@@ -224,9 +232,15 @@ package body Leander.Core.Binding_Groups.Inference is
                   --  and applies one dictionary each; the binding is
                   --  elaborated with one dictionary lambda per predicate, in
                   --  that same order.  The rest defer outwards.
+                  --
+                  --  The bindings of a group share one context (Jones 1999,
+                  --  section 11.6.2): a group mate's recursive use is
+                  --  monomorphic and applies no dictionaries, so the whole
+                  --  group must be elaborated under the same ones (see the
+                  --  ELet case of Expressions.To_Calculus).
                   declare
                      Ps : constant Core.Predicates.Predicate_Array :=
-                            Select_Preds (I, Want => True);
+                            Select_Preds (Bs'First, Bs'Last, Want => True);
                   begin
                      Scs (I) := Core.Schemes.Quantify (Gs, Ps, Ts (I));
                      Bs (I).Set_Dictionaries (Ps);

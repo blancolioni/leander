@@ -201,8 +201,17 @@ An alt is a pattern-expression pair (a case branch). Inference:
 ## Binding group inference (`leander-core-binding_groups-inference.adb`)
 
 Binding groups contain implicit bindings (no type signature) and
-explicit bindings (with a type signature). They are processed in
-dependency order.
+explicit bindings (with a type signature). The implicit bindings are
+split into the strongly connected components of their dependency
+graph (`Leander.Core.Bindings.Dependencies`), and the components are
+inferred dependencies first, so each is generalized before anything
+that uses it is inferred. A reference to an explicit binding is not a
+dependency, since its declared type is already known.
+
+The same split, taken over all of a `let`'s bindings, decides how
+the `let` compiles: each component is nested outside the ones that
+refer to it, and a component of several bindings is compiled as one
+recursive tuple under `Y`.
 
 ### Implicit bindings
 
@@ -214,7 +223,11 @@ For a mutually recursive group of N bindings without type signatures:
 3. Infer each binding's alts, unifying each alt's type with `Ti`
 4. Apply the accumulated substitution to all `Ti`
 5. Compute free variables: `Gs = Tyvars(T1..TN) - Tyvars(Env)`
-6. Generalize: `Quantify(Gs, [], Ti)` for each binding
+6. Generalize: `Quantify(Gs, Ps, Ti)` for each binding, where `Ps`
+   is every predicate the *group* raised over `Gs`. The bindings
+   share `Ps` because they use each other monomorphically, applying
+   no dictionaries, so they must all be elaborated under the same ones.
+   A monomorphic binding is not generalized at all.
 7. Update the type environment with the generalized schemes
 
 This is the standard let-generalization rule: variables not free in
