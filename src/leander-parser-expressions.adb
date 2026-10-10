@@ -886,15 +886,41 @@ package body Leander.Parser.Expressions is
       elsif Tok = Tok_Lambda then
          Scan;
          declare
+            use type Syntax.Patterns.Reference_Array;
+
             Loc  : constant Source.Source_Location :=
                      Current_Source_Location;
-            Name : constant String :=
-                     (if At_Variable then Tok_Text else "_");
+
+            function Parse_Patterns return Syntax.Patterns.Reference_Array;
+            --  The atomic patterns up to the arrow.
+
+            --------------------
+            -- Parse_Patterns --
+            --------------------
+
+            function Parse_Patterns return Syntax.Patterns.Reference_Array
+            is
+            begin
+               if Tok = Tok_Right_Arrow or else not At_Pattern then
+                  return [];
+               end if;
+
+               declare
+                  Pat : constant Syntax.Patterns.Reference :=
+                          Parse_Atomic_Pattern (Context);
+               begin
+                  return Pat & Parse_Patterns;
+               end;
+            end Parse_Patterns;
+
+            Parsed : constant Syntax.Patterns.Reference_Array :=
+                       Parse_Patterns;
+            Pats   : constant Syntax.Patterns.Reference_Array :=
+                       (if Parsed'Length > 0 then Parsed
+                        else [Syntax.Patterns.Wildcard (Loc)]);
          begin
-            if not At_Variable then
+            if Parsed'Length = 0 then
                Error ("missing lambda variable");
-            else
-               Scan;
             end if;
 
             if Tok = Tok_Right_Arrow then
@@ -907,9 +933,38 @@ package body Leander.Parser.Expressions is
                Expr : constant Leander.Syntax.Expressions.Reference :=
                         Parse_Expression (Context);
             begin
-               return Leander.Syntax.Expressions.Lambda
-                 (Loc,
-                  Syntax.Patterns.Variable (Loc, Name), Expr);
+               if (for all Pat of Pats => Pat.Is_Variable) then
+
+                  --  \x1 .. xn -> e is \x1 -> .. \xn -> e.
+                  declare
+                     Result : Leander.Syntax.Expressions.Reference := Expr;
+                  begin
+                     for Pat of reverse Pats loop
+                        Result :=
+                          Leander.Syntax.Expressions.Lambda (Loc, Pat, Result);
+                     end loop;
+                     return Result;
+                  end;
+               end if;
+
+               --  Anything else has to be matched, so the lambda becomes a
+               --  one-equation function, and the equation compiler does the
+               --  matching (Haskell 2010, section 3.3):
+               --
+               --    \p1 .. pn -> e  =  let f p1 .. pn = e in f
+               --
+               --  Monomorphic, like any lambda, and because the group is
+               --  synthesised for exactly one use.
+               declare
+                  Fn : constant String :=
+                         Leander.Names.To_String (Leander.Names.New_Name);
+                  Bs : constant Leander.Syntax.Bindings.Reference :=
+                         Leander.Syntax.Bindings.Empty (Monomorphic => True);
+               begin
+                  Bs.Add_Binding (Loc, Fn, Pats, Expr);
+                  return Syntax.Expressions.Let
+                    (Loc, Bs, Leander.Syntax.Expressions.Variable (Loc, Fn));
+               end;
             end;
          end;
       elsif Tok = Tok_Let then

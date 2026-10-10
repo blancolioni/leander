@@ -347,6 +347,45 @@ package body Leander.Tests.Integration is
                  "Int", "3",
                  Handle);
 
+      --  A lambda takes any number of atomic patterns (issue #110).  Ones
+      --  that are all variables nest; anything else becomes a
+      --  one-equation function.  The last case checks that the result
+      --  still generalises through an enclosing let.
+
+      Test_Eval ("(\x y -> y) 1 2",
+                 "Int", "2",
+                 Handle);
+      Test_Eval ("(\x y z -> x * y + z) 2 3 4",
+                 "Int", "10",
+                 Handle);
+      Test_Eval ("(\_ y -> y) 1 2",
+                 "Int", "2",
+                 Handle);
+      Test_Eval ("(\(a,b) -> b) (1,2)",
+                 "Int", "2",
+                 Handle);
+      Test_Eval ("(\(a,b,c) d -> a + b + c + d) (1,2,3) 4",
+                 "Int", "10",
+                 Handle);
+      Test_Eval ("(\(Just x) -> x) (Just 5)",
+                 "Int", "5",
+                 Handle);
+      Test_Eval ("(\0 -> 1) 0",
+                 "Int", "1",
+                 Handle);
+      Test_Eval ("(\x (a,b) _ -> x + a * b) 1 (2,3) True",
+                 "Int", "7",
+                 Handle);
+      Test_Eval ("sum (map (\(a,b) -> a * b) (zip [1,2,3] [4,5,6]))",
+                 "Int", "32",
+                 Handle);
+      Test_Eval ("(\(a,b) -> a == b) (1,1)",
+                 "Bool", "K",
+                 Handle);
+      Test_Eval ("let f = \(a,b) -> a in f (1,True) + fst (f ((2,'c'),3))",
+                 "Int", "3",
+                 Handle);
+
       --  Prelude's last returned [x] from one branch and an element from
       --  the other.  Inference used to drop the conflict instead of
       --  reporting it (issue #93).
