@@ -1404,6 +1404,54 @@ package body Leander.Tests.Integration is
          "eoDeeper", "K",
          Handle);
 
+      --  Patterns nest (issue #109)
+
+      Test_Module
+        ("module: nested patterns: npJusts",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npJusts", "K",
+         Handle);
+      Test_Module
+        ("module: nested patterns: npCons",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npCons", "K",
+         Handle);
+      Test_Module
+        ("module: nested patterns: npTuple",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npTuple", "K",
+         Handle);
+      Test_Module
+        ("module: nested patterns: npLiteral",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npLiteral", "K",
+         Handle);
+      Test_Module
+        ("module: nested patterns: npLists",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npLists", "K",
+         Handle);
+      Test_Module
+        ("module: nested patterns: npInList",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npInList", "K",
+         Handle);
+      Test_Module
+        ("module: nested patterns: npCase",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npCase", "K",
+         Handle);
+      Test_Module
+        ("module: nested patterns: npLambda",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npLambda", "K",
+         Handle);
+      Test_Module
+        ("module: nested patterns: npColumns",
+         Test_Root & "test_36_nested_patterns.hs",
+         "npColumns", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module

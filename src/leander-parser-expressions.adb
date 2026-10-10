@@ -369,7 +369,14 @@ package body Leander.Parser.Expressions is
             end;
          elsif Tok = Tok_Right_Bracket then
             Scan;
-            return Call (":", [X, Constructor (X.Location, "[]")]);
+
+            --  Built from the constructor, as the longer lists are, so that
+            --  [p] also reads as a pattern (issue #109).
+            return Syntax.Expressions.Application
+              (X.Location,
+               Syntax.Expressions.Application
+                 (X.Location, Constructor (X.Location, ":"), X),
+               Constructor (X.Location, "[]"));
          else
             Error ("missing list element");
             while Tok /= Tok_Right_Bracket
