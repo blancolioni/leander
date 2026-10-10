@@ -1,6 +1,8 @@
 with Ada.Exceptions;
+with Ada.Strings.Unbounded;
 with Leander.Errors;
 with Leander.Handles;
+with Leander.Parser;
 with Leander.Syntax;
 with Skit;
 
@@ -479,6 +481,45 @@ package body Leander.Tests.Integration is
       Test_Eval ("let f = \(a,b) -> a in f (1,True) + fst (f ((2,'c'),3))",
                  "Int", "3",
                  Handle);
+
+      --  (:) is infixr 5, built in; (!!), (++), elem and notElem have the
+      --  Report's fixities (issue #121).
+
+      Test_Eval ("length (1 : 2 : [])",
+                 "Int", "2",
+                 Handle);
+      Test_Eval ("length (1 : [[2,3]] !! 0)",
+                 "Int", "3",
+                 Handle);
+      Test_Eval ("2 + [10,20] !! 0",
+                 "Int", "12",
+                 Handle);
+      Test_Eval ("[1] ++ [2] ++ [3] == [1,2,3]",
+                 "Bool", "K",
+                 Handle);
+      Test_Eval ("1 : [2] == [1,2]",
+                 "Bool", "K",
+                 Handle);
+      Test_Eval ("3 `elem` [1,2,3] && True",
+                 "Bool", "K",
+                 Handle);
+      Test_Eval ("length ([(+ 1)] <*> [1,2] ++ [3])",
+                 "Int", "3",
+                 Handle);
+
+      --  A fixity table entry is a declaration, which a module image
+      --  records.  (:) has no declaration, and an operator without one
+      --  does not gain one by being used.
+      declare
+         Declared : Boolean := False;
+      begin
+         for F of Leander.Parser.All_Fixities loop
+            if Ada.Strings.Unbounded.To_String (F.Operator) = ":" then
+               Declared := True;
+            end if;
+         end loop;
+         Test ("(:) is not a declared fixity", not Declared);
+      end;
 
       --  An expression that fails to compile is reported and not run, and
       --  leaves the handle usable (issue #117).

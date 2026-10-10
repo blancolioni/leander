@@ -29,7 +29,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Line comments `--` | ✅ | Per the Report, `-->` and the like are operators, not comments. |
 | Block comments `{- -}` | ✅ | Nested. Pragmas (`{-# … #-}`) are skipped as comments. |
 | User-defined operators | ✅ | |
-| Fixity (`infix`/`infixl`/`infixr`) | ✅ | Prec 0–9, shunting-yard. |
+| Fixity (`infix`/`infixl`/`infixr`) | ✅ | Prec 0–9, shunting-yard. An undeclared operator is `infixl 9`; `(:)` is built in as `infixr 5`. The Prelude declares the Report's fixities. |
 
 ## Expressions
 

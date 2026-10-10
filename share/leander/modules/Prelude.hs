@@ -42,13 +42,18 @@ foreign import skit "#maxInt" #maxInt :: Int
 
 infixr 9  .
 infixr 8  ^, ^^, **
+infixl 9  !!
 infixl 7  *, /, `quot`, `rem`, `div`, `mod`
 infixl 6  +, -
 
 -- The (:) operator is built-in syntax, and cannot legally be given
 -- a fixity declaration; but its fixity is given by:
 --   infixr 5  :
-infix  4  ==, /=, <, <=, >=, >
+-- and the parser applies it.
+infixr 5  ++
+infix  4  ==, /=, <, <=, >=, >, `elem`, `notElem`
+-- Not a Haskell 2010 Prelude class, but base gives (<*>) this fixity.
+infixl 4  <*>
 infixr 3  &&
 infixr 2  ||
 infixl 1  >>, >>=
@@ -241,7 +246,7 @@ showLitChar c
   | c == '\t'   = showString "\\t"
   | c == '\v'   = showString "\\v"
   | c == '\SO'  = protectEsc (\h -> h == 'H') (showString "\\SO")
-  | otherwise   = showString ('\\' : (asciiTab !! fromEnum c))
+  | otherwise   = showString ('\\' : asciiTab !! fromEnum c)
 
 -- Inside a string, a double quote is escaped too.
 showLitString :: String -> ShowS
