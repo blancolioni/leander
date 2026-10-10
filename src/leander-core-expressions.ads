@@ -2,6 +2,7 @@ with Leander.Calculus;
 limited with Leander.Core.Binding_Groups;
 with Leander.Core.Inference;
 with Leander.Core.Literals;
+with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Typeable;
 with Leander.Disposable;
@@ -86,6 +87,36 @@ package Leander.Core.Expressions is
      (Index, Count : Positive)
       return Leander.Calculus.Tree
      with Pre => Index <= Count;
+
+   function Dictionary
+     (Env : not null access constant Leander.Environment.Abstraction'Class;
+      P   : Leander.Core.Predicates.Instance)
+      return Leander.Calculus.Tree;
+   --  The dictionary for P: an instance's, applied to the dictionaries
+   --  its context needs, or for a predicate on a type variable the name
+   --  of a dictionary parameter, "<P>".
+
+   function Supply_Superclasses
+     (Calc  : Leander.Calculus.Tree;
+      Dicts : Leander.Core.Predicates.Predicate_Array;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree;
+   --  Calc with every dictionary it refers to that Dicts does not provide
+   --  but that a superclass of one of them is, bound to its selection
+   --  from that one: an Ord a parameter provides Eq a as
+   --  "$super:Ord:Eq" <Ord a> (issue #129).  Calc is what the dictionary
+   --  lambdas for Dicts are then wrapped around.
+
+   function Superclass_Supplied
+     (P     : Leander.Core.Predicates.Instance;
+      Dicts : Leander.Core.Predicates.Predicate_Array;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Boolean;
+   --  Whether Supply_Superclasses would provide P from Dicts.
    --  \x1 .. xCount. xIndex, which selects field Index of a Scott-encoded
    --  tuple of Count fields.
 

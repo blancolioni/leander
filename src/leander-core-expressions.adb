@@ -1,13 +1,17 @@
+with Ada.Containers.Vectors;
 with Ada.Exceptions;
+with Ada.Strings.Unbounded;
 
 with Leander.Allocator;
 with Leander.Core.Binding_Groups;
 with Leander.Core.Bindings;
-with Leander.Core.Predicates;
 with Leander.Core.Substitutions;
+with Leander.Core.Type_Classes;
 with Leander.Core.Type_Instances;
 with Leander.Core.Types;
 with Leander.Environment;
+
+with WL.String_Sets;
 
 package body Leander.Core.Expressions is
 
@@ -347,6 +351,10 @@ package body Leander.Core.Expressions is
          end;
       end if;
 
+      --  A superclass of one of those predicates is not passed separately:
+      --  it is selected from the dictionary that is (issue #129).
+      Calc := Supply_Superclasses (Calc, Dicts, Types, Env);
+
       --  One dictionary lambda per predicate the binding's scheme retains.
       --  Wrapped in reverse, so the outermost parameter is the first
       --  dictionary a use site applies (the EVar case of To_Calculus
@@ -378,6 +386,7 @@ package body Leander.Core.Expressions is
          for K in Base + 1 .. Raised'Last loop
             if (for all D of Dicts =>
                   Dict_Name (Types, D) /= Dict_Name (Types, Raised (K)))
+              and then not Superclass_Supplied (Raised (K), Dicts, Types, Env)
             then
                Last := Last + 1;
                Keep (Last) := Raised (K);
@@ -445,6 +454,153 @@ package body Leander.Core.Expressions is
            (Tuple,
             Bind_Members (Members, Tuple, Lambda (Selector, Fields))));
    end Recursive_Component;
+
+   ----------------
+   -- Dictionary --
+   ----------------
+
+   function Dictionary
+     (Env : not null access constant Leander.Environment.Abstraction'Class;
+      P   : Leander.Core.Predicates.Instance)
+      return Leander.Calculus.Tree
+   is (Dict_Expr (Env, P));
+
+   --  A dictionary that a superclass path reaches from a parameter, and the
+   --  expression that selects it there.
+   type Selection is
+      record
+         Name : Ada.Strings.Unbounded.Unbounded_String;
+         Expr : Leander.Calculus.Tree;
+      end record;
+
+   package Selection_Vectors is
+     new Ada.Containers.Vectors (Positive, Selection);
+
+   function Superclass_Selections
+     (Dicts : Leander.Core.Predicates.Predicate_Array;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Selection_Vectors.Vector;
+   --  Every superclass dictionary reachable from Dicts and not among them,
+   --  each once, by the first path found: breadth first, so the shortest.
+
+   ---------------------------
+   -- Superclass_Selections --
+   ---------------------------
+
+   function Superclass_Selections
+     (Dicts : Leander.Core.Predicates.Predicate_Array;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Selection_Vectors.Vector
+   is
+      use Ada.Strings.Unbounded;
+
+      type Pending is
+         record
+            P    : Leander.Core.Predicates.Instance;
+            Expr : Leander.Calculus.Tree;
+         end record;
+
+      package Pending_Vectors is
+        new Ada.Containers.Vectors (Positive, Pending);
+
+      Known  : WL.String_Sets.Set;
+      Queue  : Pending_Vectors.Vector;
+      Result : Selection_Vectors.Vector;
+      Next   : Positive := 1;
+   begin
+      for D of Dicts loop
+         Known.Include (Dict_Name (Types, D));
+         Queue.Append
+           (Pending'(D, Leander.Calculus.Symbol (Dict_Name (Types, D))));
+      end loop;
+
+      while Next <= Queue.Last_Index loop
+         declare
+            Item : constant Pending := Queue (Next);
+         begin
+            Next := Next + 1;
+            for Super of Env.Get_Class (Item.P.Class_Id).Super_Classes loop
+               declare
+                  Q    : constant Leander.Core.Predicates.Instance :=
+                           Leander.Core.Predicates.Predicate
+                             (Super, Item.P.Get_Type);
+                  Name : constant String := Dict_Name (Types, Q);
+                  Expr : constant Leander.Calculus.Tree :=
+                           Leander.Calculus.Apply
+                             (Leander.Calculus.Symbol
+                                (Leander.Core.Type_Classes
+                                 .Superclass_Selector_Name
+                                   (Item.P.Class_Id, Super)),
+                              Item.Expr);
+               begin
+                  if not Known.Contains (Name) then
+                     Known.Include (Name);
+                     Queue.Append (Pending'(Q, Expr));
+                     Result.Append
+                       (Selection'(To_Unbounded_String (Name), Expr));
+                  end if;
+               end;
+            end loop;
+         end;
+      end loop;
+      return Result;
+   end Superclass_Selections;
+
+   -------------------------
+   -- Supply_Superclasses --
+   -------------------------
+
+   function Supply_Superclasses
+     (Calc  : Leander.Calculus.Tree;
+      Dicts : Leander.Core.Predicates.Predicate_Array;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree
+   is
+      use Leander.Calculus;
+      Result : Tree := Calc;
+   begin
+      --  Each selection names only Dicts' own parameters, which are bound
+      --  outside Result, so the order these are bound in does not matter.
+      for S of Superclass_Selections (Dicts, Types, Env) loop
+         declare
+            Name : constant String := Ada.Strings.Unbounded.To_String (S.Name);
+         begin
+            if Has_Reference (Result, Name) then
+               Result := Apply (Lambda (Name, Result), S.Expr);
+            end if;
+         end;
+      end loop;
+      return Result;
+   end Supply_Superclasses;
+
+   -------------------------
+   -- Superclass_Supplied --
+   -------------------------
+
+   function Superclass_Supplied
+     (P     : Leander.Core.Predicates.Instance;
+      Dicts : Leander.Core.Predicates.Predicate_Array;
+      Types : Leander.Core.Inference.Inference_Context'Class;
+      Env   : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Boolean
+   is
+      use Ada.Strings.Unbounded;
+      Name : constant String := Dict_Name (Types, P);
+   begin
+      for S of Superclass_Selections (Dicts, Types, Env) loop
+         if To_String (S.Name) = Name then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Superclass_Supplied;
 
    -----------------
    -- To_Calculus --

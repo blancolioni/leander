@@ -171,7 +171,7 @@ Item-by-item status against the Report's Prelude export list is tracked in [#97]
 | `Either` | 🟡 | Type, `either`, derived `Eq` and `Show`. No Functor/Monad instances. |
 | Tuples | 🟡 | `Eq`, `Ord` and `Show` instances up to size 7 (the Report asks for 15, plus `Bounded` and `Read`). |
 | `Eq`/`Ord`/`Enum`/`Bounded` | 🟡 | `Eq`: `Bool`, `Int`, `Char`, `[a]`, plus derived `Ordering`/`Maybe`/`Either`. `Ord`: `Int` and `Char` only, with `compare`/`max`/`min` defaults. `Enum`: `Int` and `Char`. `Bounded`: `Int` only. |
-| `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]`, `Maybe` and `IO`. As in `base` rather than the Report, `Applicative` is `Monad`'s superclass and `return` defaults to `pure`, so a user's monad also needs `Functor` and `Applicative` instances. A `Monad m =>` function can't yet use `pure`/`<*>`/`fmap` through that superclass (#129). No `*>`/`<*`/`liftA2`/`fail`. |
+| `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]`, `Maybe` and `IO`. As in `base` rather than the Report, `Applicative` is `Monad`'s superclass and `return` defaults to `pure`, so a user's monad also needs `Functor` and `Applicative` instances. A constraint provides its superclasses, so a `Monad m =>` function can use `pure` and `<*>`, and an `Ord a =>` one can use `==`. No `*>`/`<*`/`liftA2`/`fail`. |
 | `Show` | ✅ | As in the Report: `showsPrec`, `show` and `showList`, with `ShowS`, `shows`, `showChar`, `showString` and `showParen`. Instances for `Bool`, `Int`, `Char` (with the Report's escapes, and strings through `showList`), `[a]`, `()`, `Ordering`, `Maybe`, `Either` and tuples up to size 7. No `deriving Show` yet. |
 | `Read` | ❌ | Absent. |
 | `Monoid`/`Foldable`/`Traversable` | ❌ | Absent. |

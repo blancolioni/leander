@@ -53,6 +53,14 @@ package Leander.Core.Type_Classes is
    function Super_Classes
      (This : Instance'Class)
       return Leander.Core.Conid_Array;
+   --  The direct superclasses, in declared order.  A dictionary of the
+   --  class carries one dictionary of each, after its methods.
+
+   function Superclass_Selector_Name
+     (Class, Super : Conid)
+      return String
+   is ("$super:" & To_String (Class) & ":" & To_String (Super));
+   --  The value that selects a Class dictionary's Super dictionary.
 
    type Class_Environment is interface;
 
