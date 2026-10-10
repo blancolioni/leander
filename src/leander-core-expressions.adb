@@ -2,7 +2,7 @@ with Ada.Exceptions;
 
 with Leander.Allocator;
 with Leander.Core.Binding_Groups;
-with Leander.Core.Bindings.Dependencies;
+with Leander.Core.Bindings;
 with Leander.Core.Predicates;
 with Leander.Core.Substitutions;
 with Leander.Core.Type_Instances;
@@ -268,6 +268,184 @@ package body Leander.Core.Expressions is
       return "<" & Q.Show & ">";
    end Dict_Name;
 
+   ------------------
+   -- Bind_Members --
+   ------------------
+
+   function Bind_Members
+     (Members : Leander.Core.Bindings.Reference_Array;
+      Tuple   : Leander.Names.Leander_Name;
+      Scope   : Leander.Calculus.Tree)
+      return Leander.Calculus.Tree
+   is
+      use Leander.Calculus;
+      Result : Tree := Scope;
+   begin
+      for M of reverse Members loop
+         Result := Lambda (Leander.Names.Leander_Name (M.Name), Result);
+      end loop;
+      for I in Members'Range loop
+         Result :=
+           Apply
+             (Result,
+              Apply
+                (Symbol (Tuple),
+                 Projection (I - Members'First + 1, Members'Length)));
+      end loop;
+      return Result;
+   end Bind_Members;
+
+   ----------------------
+   -- Binding_Calculus --
+   ----------------------
+
+   function Binding_Calculus
+     (Group         : Leander.Core.Binding_Groups.Reference;
+      B             : Leander.Core.Bindings.Reference;
+      Tie_Recursion : Boolean;
+      Types         : in out Leander.Core.Inference.Inference_Context'Class;
+      Env           : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree
+   is
+      use Leander.Calculus;
+      Dicts : constant Leander.Core.Predicates.Predicate_Array :=
+                B.Dictionaries;
+      Base  : constant Natural := Types.Predicate_Count;
+      Calc  : Tree :=
+                B.To_Calculus
+                  (Types, Env,
+                   Tie_Recursion => Tie_Recursion and then not B.Is_Explicit);
+   begin
+      --  Left untied, an implicit binding's group mates (itself included)
+      --  are free, and will be bound to their whole values, dictionary
+      --  lambdas and all.  But it uses them monomorphically, applying no
+      --  dictionaries, so within it each must instead denote that value
+      --  applied to the dictionaries the whole group shares.
+      if not Tie_Recursion
+        and then not B.Is_Explicit
+        and then Dicts'Length > 0
+      then
+         declare
+            Mates : constant Leander.Core.Bindings.Reference_Array :=
+                      Group.Implicit_Group (B.Name);
+         begin
+            for M of reverse Mates loop
+               Calc := Lambda (Leander.Names.Leander_Name (M.Name), Calc);
+            end loop;
+            for M of Mates loop
+               declare
+                  Applied : Tree :=
+                              Symbol (Leander.Names.Leander_Name (M.Name));
+               begin
+                  for P of Dicts loop
+                     Applied := Apply (Applied, Symbol (Dict_Name (Types, P)));
+                  end loop;
+                  Calc := Apply (Calc, Applied);
+               end;
+            end loop;
+         end;
+      end if;
+
+      --  One dictionary lambda per predicate the binding's scheme retains.
+      --  Wrapped in reverse, so the outermost parameter is the first
+      --  dictionary a use site applies (the EVar case of To_Calculus
+      --  applies them in scheme order).
+      for P of reverse Dicts loop
+         Calc := Lambda (Dict_Name (Types, P), Calc);
+      end loop;
+
+      --  An explicit binding's recursive uses apply those dictionaries
+      --  themselves, so its name is bound outside them (see
+      --  Bindings.To_Calculus).
+      if Tie_Recursion and then B.Is_Explicit and then B.Is_Recursive then
+         Calc := B.Tie (Calc);
+      end if;
+
+      --  Compiling the body re-raised its predicates into the context.  The
+      --  ones this binding just took as its own parameters are discharged
+      --  here and must not travel further out, or whatever encloses it
+      --  would wrap itself in a dictionary lambda for them that nothing
+      --  ever supplies.  Anything else the body raised is genuinely
+      --  deferred, so it is put back.
+      declare
+         Raised : constant Leander.Core.Predicates.Predicate_Array :=
+                    Types.Current_Predicates;
+         Keep   : Leander.Core.Predicates.Predicate_Array
+           (1 .. Raised'Last - Base);
+         Last   : Natural := 0;
+      begin
+         for K in Base + 1 .. Raised'Last loop
+            if (for all D of Dicts =>
+                  Dict_Name (Types, D) /= Dict_Name (Types, Raised (K)))
+            then
+               Last := Last + 1;
+               Keep (Last) := Raised (K);
+            end if;
+         end loop;
+         Types.Drop_Predicates (Base + 1);
+         Types.Save_Predicates (Keep (1 .. Last));
+      end;
+
+      return Calc;
+   end Binding_Calculus;
+
+   ----------------
+   -- Projection --
+   ----------------
+
+   function Projection
+     (Index, Count : Positive)
+      return Leander.Calculus.Tree
+   is
+      use Leander.Calculus;
+      Names  : constant Leander.Names.Name_Array (1 .. Count) :=
+                 [others => Leander.Names.New_Name];
+      Result : Tree := Symbol (Names (Index));
+   begin
+      for Name of reverse Names loop
+         Result := Lambda (Name, Result);
+      end loop;
+      return Result;
+   end Projection;
+
+   -------------------------
+   -- Recursive_Component --
+   -------------------------
+
+   function Recursive_Component
+     (Group     : Leander.Core.Binding_Groups.Reference;
+      Component : Positive;
+      Types     : in out Leander.Core.Inference.Inference_Context'Class;
+      Env       : not null access constant
+        Leander.Environment.Abstraction'Class)
+      return Leander.Calculus.Tree
+   is
+      use Leander.Calculus;
+      Members  : constant Leander.Core.Bindings.Reference_Array :=
+                   Group.Component (Component);
+      Tuple    : constant Leander.Names.Leander_Name :=
+                   Leander.Names.New_Name;
+      Selector : constant Leander.Names.Leander_Name :=
+                   Leander.Names.New_Name;
+      Fields   : Tree := Symbol (Selector);
+   begin
+      for M of Members loop
+         Fields :=
+           Apply
+             (Fields,
+              Binding_Calculus
+                (Group, M, Tie_Recursion => False,
+                 Types => Types, Env => Env));
+      end loop;
+
+      return Apply
+        (Symbol ("Y"),
+         Lambda
+           (Tuple,
+            Bind_Members (Members, Tuple, Lambda (Selector, Fields))));
+   end Recursive_Component;
+
    -----------------
    -- To_Calculus --
    -----------------
@@ -314,249 +492,48 @@ package body Leander.Core.Expressions is
                This.LBody.To_Calculus (Types, Env));
          when ELet =>
             declare
-               Bs : constant Leander.Core.Bindings.Reference_Array :=
-                      [for Id of This.Let_Bindings.Varids =>
-                         This.Let_Bindings.Lookup
-                           (Leander.Names.Leander_Name (Id))];
-               Component : constant Bindings.Dependencies.Component_Array :=
-                             Bindings.Dependencies.Components (Bs);
-
-               function Binding_Calculus
-                 (B             : Leander.Core.Bindings.Reference;
-                  Tie_Recursion : Boolean)
-                  return Tree;
-               --  B, wrapped in its dictionary lambdas.  With Tie_Recursion
-               --  its own name is bound by Y; otherwise it is left free.
-
-               function Projection
-                 (Index, Count : Positive)
-                  return Tree;
-               --  \x1 .. xCount. xIndex, which selects field Index of a
-               --  Scott-encoded tuple.
-
-               function Bind_Members
-                 (Members : Leander.Core.Bindings.Reference_Array;
-                  Tuple   : Leander.Names.Leander_Name;
-                  Scope   : Tree)
-                  return Tree;
-               --  (\m1 .. mN. Scope) (Tuple pi1) .. (Tuple piN), binding
-               --  each member's name in Scope to its own field of Tuple.
-
-               ----------------------
-               -- Binding_Calculus --
-               ----------------------
-
-               function Binding_Calculus
-                 (B             : Leander.Core.Bindings.Reference;
-                  Tie_Recursion : Boolean)
-                  return Tree
-               is
-                  Dicts : constant Leander.Core.Predicates.Predicate_Array :=
-                            B.Dictionaries;
-                  Base  : constant Natural := Types.Predicate_Count;
-                  Calc  : Tree :=
-                            B.To_Calculus
-                              (Types, Env,
-                               Tie_Recursion =>
-                                 Tie_Recursion and then not B.Is_Explicit);
-               begin
-                  --  Left untied, an implicit binding's group mates (itself
-                  --  included) are free, and will be bound to their whole
-                  --  values, dictionary lambdas and all.  But it uses them
-                  --  monomorphically, applying no dictionaries, so within
-                  --  it each must instead denote that value applied to the
-                  --  dictionaries the whole group shares.
-                  if not Tie_Recursion
-                    and then not B.Is_Explicit
-                    and then Dicts'Length > 0
-                  then
-                     declare
-                        Mates : constant
-                          Leander.Core.Bindings.Reference_Array :=
-                            This.Let_Bindings.Implicit_Group (B.Name);
-                     begin
-                        for M of reverse Mates loop
-                           Calc :=
-                             Lambda (Leander.Names.Leander_Name (M.Name), Calc);
-                        end loop;
-                        for M of Mates loop
-                           declare
-                              Applied : Tree :=
-                                          Symbol
-                                            (Leander.Names.Leander_Name
-                                               (M.Name));
-                           begin
-                              for P of Dicts loop
-                                 Applied :=
-                                   Apply
-                                     (Applied,
-                                      Symbol (Dict_Name (Types, P)));
-                              end loop;
-                              Calc := Apply (Calc, Applied);
-                           end;
-                        end loop;
-                     end;
-                  end if;
-
-                  --  One dictionary lambda per predicate the binding's
-                  --  scheme retains.  Wrapped in reverse, so the outermost
-                  --  parameter is the first dictionary a use site applies
-                  --  (the EVar case above applies them in scheme order).
-                  for P of reverse Dicts loop
-                     Calc := Lambda (Dict_Name (Types, P), Calc);
-                  end loop;
-
-                  --  An explicit binding's recursive uses apply those
-                  --  dictionaries themselves, so its name is bound
-                  --  outside them (see Bindings.To_Calculus).
-                  if Tie_Recursion
-                    and then B.Is_Explicit
-                    and then B.Is_Recursive
-                  then
-                     Calc := B.Tie (Calc);
-                  end if;
-
-                  --  Compiling the body re-raised its predicates into the
-                  --  context.  The ones this binding just took as its own
-                  --  parameters are discharged here and must not travel
-                  --  further out, or whatever encloses this expression
-                  --  would wrap itself in a dictionary lambda for them
-                  --  that nothing ever supplies.  Anything else the body
-                  --  raised is genuinely deferred, so it is put back.
-                  declare
-                     Raised : constant
-                       Leander.Core.Predicates.Predicate_Array :=
-                         Types.Current_Predicates;
-                     Keep   : Leander.Core.Predicates.Predicate_Array
-                       (1 .. Raised'Last - Base);
-                     Last   : Natural := 0;
-                  begin
-                     for K in Base + 1 .. Raised'Last loop
-                        if (for all D of Dicts =>
-                              Dict_Name (Types, D)
-                                /= Dict_Name (Types, Raised (K)))
-                        then
-                           Last := Last + 1;
-                           Keep (Last) := Raised (K);
-                        end if;
-                     end loop;
-                     Types.Drop_Predicates (Base + 1);
-                     Types.Save_Predicates (Keep (1 .. Last));
-                  end;
-
-                  return Calc;
-               end Binding_Calculus;
-
-               ------------------
-               -- Bind_Members --
-               ------------------
-
-               function Bind_Members
-                 (Members : Leander.Core.Bindings.Reference_Array;
-                  Tuple   : Leander.Names.Leander_Name;
-                  Scope   : Tree)
-                  return Tree
-               is
-                  Result : Tree := Scope;
-               begin
-                  for M of reverse Members loop
-                     Result :=
-                       Lambda (Leander.Names.Leander_Name (M.Name), Result);
-                  end loop;
-                  for I in Members'Range loop
-                     Result :=
-                       Apply
-                         (Result,
-                          Apply
-                            (Symbol (Tuple),
-                             Projection
-                               (I - Members'First + 1, Members'Length)));
-                  end loop;
-                  return Result;
-               end Bind_Members;
-
-               ----------------
-               -- Projection --
-               ----------------
-
-               function Projection
-                 (Index, Count : Positive)
-                  return Tree
-               is
-                  Names  : constant Leander.Names.Name_Array (1 .. Count) :=
-                             [others => Leander.Names.New_Name];
-                  Result : Tree := Symbol (Names (Index));
-               begin
-                  for Name of reverse Names loop
-                     Result := Lambda (Name, Result);
-                  end loop;
-                  return Result;
-               end Projection;
-
-               E : Tree := This.Let_Body.To_Calculus (Types, Env);
+               Group : constant Leander.Core.Binding_Groups.Reference :=
+                         Leander.Core.Binding_Groups.Reference
+                           (This.Let_Bindings);
+               E     : Tree := This.Let_Body.To_Calculus (Types, Env);
             begin
                --  A binding sees only the bindings nested outside it, so
                --  the dependency components are nested with each one
                --  outside everything that refers to it: the last component
                --  innermost.  Bindings that refer to each other share a
                --  component, and are compiled together as a recursive tuple.
-               for C in reverse 1 .. Bindings.Dependencies.Component_Count
-                                       (Component)
-               loop
+               for C in reverse 1 .. Group.Component_Count loop
                   declare
-                     Members : Leander.Core.Bindings.Reference_Array
-                       (1 .. Component'Length);
-                     Count   : Natural := 0;
+                     Members : constant
+                       Leander.Core.Bindings.Reference_Array :=
+                         Group.Component (C);
                   begin
-                     for I in Bs'Range loop
-                        if Component (I) = C then
-                           Count := Count + 1;
-                           Members (Count) := Bs (I);
-                        end if;
-                     end loop;
-
-                     if Count = 1 then
+                     if Members'Length = 1 then
                         E := Apply
                           (Lambda
-                             (Leander.Names.Leander_Name (Members (1).Name),
+                             (Leander.Names.Leander_Name
+                                (Members (Members'First).Name),
                               E),
                            Binding_Calculus
-                             (Members (1), Tie_Recursion => True));
+                             (Group, Members (Members'First),
+                              Tie_Recursion => True,
+                              Types         => Types,
+                              Env           => Env));
                      else
                         --  let m1 = e1; .. mN = eN in E, all mutually
                         --  recursive, becomes
                         --
-                        --    (\t. (\m1 .. mN. E) (t pi1) .. (t piN))
-                        --      (Y (\t. (\m1 .. mN. \s. s e1 .. eN)
-                        --                (t pi1) .. (t piN)))
+                        --    (\t. (\m1 .. mN. E) (t pi1) .. (t piN)) T
                         --
-                        --  where t is the tuple of all N bindings.
+                        --  where T is their Recursive_Component tuple.
                         declare
-                           Group    : Leander.Core.Bindings.Reference_Array
-                             renames Members (1 .. Count);
-                           Tuple    : constant Leander.Names.Leander_Name :=
-                                        Leander.Names.New_Name;
-                           Selector : constant Leander.Names.Leander_Name :=
-                                        Leander.Names.New_Name;
-                           Fields   : Tree := Symbol (Selector);
+                           Tuple : constant Leander.Names.Leander_Name :=
+                                     Leander.Names.New_Name;
                         begin
-                           for M of Group loop
-                              Fields :=
-                                Apply
-                                  (Fields,
-                                   Binding_Calculus
-                                     (M, Tie_Recursion => False));
-                           end loop;
-
                            E := Apply
-                             (Lambda (Tuple, Bind_Members (Group, Tuple, E)),
-                              Apply
-                                (Symbol ("Y"),
-                                 Lambda
-                                   (Tuple,
-                                    Bind_Members
-                                      (Group, Tuple,
-                                       Lambda (Selector, Fields)))));
+                             (Lambda
+                                (Tuple, Bind_Members (Members, Tuple, E)),
+                              Recursive_Component (Group, C, Types, Env));
                         end;
                      end if;
                   end;

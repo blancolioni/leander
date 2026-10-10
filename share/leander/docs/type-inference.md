@@ -208,10 +208,16 @@ inferred dependencies first, so each is generalized before anything
 that uses it is inferred. A reference to an explicit binding is not a
 dependency, since its declared type is already known.
 
-The same split, taken over all of a `let`'s bindings, decides how
-the `let` compiles: each component is nested outside the ones that
-refer to it, and a component of several bindings is compiled as one
-recursive tuple under `Y`.
+The same split, taken over all of a group's bindings, explicit ones
+included (`Binding_Groups.Component`), decides how they compile. A
+component of several bindings is a cycle of references, compiled as
+one recursive tuple under `Y` (`Expressions.Recursive_Component`), so
+no member refers to another by name. A `let` nests each component
+outside the ones that refer to it and binds the members to their
+fields. A top-level member compiles to its own field of a copy of the
+tuple, because the top-level bindings are compiled and installed one
+by one, and a member that named a mate would need the mate installed
+first.
 
 ### Implicit bindings
 

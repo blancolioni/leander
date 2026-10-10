@@ -661,6 +661,39 @@ package body Leander.Tests.Integration is
          "ldPolyUse", "K",
          Handle);
 
+      --  Mutually recursive top-level bindings (issue #102)
+
+      Test_Module
+        ("module: top-level mutual recursion (even)",
+         Test_Root & "test_25_toplevel_mutual_recursion.hs",
+         "tmEven 10", "K",
+         Handle);
+      Test_Module
+        ("module: top-level mutual recursion (odd)",
+         Test_Root & "test_25_toplevel_mutual_recursion.hs",
+         "tmOdd 10", "K I",
+         Handle);
+      Test_Module
+        ("module: top-level mutual recursion through a signature",
+         Test_Root & "test_25_toplevel_mutual_recursion.hs",
+         "tmOddSig 7", "K",
+         Handle);
+      Test_Module
+        ("module: a constraint shared by a top-level group",
+         Test_Root & "test_25_toplevel_mutual_recursion.hs",
+         "tmAlt 1 [1,2] && not (tmAlt 1 [2,2])", "K",
+         Handle);
+      Test_Module
+        ("module: a top-level group used at two types",
+         Test_Root & "test_25_toplevel_mutual_recursion.hs",
+         "not (tmAlt True [True]) && tmAltRest (1 + 2) [4]", "K",
+         Handle);
+      Test_Module
+        ("module: a top-level group through a constrained signature",
+         Test_Root & "test_25_toplevel_mutual_recursion.hs",
+         "tmAltSig 3 [3,0,3,9] && not (tmAltSigRest 3 [3,0,3,9])", "K",
+         Handle);
+
       --  Escapes in string and character literals (issue #96)
 
       Test_Module

@@ -1,6 +1,7 @@
 with Ada.Containers.Doubly_Linked_Lists;
 
 with Leander.Allocator;
+with Leander.Core.Bindings.Dependencies;
 
 package body Leander.Core.Binding_Groups is
 
@@ -56,8 +57,32 @@ package body Leander.Core.Binding_Groups is
      (This : Instance_Builder'Class)
       return Reference
    is
+      Item      : Instance := This.Item;
+      Ids       : constant Varid_Array := Item.Varids;
+      Bs        : constant Leander.Core.Bindings.Reference_Array :=
+                    [for Id of Ids =>
+                       Item.Lookup (Leander.Names.Leander_Name (Id))];
+      Component : constant
+        Leander.Core.Bindings.Dependencies.Component_Array :=
+          Leander.Core.Bindings.Dependencies.Components (Bs);
    begin
-      return Allocate (This.Item);
+      for C in 1 .. Leander.Core.Bindings.Dependencies.Component_Count
+                      (Component)
+      loop
+         declare
+            Members : Leander.Core.Bindings.Reference_Array (Bs'Range);
+            Count   : Natural := 0;
+         begin
+            for I in Bs'Range loop
+               if Component (I) = C then
+                  Count := Count + 1;
+                  Members (Count) := Bs (I);
+               end if;
+            end loop;
+            Item.Components.Append (Members (1 .. Count));
+         end;
+      end loop;
+      return Allocate (Item);
    end Get_Binding_Group;
 
    -------------------
@@ -91,6 +116,45 @@ package body Leander.Core.Binding_Groups is
       return Exists_In (This.Explicit_Bindings)
         or else Exists_In (This.Implicit_Bindings);
    end Has_Reference;
+
+   ---------------
+   -- Component --
+   ---------------
+
+   function Component
+     (This  : Instance'Class;
+      Index : Positive)
+      return Leander.Core.Bindings.Reference_Array
+   is
+      Position : Binding_Array_Lists.Cursor := This.Components.First;
+   begin
+      for I in 2 .. Index loop
+         Binding_Array_Lists.Next (Position);
+      end loop;
+      return Binding_Array_Lists.Element (Position);
+   end Component;
+
+   ------------------
+   -- Component_Of --
+   ------------------
+
+   function Component_Of
+     (This : Instance'Class;
+      Name : Varid)
+      return Natural
+   is
+      Index : Natural := 0;
+   begin
+      for Members of This.Components loop
+         Index := Index + 1;
+         for B of Members loop
+            if B.Name = Name then
+               return Index;
+            end if;
+         end loop;
+      end loop;
+      return 0;
+   end Component_Of;
 
    --------------------
    -- Implicit_Group --
