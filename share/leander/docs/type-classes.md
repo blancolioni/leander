@@ -66,9 +66,14 @@ record holds them in its `Bindings` field.
 Each default is compiled once, generically, by the module that
 declares the class, during `Environment.Elaborate`, after the module's
 own bindings have been inferred. It's stored as an ordinary value
-under a synthetic name, `default:Class:method`, taking the class's
-dictionary as a parameter. Because it's compiled in the declaring
-module's scope, a default can use that module's private helpers.
+under a synthetic name, `default:Class:method`. Its first dictionary
+parameter is always the class's own, even when the body never uses
+it. A default such as `label _ = "unlabelled"` raises no predicate of
+its class, and without that parameter nothing in its scheme would say
+which type is the class's, so an instance couldn't specialise it
+(issue #126). Any other dictionary the body needs, such as a
+superclass's, follows. Because the default is compiled in the declaring
+module's scope, it can use that module's private helpers.
 
 An instance that omits a method gets a one-line binding that calls
 the default. It's elaborated like any other method, so the default

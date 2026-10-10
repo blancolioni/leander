@@ -1249,6 +1249,29 @@ package body Leander.Tests.Integration is
          "test_28_match_failure.hs:6:17: Non-exhaustive patterns in mfFirst",
          Test_Root & "test_28_match_failure.hs");
 
+      --  A default that uses no method of its own class (issue #126)
+
+      Test_Module
+        ("module: a default that uses no class method",
+         Test_Root & "test_30_constant_default.hs",
+         "cdDefault", "K",
+         Handle);
+      Test_Module
+        ("module: an instance overriding that default",
+         Test_Root & "test_30_constant_default.hs",
+         "cdOverridden", "K",
+         Handle);
+      Test_Module
+        ("module: such a default beside a defined method",
+         Test_Root & "test_30_constant_default.hs",
+         "cdBesideDefined", "K",
+         Handle);
+      Test_Module
+        ("module: a default that needs only a superclass",
+         Test_Root & "test_30_constant_default.hs",
+         "cdSuperclass", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
