@@ -7,6 +7,11 @@ package Leander is
 
    type Handle is tagged private;
 
+   Runtime_Error : exception;
+   --  Raised by Evaluate and Execute when the program calls error, or a
+   --  value matches none of its alternatives.  The message is the
+   --  program's own: what error was given, or where the match failed.
+
    Compile_Error : exception;
    --  Raised by Compile, Evaluate and Execute when the expression does not
    --  type-check, or is rejected for not matching a signature.  The errors

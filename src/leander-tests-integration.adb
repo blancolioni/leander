@@ -23,6 +23,17 @@ package body Leander.Tests.Integration is
    procedure Test_Rejected
      (Expression : String;
       Handle     : Leander.Handle);
+
+   procedure Test_Runtime_Error
+     (Label       : String;
+      Expression  : String;
+      Expected    : String;
+      Module_Path : String := "");
+   --  Evaluating Expression, in Module_Path if given, must raise
+   --  Runtime_Error with a message that contains Expected.  Each case
+   --  gets a handle of its own: an error raised inside a primitive leaves
+   --  Skit's machine mid-evaluation, and it cannot yet recover
+   --  (blancolioni/skit#36).
    --  Expression must fail to compile: Evaluate raises Compile_Error and
    --  runs nothing, and the handle still evaluates afterwards.
 
@@ -88,6 +99,49 @@ package body Leander.Tests.Integration is
       when E : others =>
          Error (Label, Ada.Exceptions.Exception_Message (E));
    end Test_Rejected;
+
+   ------------------------
+   -- Test_Runtime_Error --
+   ------------------------
+
+   procedure Test_Runtime_Error
+     (Label       : String;
+      Expression  : String;
+      Expected    : String;
+      Module_Path : String := "")
+   is
+      Handle : Leander.Handle := Leander.Create (256 * 1024);
+   begin
+      if Module_Path /= "" then
+         Handle.Load_Module (Module_Path);
+      end if;
+      declare
+         Value : constant String := Handle.Evaluate (Expression);
+      begin
+         Fail (Label, "Runtime_Error", Value);
+      end;
+      Handle.Close;
+   exception
+      when E : Leander.Runtime_Error =>
+         declare
+            Message : constant String := Ada.Exceptions.Exception_Message (E);
+            Found   : constant Boolean :=
+                        (for some I in Message'First
+                           .. Message'Last - Expected'Length + 1 =>
+                             Message (I .. I + Expected'Length - 1)
+                               = Expected);
+         begin
+            if not Found then
+               Fail (Label, Expected, Message);
+            else
+               Test (Label, Pass => True);
+            end if;
+         end;
+         Handle.Close;
+      when E : others =>
+         Error (Label, Ada.Exceptions.Exception_Message (E));
+         Handle.Close;
+   end Test_Runtime_Error;
 
    -----------------
    -- Test_Module --
@@ -428,6 +482,38 @@ package body Leander.Tests.Integration is
 
       --  An expression that fails to compile is reported and not run, and
       --  leaves the handle usable (issue #117).
+
+      --  A run-time error stops the program with its message, and a value
+      --  no alternative matches is one such error (issue #116).
+
+      Test_Runtime_Error
+        ("runtime error: error reports its message",
+         "error ""boom""",
+         "boom");
+      Test_Runtime_Error
+        ("runtime error: error reports a computed message",
+         "error (""a"" ++ show 12)",
+         "a12");
+      Test_Runtime_Error
+        ("runtime error: a Prelude error",
+         "head []",
+         "Prelude.head: empty list");
+      Test_Runtime_Error
+        ("runtime error: a case that matches nothing",
+         "case Nothing of { Just x -> x }",
+         "Non-exhaustive patterns");
+      Test_Runtime_Error
+        ("runtime error: a function that matches nothing",
+         "let { g (Just x) = x } in g Nothing",
+         "Non-exhaustive patterns in g");
+      Test_Runtime_Error
+        ("runtime error: a lambda that matches nothing",
+         "(\(Just x) -> x) Nothing",
+         "Non-exhaustive patterns");
+      Test_Runtime_Error
+        ("runtime error: a literal that matches nothing",
+         "case 3 of { 1 -> 0 }",
+         "Non-exhaustive patterns");
 
       Leander.Clear_Errors;
       Test_Rejected ("1 + True", Handle);
@@ -1000,6 +1086,14 @@ package body Leander.Tests.Integration is
          Test_Root & "test_23_default_uses_own_method.hs",
          "dmLetters == ""abcde""", "K",
          Handle);
+
+      --  A failed match names the function and where it is (issue #116)
+
+      Test_Runtime_Error
+        ("module: a failed match reports its location",
+         "mfFirst []",
+         "test_28_match_failure.hs:6:17: Non-exhaustive patterns in mfFirst",
+         Test_Root & "test_28_match_failure.hs");
 
       --  Tuples larger than pairs (issue #80)
 

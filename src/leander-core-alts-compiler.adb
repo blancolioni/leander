@@ -132,6 +132,37 @@ package body Leander.Core.Alts.Compiler is
       This.Names.Append (Name);
    end Add_Name;
 
+   -----------------
+   -- Raise_Error --
+   -----------------
+
+   function Raise_Error (Message : String) return Leander.Calculus.Tree is
+      use Leander.Calculus;
+      Chars : Tree := Number (0);
+   begin
+      --  #errorChar's arguments are strict, so the innermost call -- the
+      --  first character -- is the first to run.
+      for Ch of Message loop
+         Chars :=
+           Apply
+             (Apply (Symbol ("#errorChar"), Number (Character'Pos (Ch))),
+              Chars);
+      end loop;
+      return Apply (Symbol ("#errorRaise"), Chars);
+   end Raise_Error;
+
+   -------------------------
+   -- Set_Failure_Message --
+   -------------------------
+
+   procedure Set_Failure_Message
+     (This    : in out Builder'Class;
+      Message : String)
+   is
+   begin
+      This.Failure := Ada.Strings.Unbounded.To_Unbounded_String (Message);
+   end Set_Failure_Message;
+
    ----------------
    -- Initialize --
    ----------------
@@ -169,7 +200,8 @@ package body Leander.Core.Alts.Compiler is
       begin
          if This.Compare_Mode then
             if This.Con_Dfl.Expr = null then
-               R := Symbol ("#error");
+               R := Raise_Error
+                 (Ada.Strings.Unbounded.To_String (This.Failure));
             else
                R := This.Con_Dfl.Expr.To_Calculus
                  (This.Context, This.Env);
@@ -217,7 +249,9 @@ package body Leander.Core.Alts.Compiler is
                                Leander.Names.New_Name];
                      begin
                         if This.Con_Dfl.Expr = null then
-                           E := Symbol ("#error");
+                           E := Raise_Error
+                             (Ada.Strings.Unbounded.To_String
+                                (This.Failure));
                         else
                            E := This.Con_Dfl.Expr.To_Calculus
                              (This.Context, This.Env);

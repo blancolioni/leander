@@ -1,4 +1,5 @@
 with Ada.Containers;
+with Ada.Strings.Unbounded;
 with Ada.Containers.Vectors;
 with Leander.Calculus;
 with Leander.Core.Inference;
@@ -18,6 +19,17 @@ package Leander.Core.Alts.Compiler is
    procedure Add_Name
      (This : in out Builder'Class;
       Name : Varid);
+
+   procedure Set_Failure_Message
+     (This    : in out Builder'Class;
+      Message : String);
+   --  What a value that no alternative matches reports, such as
+   --  "f.hs:3:7: Non-exhaustive patterns in f".
+
+   function Raise_Error (Message : String) return Leander.Calculus.Tree;
+   --  A tree that raises Message at run time.  The message goes to the
+   --  machine a character at a time (#errorChar), then #errorRaise raises
+   --  it: an evaluated string cannot cross the primitive interface whole.
 
    procedure Add (This : in out Builder'Class;
                   Alts : Reference_Array)
@@ -60,6 +72,9 @@ private
          DT           : Leander.Data_Types.Reference;
          Con_Pats     : Con_Pat_Expr_Vectors.Vector;
          Con_Dfl      : Con_Pat_Expr;
+         Failure      : Ada.Strings.Unbounded.Unbounded_String :=
+                          Ada.Strings.Unbounded.To_Unbounded_String
+                            ("Non-exhaustive patterns");
       end record;
 
    function Raised_Predicates

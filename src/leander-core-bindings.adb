@@ -222,6 +222,18 @@ package body Leander.Core.Bindings is
          Builder : Leander.Core.Alts.Compiler.Builder;
       begin
          Builder.Initialize (Types, Env);
+         declare
+            Name : constant String := Core.To_String (This.Name);
+         begin
+            --  A name the compiler made up -- for a case, an if or a
+            --  lambda -- means nothing to the reader, so only a real one
+            --  is given.
+            Builder.Set_Failure_Message
+              (This.Alts (This.Alts'First).Expression.Show_Location
+               & ": Non-exhaustive patterns"
+               & (if Name'Length > 0 and then Name (Name'First) /= '_'
+                  then " in " & Name else ""));
+         end;
          if Tie_Recursion and then This.Is_Recursive then
             Builder.Add_Name (This.Name);
          end if;

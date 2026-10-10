@@ -78,11 +78,14 @@ package body Leander.Tests.Images is
 
       begin
          Leander.Primitives.Load_Primitives (Hr);
-         --  "#error" is bound specially by Leander.Handles.Create (not one
-         --  of the generic VM primitives Load_Primitives loads); a dummy
-         --  value satisfies the import here since this smoke test never
-         --  evaluates anything that would actually call it.
+         --  "#error", "#errorChar" and "#errorRaise" are bound specially by
+         --  Leander.Handles.Create (they are not among the generic VM
+         --  primitives Load_Primitives loads); dummy values satisfy the
+         --  imports here since this smoke test never evaluates anything
+         --  that would actually call them.
          Hr.Bind ("#error", Skit.Combinators.I);
+         Hr.Bind ("#errorChar", Skit.Combinators.I);
+         Hr.Bind ("#errorRaise", Skit.Combinators.I);
          begin
             Skit.Handles.Images.Read (Hr, Path, On_Annotation'Access);
          exception

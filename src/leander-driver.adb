@@ -1,5 +1,6 @@
 with Ada.Command_Line;
 with Ada.Directories;
+with Ada.Exceptions;
 with Ada.Text_IO;
 
 with Leander.Command_Line;
@@ -41,6 +42,12 @@ begin
             --  Already reported.
             Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
             H.Close;
+         when E : Leander.Runtime_Error =>
+            Ada.Text_IO.Put_Line
+              (Ada.Text_IO.Standard_Error,
+               Ada.Exceptions.Exception_Message (E));
+            Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
+            H.Close;
       end;
    elsif Command_Line.Self_Test then
       Leander.Tests.Run_Tests;
@@ -75,6 +82,12 @@ begin
       exception
          when Leander.Compile_Error =>
             --  Already reported.
+            Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
+            H.Close;
+         when E : Leander.Runtime_Error =>
+            Ada.Text_IO.Put_Line
+              (Ada.Text_IO.Standard_Error,
+               Ada.Exceptions.Exception_Message (E));
             Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
             H.Close;
       end;
