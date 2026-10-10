@@ -1,3 +1,5 @@
+with Ada.Strings.Fixed;
+
 with Leander.Core.Kinds;
 with Leander.Core.Types;
 with Leander.Core.Tycons;
@@ -52,6 +54,51 @@ package body Leander.Environment.Prelude is
                   T_Tuple_2))));
       Builder.Build;
       Env.Data_Type (Builder.Data_Type);
+
+      --  The larger tuples, up to the size every Haskell implementation
+      --  must support (Haskell 2010, section 6.1.4): (,,) :: a1 -> a2 ->
+      --  a3 -> (a1,a2,a3), and so on.
+      for Arity in 3 .. Max_Tuple_Arity loop
+         declare
+            Commas : constant String (1 .. Arity - 1) := [others => ','];
+            Name   : constant String := "(" & Commas & ")";
+            Vars   : constant Core.Tyvars.Tyvar_Array (1 .. Arity) :=
+                       [for I in 1 .. Arity =>
+                          Core.Tyvars.Tyvar
+                            (Core.To_Varid
+                               ("a" & Ada.Strings.Fixed.Trim
+                                  (I'Image, Ada.Strings.Left)),
+                             Core.Kinds.Star)];
+
+            function Kind (Params : Natural) return Core.Kinds.Kind
+            is (if Params = 0 then Core.Kinds.Star
+                else Core.Kinds.Kind_Function
+                  (Core.Kinds.Star, Kind (Params - 1)));
+
+            T      : Core.Types.Reference :=
+                       Core.Types.TCon
+                         (Core.Tycons.Tycon
+                            (Core.To_Conid (Name), Kind (Arity)));
+         begin
+            for V of Vars loop
+               T := Core.Types.Application (T, Core.Types.TVar (V));
+            end loop;
+
+            declare
+               Con_T : Core.Types.Reference := T;
+            begin
+               for V of reverse Vars loop
+                  Con_T := Core.Types.Fn (Core.Types.TVar (V), Con_T);
+               end loop;
+
+               Builder.Start (T);
+               Builder.Add_Con
+                 (Core.To_Conid (Name), Quantify (Vars, [], Con_T));
+               Builder.Build;
+               Env.Data_Type (Builder.Data_Type);
+            end;
+         end;
+      end loop;
 
       Builder.Start
         (T_Bool);

@@ -1,4 +1,5 @@
 with Leander.Core.Kinds;
+with Leander.Core.Tycons;
 with Leander.Core.Types;
 with Leander.Core.Tyvars;
 
@@ -32,6 +33,36 @@ package body Leander.Tests.Types is
             Fn (T_Int, T_Char));
       Test ("show-Image", "Double -> [Char]",
             Fn (T_Double, List_Of (T_Char)));
+      Test ("pair-image", "(Int,Char)", Pair (T_Int, T_Char));
+
+      declare
+         T_Triple : constant Reference :=
+                      TCon
+                        (Core.Tycons.Tycon
+                           (Core.To_Conid ("(,,)"),
+                            Core.Kinds.Kind_Function
+                              (Core.Kinds.Star,
+                               Core.Kinds.Kind_Function
+                                 (Core.Kinds.Star,
+                                  Core.Kinds.Kind_Function
+                                    (Core.Kinds.Star, Core.Kinds.Star)))));
+      begin
+         Test ("triple-image", "(Int,Char,[Int])",
+               Application
+                 (Application
+                    (Application (T_Triple, T_Int), T_Char),
+                  List_Of (T_Int)));
+
+         --  Short of its arguments, a tuple constructor is just applied.
+         Test ("partial-triple-image", "(,,) Int Char",
+               Application (Application (T_Triple, T_Int), T_Char));
+
+         Test ("nested-tuple-image", "((Int,Char),Int,Int)",
+               Application
+                 (Application
+                    (Application (T_Triple, Pair (T_Int, T_Char)), T_Int),
+                  T_Int));
+      end;
 
       declare
          function TVar (Varid : String) return Reference

@@ -263,6 +263,8 @@ package body Leander.Tests.Modules is
                    & "|small|zero"     --  arithmetic helpers
                    & "|showUnsignedInt"  --  show helper
                    & "|bindIO|returnIO"  --  IO's Monad methods
+                   & "|fst3|snd3|thd3"   --  unzip3's selectors
+                   & "|thenCmp"          --  tuple Ord helper
                    & "|";
 
       Context : Leander.Parser.Parse_Context;

@@ -43,7 +43,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | `if`/`then`/`else` | ✅ | |
 | `case` | 🟡 | Works, guards included. No `where` on alternatives. |
 | `do` notation | ✅ | Monad-generic desugar, including `let`. **No `MonadFail`**: a refutable bind that doesn't match is a hard error. |
-| Tuples | 🟡 | Pairs only. `(1,2,3)` fails with "unbound constructor: (,,)". |
+| Tuples | ✅ | Types, constructors and patterns up to size 15, including `(,,)` written alone. Patterns nest only one level, as for any constructor (`f (Just (a,b))` is rejected). |
 | List literals | ✅ | |
 | List comprehensions | ❌ | No generator/guard syntax. |
 | Arithmetic sequences `[a..]`,`[a..b]`,`[a,b..c]` | ✅ | Via `enumFrom*`, on `Int`, `Char`, and any `Enum` instance that relies on the class defaults. `['a' ..]` never ends: the default `enumFrom` counts up through `Int` past code 255. |
@@ -165,14 +165,14 @@ Item-by-item status against the Report's Prelude export list is tracked in [#97]
 
 | Area | Status | Note |
 |---|---|---|
-| List functions | 🟡 | Have: `map filter foldr foldl foldl' foldl1 (++) concat reverse length null head tail last init (!!) take drop takeWhile dropWhile span break iterate repeat replicate cycle zip zipWith and or any all elem notElem lookup sum product maximum minimum`. **Missing**: `concatMap`, `foldr1`, `splitAt`, `zip3`/`unzip`, `lines`/`words`/`unlines`/`unwords`, scans. **`last` is wrong**: it returns `[x]`, not `x` (`last [1,2,3]` is `[3]`). `sum` and `product` are `[Int] -> Int`. |
+| List functions | 🟡 | Have: `map filter foldr foldl foldl' foldl1 (++) concat reverse length null head tail last init (!!) take drop takeWhile dropWhile span break iterate repeat replicate cycle zip zipWith and or any all elem notElem lookup sum product maximum minimum`. Also `zip3 zipWith3 unzip unzip3`. **Missing**: `concatMap`, `foldr1`, `splitAt`, `lines`/`words`/`unlines`/`unwords`, scans. `sum` and `product` are `[Int] -> Int`. |
 | Miscellaneous | 🟡 | Have `id const (.) flip ($) ($!) seq not (&&) (\|\|) otherwise fst snd curry uncurry subtract error`. Missing `undefined`, `until`, `asTypeOf`, `(=<<)` (fixity declared, never defined). `subtract` is `Int`-only. |
 | `Maybe` | 🟡 | Type, `maybe`, derived `Eq`, Functor/Applicative/Monad. No `Show` instance; a `showMaybe` helper stands in. Missing `fromMaybe`, `isJust`, `catMaybes`, `mapMaybe`, … |
 | `Either` | 🟡 | Type, `either` and derived `Eq`. No Functor/Monad/Show instances. |
-| Tuples | 🟡 | Pairs only; no triples or `swap`. |
+| Tuples | 🟡 | `Eq`, `Ord` and `Show` instances up to size 7 (the Report asks for 15, plus `Bounded` and `Read`). |
 | `Eq`/`Ord`/`Enum`/`Bounded` | 🟡 | `Eq`: `Bool`, `Int`, `Char`, `[a]`, plus derived `Ordering`/`Maybe`/`Either`. `Ord`: `Int` and `Char` only, with `compare`/`max`/`min` defaults. `Enum`: `Int` and `Char`. `Bounded`: `Int` only. |
 | `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]` (Functor/Applicative only), `Maybe` and `IO`. **No `Monad []`.** No `*>`/`<*`/`liftA2`/`fail`. |
-| `Show` | 🟡 | `show` only (no `showsPrec`/`shows`/`showString`). Instances for `Bool` and `Int` only, so no list, `Maybe`, tuple or `Char` `Show`. |
+| `Show` | 🟡 | `show` only (no `showsPrec`/`shows`/`showString`). Instances for `Bool`, `Int` and tuples up to size 7 only, so no list, `Maybe` or `Char` `Show`. |
 | `Read` | ❌ | Absent. |
 | `Monoid`/`Foldable`/`Traversable` | ❌ | Absent. |
 

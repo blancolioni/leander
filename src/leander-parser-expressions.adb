@@ -484,6 +484,25 @@ package body Leander.Parser.Expressions is
             return Constructor (Loc, "()");
          end if;
 
+         --  A tuple constructor on its own: (,), (,,), ...
+         if Tok = Tok_Comma then
+            declare
+               Commas : Natural := 0;
+            begin
+               while Tok = Tok_Comma loop
+                  Commas := Commas + 1;
+                  Scan;
+               end loop;
+               if Tok = Tok_Right_Paren then
+                  Scan;
+               else
+                  Error ("expected ')'");
+               end if;
+               return Constructor
+                 (Loc, "(" & (1 .. Commas => ',') & ")");
+            end;
+         end if;
+
          if At_Operator then
             declare
                Name : constant String := Scan_Identifier;
