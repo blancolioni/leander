@@ -35,7 +35,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 
 | Feature | Status | Note |
 |---|---|---|
-| Lambda | 🟡 | **One binder only**, either a variable or `_`. No `\x y ->`, no pattern lambdas. |
+| Lambda | ✅ | Any number of atomic patterns: `\x y -> e`, `\(a,b) -> e`, `\(Just x) _ -> e`. Patterns nest only one level deep, as everywhere (#109). |
 | Application | ✅ | |
 | Operator sections | 🟡 | Right sections `(op e)`, backtick sections `` (`div` 2) `` and bare `(op)` work. **Left sections `(e op)` fail to parse.** |
 | Unary negation | ❌ | `(-1)` mis-parses as a right section, so it is a function. Use `negate`. |
@@ -215,4 +215,4 @@ These are wrong answers or crashes in forms that are otherwise supported.
 9. ~~**Module imports/exports** (multi-file programs).~~ Landed — see `share/leander/docs/modules.md`. What is left is separate compilation: reading a module's `.skix` back rather than only the Prelude's.
 10. **Input IO** (`getLine`/`getChar`).
 11. **Real layout algorithm** (replace ad-hoc indent checks) — foundational but higher risk; do when the ad-hoc rules start failing real code.
-12. **Char/String literal patterns**, **left sections**, **multi-arg/pattern lambdas**, **triples**, **`where` on case alternatives**, **instances with no `where`** — small polish items.
+12. **Char/String literal patterns**, **left sections**, **`where` on case alternatives**, **instances with no `where`** — small polish items.
