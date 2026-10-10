@@ -990,9 +990,6 @@ package body Leander.Environment is
                               if Binding = null then
                                  Error
                                    ("In instance "
-                                    & Leander.Names.To_String
-                                      (Leander.Names.Leander_Name (Class.Id))
-                                    & " "
                                     & Inst.Element.Predicate.Show
                                     & ": "
                                     & "no class method "
@@ -1212,9 +1209,38 @@ package body Leander.Environment is
                         Seen : WL.String_Sets.Set;
                         Full_Predicates : Leander.Core.Predicates
                           .Predicate_Array
-                            (1 .. Method_Context.Current_Predicates'Length);
+                            (1 .. Method_Context.Current_Predicates'Length
+                                  + Explicit.Dictionaries'Length);
                         Full_Count      : Natural := 0;
                      begin
+                        --  The class's own predicate always comes first,
+                        --  whether or not the body raised it: a default
+                        --  that uses no method of its class (greety _ =
+                        --  "default") raises none, and without it the
+                        --  scheme says nothing about which type is the
+                        --  class's, so an instance cannot specialise it to
+                        --  itself (Elaborate_Instance matches on exactly
+                        --  this predicate; issue #126).  The declared
+                        --  context is in the same type variables as the
+                        --  body, having been instantiated with it.
+                        for D of Explicit.Dictionaries loop
+                           if D.Class_Name = Core.To_String (Class.Id) then
+                              declare
+                                 P : constant Leander.Core.Predicates.Instance :=
+                                       Leander.Core.Predicates.Predicate
+                                         (D.Class_Id,
+                                          Leander.Core.Types.Reference
+                                            (D.Get_Type.Apply
+                                               (Method_Context
+                                                  .Current_Substitution)));
+                              begin
+                                 Seen.Include ("<" & P.Show & ">");
+                                 Full_Count := Full_Count + 1;
+                                 Full_Predicates (Full_Count) := P;
+                              end;
+                           end if;
+                        end loop;
+
                         --  The Type_Env scheme recorded for this default
                         --  must describe exactly the dictionary parameters
                         --  Tree gets wrapped in below -- not the method's
