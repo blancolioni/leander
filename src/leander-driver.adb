@@ -1,3 +1,4 @@
+with Ada.Command_Line;
 with Ada.Directories;
 with Ada.Text_IO;
 
@@ -25,13 +26,21 @@ begin
    if Command_Line.Evaluate /= "" then
       declare
          H : Leander.Handle := Leander.Create (Core_Size);
-         Result : constant String :=
-                    H.Evaluate (Command_Line.Evaluate);
       begin
-         if Result /= "I" then
-            Ada.Text_IO.Put_Line (Result);
-         end if;
+         declare
+            Result : constant String :=
+                       H.Evaluate (Command_Line.Evaluate);
+         begin
+            if Result /= "I" then
+               Ada.Text_IO.Put_Line (Result);
+            end if;
+         end;
          H.Close;
+      exception
+         when Leander.Compile_Error =>
+            --  Already reported.
+            Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
+            H.Close;
       end;
    elsif Command_Line.Self_Test then
       Leander.Tests.Run_Tests;
@@ -63,6 +72,11 @@ begin
          end if;
 
          H.Close;
+      exception
+         when Leander.Compile_Error =>
+            --  Already reported.
+            Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
+            H.Close;
       end;
    else
       Leander.Repl.Start (Core_Size);

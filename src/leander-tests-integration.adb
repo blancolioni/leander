@@ -20,6 +20,12 @@ package body Leander.Tests.Integration is
       Expected_Value : String;
       Handle         : Leander.Handle);
 
+   procedure Test_Rejected
+     (Expression : String;
+      Handle     : Leander.Handle);
+   --  Expression must fail to compile: Evaluate raises Compile_Error and
+   --  runs nothing, and the handle still evaluates afterwards.
+
    procedure Test_Module
      (Label          : String;
       Module_Path    : String;
@@ -38,16 +44,50 @@ package body Leander.Tests.Integration is
       Handle         : Leander.Handle)
    is
       pragma Unreferenced (Expected_Type);
-      Value : constant String := Handle.Evaluate (Expression);
    begin
-      Test (Expression,
-            Expected_Value,
-            Value);
+      --  Evaluated here rather than in a declaration, so that a failure
+      --  reaches the handler below and fails this case alone, instead of
+      --  escaping it and ending the run.
+      declare
+         Value : constant String := Handle.Evaluate (Expression);
+      begin
+         Test (Expression,
+               Expected_Value,
+               Value);
+      end;
    exception
       when E : others =>
          Error (Expression,
                 Ada.Exceptions.Exception_Message (E));
    end Test_Eval;
+
+   -------------------
+   -- Test_Rejected --
+   -------------------
+
+   procedure Test_Rejected
+     (Expression : String;
+      Handle     : Leander.Handle)
+   is
+      Label : constant String := "rejected: " & Expression;
+   begin
+      declare
+         Value : constant String := Handle.Evaluate (Expression);
+      begin
+         Fail (Label, "Compile_Error", Value);
+         return;
+      end;
+   exception
+      when Leander.Compile_Error =>
+         --  Rejected without running anything; the handle must still work.
+         declare
+            Value : constant String := Handle.Evaluate ("1 + 2");
+         begin
+            Test (Label, "3", Value);
+         end;
+      when E : others =>
+         Error (Label, Ada.Exceptions.Exception_Message (E));
+   end Test_Rejected;
 
    -----------------
    -- Test_Module --
@@ -385,6 +425,14 @@ package body Leander.Tests.Integration is
       Test_Eval ("let f = \(a,b) -> a in f (1,True) + fst (f ((2,'c'),3))",
                  "Int", "3",
                  Handle);
+
+      --  An expression that fails to compile is reported and not run, and
+      --  leaves the handle usable (issue #117).
+
+      Leander.Clear_Errors;
+      Test_Rejected ("1 + True", Handle);
+      Test_Rejected ("let { g :: a -> a; g x = True } in 1", Handle);
+      Leander.Clear_Errors;
 
       --  Prelude's last returned [x] from one branch and an element from
       --  the other.  Inference used to drop the conflict instead of

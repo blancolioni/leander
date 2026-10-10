@@ -61,6 +61,10 @@ package body Leander.Repl is
                   end if;
                end;
             end if;
+         exception
+            when Leander.Compile_Error =>
+               --  Already reported; carry on with the next line.
+               null;
          end;
       end loop;
       Handle.Close;
