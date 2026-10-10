@@ -8,7 +8,8 @@ module Prelude
     notElem, null, or, otherwise, print, product, putChar, putStr,
     putStrLn, repeat, replicate, reverse, runIO, seq, sequence,
     sequence_, showMaybe, snd, span, subtract, sum, tail, take,
-    takeWhile, uncurry, zip, zipWith, (!!), ($), ($!), (&&), (++), (.),
+    takeWhile, uncurry, unzip, unzip3, zip, zip3, zipWith, zipWith3,
+    (!!), ($), ($!), (&&), (++), (.),
     (||)
   ) where
 
@@ -330,6 +331,35 @@ zipWith z as bs = case as of
                         (b:bs) -> z a b : zipWith z as bs
 
 
+zip3             :: [a] -> [b] -> [c] -> [(a,b,c)]
+zip3             =  zipWith3 (,,)
+
+zipWith3         :: (a->b->c->d) -> [a]->[b]->[c]->[d]
+zipWith3 z as bs cs = case as of
+            []     -> []
+            (a:as) -> case bs of
+                        []     -> []
+                        (b:bs) -> case cs of
+                                    []     -> []
+                                    (c:cs) -> z a b c : zipWith3 z as bs cs
+
+-- unzip transforms a list of pairs into a pair of lists, and unzip3 a
+-- list of triples into a triple of lists.  Each list is built lazily.
+
+unzip            :: [(a,b)] -> ([a],[b])
+unzip []         =  ([], [])
+unzip (p:ps)     =  (fst p : fst r, snd p : snd r)
+                    where r = unzip ps
+
+unzip3           :: [(a,b,c)] -> ([a],[b],[c])
+unzip3 []        =  ([], [], [])
+unzip3 (t:ts)    =  (fst3 t : fst3 r, snd3 t : snd3 r, thd3 t : thd3 r)
+                    where r = unzip3 ts
+
+fst3 (x,_,_)     =  x
+snd3 (_,y,_)     =  y
+thd3 (_,_,z)     =  z
+
 filter :: (a -> Bool) -> [a] -> [a]
 filter p [] = []
 filter p (x:xs) = if p x then x : filter p xs else filter p xs
@@ -574,3 +604,67 @@ runIO :: IO a -> a
 runIO a = let getf (IO f) = f
               xw' = getf a 1
           in seq (snd xw') (fst xw')
+
+-- Tuple instances.  The Report asks for them up to size 15 (section
+-- 6.1.4); they stop at 7 here because each one adds to the time it
+-- takes to load the Prelude, and the larger ones add the most.  The
+-- tuple types and constructors themselves go up to 15.  Written to one
+-- pattern: fields compare left to right.
+
+thenCmp :: Ordering -> Ordering -> Ordering
+thenCmp EQ o = o
+thenCmp o  _ = o
+
+instance (Eq a1, Eq a2) => Eq (a1,a2) where
+    (x1,x2) == (y1,y2) = x1 == y1 && x2 == y2
+
+instance (Ord a1, Ord a2) => Ord (a1,a2) where
+    compare (x1,x2) (y1,y2) = thenCmp (compare x1 y1) (compare x2 y2)
+
+instance (Show a1, Show a2) => Show (a1,a2) where
+    show (x1,x2) = "(" ++ show x1 ++ "," ++ show x2 ++ ")"
+
+instance (Eq a1, Eq a2, Eq a3) => Eq (a1,a2,a3) where
+    (x1,x2,x3) == (y1,y2,y3) = x1 == y1 && x2 == y2 && x3 == y3
+
+instance (Ord a1, Ord a2, Ord a3) => Ord (a1,a2,a3) where
+    compare (x1,x2,x3) (y1,y2,y3) = thenCmp (compare x1 y1) (thenCmp (compare x2 y2) (compare x3 y3))
+
+instance (Show a1, Show a2, Show a3) => Show (a1,a2,a3) where
+    show (x1,x2,x3) = "(" ++ show x1 ++ "," ++ show x2 ++ "," ++ show x3 ++ ")"
+
+instance (Eq a1, Eq a2, Eq a3, Eq a4) => Eq (a1,a2,a3,a4) where
+    (x1,x2,x3,x4) == (y1,y2,y3,y4) = x1 == y1 && x2 == y2 && x3 == y3 && x4 == y4
+
+instance (Ord a1, Ord a2, Ord a3, Ord a4) => Ord (a1,a2,a3,a4) where
+    compare (x1,x2,x3,x4) (y1,y2,y3,y4) = thenCmp (compare x1 y1) (thenCmp (compare x2 y2) (thenCmp (compare x3 y3) (compare x4 y4)))
+
+instance (Show a1, Show a2, Show a3, Show a4) => Show (a1,a2,a3,a4) where
+    show (x1,x2,x3,x4) = "(" ++ show x1 ++ "," ++ show x2 ++ "," ++ show x3 ++ "," ++ show x4 ++ ")"
+
+instance (Eq a1, Eq a2, Eq a3, Eq a4, Eq a5) => Eq (a1,a2,a3,a4,a5) where
+    (x1,x2,x3,x4,x5) == (y1,y2,y3,y4,y5) = x1 == y1 && x2 == y2 && x3 == y3 && x4 == y4 && x5 == y5
+
+instance (Ord a1, Ord a2, Ord a3, Ord a4, Ord a5) => Ord (a1,a2,a3,a4,a5) where
+    compare (x1,x2,x3,x4,x5) (y1,y2,y3,y4,y5) = thenCmp (compare x1 y1) (thenCmp (compare x2 y2) (thenCmp (compare x3 y3) (thenCmp (compare x4 y4) (compare x5 y5))))
+
+instance (Show a1, Show a2, Show a3, Show a4, Show a5) => Show (a1,a2,a3,a4,a5) where
+    show (x1,x2,x3,x4,x5) = "(" ++ show x1 ++ "," ++ show x2 ++ "," ++ show x3 ++ "," ++ show x4 ++ "," ++ show x5 ++ ")"
+
+instance (Eq a1, Eq a2, Eq a3, Eq a4, Eq a5, Eq a6) => Eq (a1,a2,a3,a4,a5,a6) where
+    (x1,x2,x3,x4,x5,x6) == (y1,y2,y3,y4,y5,y6) = x1 == y1 && x2 == y2 && x3 == y3 && x4 == y4 && x5 == y5 && x6 == y6
+
+instance (Ord a1, Ord a2, Ord a3, Ord a4, Ord a5, Ord a6) => Ord (a1,a2,a3,a4,a5,a6) where
+    compare (x1,x2,x3,x4,x5,x6) (y1,y2,y3,y4,y5,y6) = thenCmp (compare x1 y1) (thenCmp (compare x2 y2) (thenCmp (compare x3 y3) (thenCmp (compare x4 y4) (thenCmp (compare x5 y5) (compare x6 y6)))))
+
+instance (Show a1, Show a2, Show a3, Show a4, Show a5, Show a6) => Show (a1,a2,a3,a4,a5,a6) where
+    show (x1,x2,x3,x4,x5,x6) = "(" ++ show x1 ++ "," ++ show x2 ++ "," ++ show x3 ++ "," ++ show x4 ++ "," ++ show x5 ++ "," ++ show x6 ++ ")"
+
+instance (Eq a1, Eq a2, Eq a3, Eq a4, Eq a5, Eq a6, Eq a7) => Eq (a1,a2,a3,a4,a5,a6,a7) where
+    (x1,x2,x3,x4,x5,x6,x7) == (y1,y2,y3,y4,y5,y6,y7) = x1 == y1 && x2 == y2 && x3 == y3 && x4 == y4 && x5 == y5 && x6 == y6 && x7 == y7
+
+instance (Ord a1, Ord a2, Ord a3, Ord a4, Ord a5, Ord a6, Ord a7) => Ord (a1,a2,a3,a4,a5,a6,a7) where
+    compare (x1,x2,x3,x4,x5,x6,x7) (y1,y2,y3,y4,y5,y6,y7) = thenCmp (compare x1 y1) (thenCmp (compare x2 y2) (thenCmp (compare x3 y3) (thenCmp (compare x4 y4) (thenCmp (compare x5 y5) (thenCmp (compare x6 y6) (compare x7 y7))))))
+
+instance (Show a1, Show a2, Show a3, Show a4, Show a5, Show a6, Show a7) => Show (a1,a2,a3,a4,a5,a6,a7) where
+    show (x1,x2,x3,x4,x5,x6,x7) = "(" ++ show x1 ++ "," ++ show x2 ++ "," ++ show x3 ++ "," ++ show x4 ++ "," ++ show x5 ++ "," ++ show x6 ++ "," ++ show x7 ++ ")"

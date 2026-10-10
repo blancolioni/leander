@@ -549,7 +549,68 @@ package body Leander.Core.Types is
      (This : Instance)
       return String
    is
+      function Tuple_Arity return Natural;
+      --  N if This is the N-tuple type constructor applied to all N of
+      --  its arguments, otherwise 0.
+
+      function Tuple_Fields (T : Instance; Count : Positive) return String;
+      --  The last Count arguments of T, shown and separated by commas.
+
+      -----------------
+      -- Tuple_Arity --
+      -----------------
+
+      function Tuple_Arity return Natural is
+         Args : Natural := 0;
+         Head : access constant Instance := This'Unchecked_Access;
+      begin
+         while Head.Tag = TApp loop
+            Args := Args + 1;
+            Head := Instance (Head.Left.all)'Unchecked_Access;
+         end loop;
+
+         if Head.Tag /= TCon then
+            return 0;
+         end if;
+
+         declare
+            Name : constant String := Head.Tycon.Show;
+         begin
+            if Args >= 2
+              and then Name'Length = Args + 1
+              and then Name (Name'First) = '('
+              and then Name (Name'Last) = ')'
+              and then (for all I in Name'First + 1 .. Name'Last - 1 =>
+                          Name (I) = ',')
+            then
+               return Args;
+            end if;
+         end;
+         return 0;
+      end Tuple_Arity;
+
+      ------------------
+      -- Tuple_Fields --
+      ------------------
+
+      function Tuple_Fields (T : Instance; Count : Positive) return String is
+      begin
+         if Count = 1 then
+            return T.Right.Show;
+         else
+            return Tuple_Fields (Instance (T.Left.all), Count - 1)
+              & "," & T.Right.Show;
+         end if;
+      end Tuple_Fields;
+
+      Arity : constant Natural :=
+                (if This.Tag = TApp then Tuple_Arity else 0);
+
    begin
+      if Arity > 0 then
+         return "(" & Tuple_Fields (This, Arity) & ")";
+      end if;
+
       case This.Tag is
          when TVar =>
             return This.Tyvar.Show;
@@ -578,12 +639,6 @@ package body Leander.Core.Types is
                              & " -> "
                              & This.Right.Show;
                         end if;
-                     elsif Left.Left.Show = "(,)" then
-                        return "("
-                          & Left.Right.Show
-                          & ","
-                          & This.Right.Show
-                          & ")";
                      elsif This.Right.Tag = TApp then
                         return This.Left.Show
                           & " ("

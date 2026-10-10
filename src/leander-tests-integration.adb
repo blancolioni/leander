@@ -914,6 +914,94 @@ package body Leander.Tests.Integration is
          "dmLetters == ""abcde""", "K",
          Handle);
 
+      --  Tuples larger than pairs (issue #80)
+
+      Test_Module
+        ("module: a triple in a pattern",
+         Test_Root & "test_27_tuples.hs",
+         "tpSum3Value", "7",
+         Handle);
+      Test_Module
+        ("module: a 7-tuple in a pattern",
+         Test_Root & "test_27_tuples.hs",
+         "tpSevenValue", "28",
+         Handle);
+      Test_Module
+        ("module: a 15-tuple",
+         Test_Root & "test_27_tuples.hs",
+         "tpFifteen", "15",
+         Handle);
+      Test_Module
+        ("module: a tuple constructor on its own",
+         Test_Root & "test_27_tuples.hs",
+         "tpBuilt", "7",
+         Handle);
+      Test_Module
+        ("module: zip3",
+         Test_Root & "test_27_tuples.hs",
+         "tpZip3", "2",
+         Handle);
+      Test_Module
+        ("module: zipWith3",
+         Test_Root & "test_27_tuples.hs",
+         "tpZipWith3", "56",
+         Handle);
+      Test_Module
+        ("module: unzip3",
+         Test_Root & "test_27_tuples.hs",
+         "tpUnzip3", "2",
+         Handle);
+      Test_Module
+        ("module: unzip is lazy",
+         Test_Root & "test_27_tuples.hs",
+         "tpUnzipLazy", "6",
+         Handle);
+      Test_Module
+        ("module: Eq on triples (equal)",
+         Test_Root & "test_27_tuples.hs",
+         "tpEqual", "K",
+         Handle);
+      Test_Module
+        ("module: Eq on triples (unequal)",
+         Test_Root & "test_27_tuples.hs",
+         "tpUnequal", "K I",
+         Handle);
+      Test_Module
+        ("module: Ord on triples",
+         Test_Root & "test_27_tuples.hs",
+         "tpLess", "K",
+         Handle);
+      Test_Module
+        ("module: compare on pairs",
+         Test_Root & "test_27_tuples.hs",
+         "tpCompare", "K",
+         Handle);
+      Test_Module
+        ("module: max on pairs",
+         Test_Root & "test_27_tuples.hs",
+         "tpMax", "K",
+         Handle);
+      Test_Module
+        ("module: Show on nested tuples",
+         Test_Root & "test_27_tuples.hs",
+         "tpShown", "K",
+         Handle);
+      Test_Module
+        ("module: Eq on 7-tuples",
+         Test_Root & "test_27_tuples.hs",
+         "tpSevenEq", "K",
+         Handle);
+      Test_Module
+        ("module: a two-predicate instance context (same)",
+         Test_Root & "test_27_tuples.hs",
+         "tpTwoSame", "K",
+         Handle);
+      Test_Module
+        ("module: a two-predicate instance context (different)",
+         Test_Root & "test_27_tuples.hs",
+         "tpTwoDifferent", "K I",
+         Handle);
+
       Test_Module
         ("module: instance omits a defaulted method (equal)",
          Test_Root & "test_17_default_method.hs",

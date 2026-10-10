@@ -798,7 +798,9 @@ package body Leander.Environment is
                                        begin
                                           if Success then
                                              declare
-                                                Inst_QT : constant
+                                                use type Leander.Core
+                                                  .Predicates.Predicate_Array;
+                                                Method_QT : constant
                                                   Leander.Core.Qualified_Types
                                                     .Reference :=
                                                     Leander.Core
@@ -806,6 +808,30 @@ package body Leander.Environment is
                                                         .Reference
                                                           (Global_QT.Apply
                                                              (Subst));
+
+                                                --  The instance's own context
+                                                --  comes first, in declared
+                                                --  order.  Inference then
+                                                --  records it as the method's
+                                                --  first dictionaries, in this
+                                                --  method's own type
+                                                --  variables, which is how
+                                                --  the context is matched up
+                                                --  with what the body raises
+                                                --  (see Case B below).
+                                                Inst_QT : constant
+                                                  Leander.Core.Qualified_Types
+                                                    .Reference :=
+                                                    Leander.Core
+                                                      .Qualified_Types
+                                                        .Qualified_Type
+                                                          (Inst.Element
+                                                             .Qualifier
+                                                             .Predicates
+                                                           & Method_QT
+                                                             .Predicates,
+                                                           Method_QT
+                                                             .Get_Type);
                                                 Inst_Scheme : constant
                                                   Leander.Core.Schemes
                                                     .Reference :=
@@ -889,20 +915,49 @@ package body Leander.Environment is
                               end;
                            end if;
                         end loop;
-                        --  Case B: qualifier predicates → unify TVar
-                        --  element-type predicates with qualifier's type var.
-                        for Q of Inst.Element.Qualifier.Predicates loop
-                           for P of Inst_Context.Current_Predicates loop
-                              if P.Class_Name = Q.Class_Name
-                                and then P.Get_Type.all.Head_Normal_Form
-                                and then not Leander.Core.Types.Equivalent
-                                  (P.Get_Type, Inst_Type)
-                              then
-                                 Leander.Core.Types.Unification.Unify
-                                   (Inst_Context, P.Get_Type, Q.Get_Type);
-                              end if;
+                        --  Case B: each method was inferred with the
+                        --  instance's context as its first dictionaries,
+                        --  in its own fresh type variables.  Unify them,
+                        --  position by position, with the context itself,
+                        --  so that every method names the same dictionary
+                        --  parameters.  Matching by class instead would
+                        --  merge the variables of a context such as
+                        --  (Eq a, Eq b).
+                        declare
+                           Qs : constant
+                             Leander.Core.Predicates.Predicate_Array :=
+                               Inst.Element.Qualifier.Predicates;
+                        begin
+                           for Idx in Methods'Range loop
+                              declare
+                                 use type Leander.Core.Bindings.Reference;
+                                 B : constant
+                                   Leander.Core.Bindings.Reference :=
+                                     New_Bindings.Lookup
+                                       (Leander.Names.Leander_Name
+                                          (Internal_Names (Idx)));
+                              begin
+                                 if B /= null
+                                   and then B.Dictionaries'Length >= Qs'Length
+                                 then
+                                    declare
+                                       Ds : constant
+                                         Leander.Core.Predicates
+                                           .Predicate_Array :=
+                                             B.Dictionaries;
+                                    begin
+                                       for I in Qs'Range loop
+                                          Leander.Core.Types.Unification.Unify
+                                            (Inst_Context,
+                                             Ds (Ds'First + I - Qs'First)
+                                               .Get_Type,
+                                             Qs (I).Get_Type);
+                                       end loop;
+                                    end;
+                                 end if;
+                              end;
                            end loop;
-                        end loop;
+                        end;
                      end if;
 
                      for Idx in Methods'Range loop
@@ -973,8 +1028,29 @@ package body Leander.Environment is
                            All_Ps    : constant
                              Leander.Core.Predicates.Predicate_Array :=
                                Inst_Context.Current_Predicates;
+                           Context_Ps : constant
+                             Leander.Core.Predicates.Predicate_Array :=
+                               Inst.Element.Qualifier.Predicates;
+
+                           --  A use site applies one dictionary per
+                           --  context predicate, in declared order (see
+                           --  Dict_Expr), so those are the parameters,
+                           --  outermost first.
+                           Qs        : constant
+                             Leander.Core.Predicates.Predicate_Array
+                               (1 .. Context_Ps'Length) :=
+                               [for I in 1 .. Context_Ps'Length =>
+                                  Leander.Core.Predicates.Predicate
+                                    (Context_Ps (Context_Ps'First + I - 1)
+                                       .Class_Id,
+                                     Leander.Core.Types.Reference
+                                       (Context_Ps (Context_Ps'First + I - 1)
+                                          .Get_Type.Apply
+                                            (Inst_Context
+                                               .Current_Substitution)))];
 
                         begin
+
                            for P of reverse All_Ps loop
                               declare
                                  Dict_P : constant String :=
@@ -986,6 +1062,9 @@ package body Leander.Environment is
                                    and then not Leander.Core.Types.Equivalent
                                      (P.Get_Type, Inst_Type)
                                    and then
+                                     (for all Q of Qs =>
+                                        "<" & Q.Show & ">" /= Dict_P)
+                                   and then
                                      Leander.Calculus.Has_Reference
                                        (D, Dict_P)
                                  then
@@ -993,6 +1072,11 @@ package body Leander.Environment is
                                       (Dict_P, D);
                                  end if;
                               end;
+                           end loop;
+
+                           for Q of reverse Qs loop
+                              D := Leander.Calculus.Lambda
+                                ("<" & Q.Show & ">", D);
                            end loop;
                            if Leander.Calculus.Has_Reference
                              (D, Dict_Name)
