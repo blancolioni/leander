@@ -1009,6 +1009,10 @@ package body Leander.Environment is
       end Elaborate_Instance;
 
    begin
+      --  So that an explicit binding's body is checked against its
+      --  declared context.
+      Context.Set_Class_Environment (This'Unchecked_Access);
+
       Leander.Core.Binding_Groups.Inference.Infer
         (Context, This.Bindings);
 
@@ -1261,10 +1265,14 @@ package body Leander.Environment is
         (Leander.Names.To_Leander_Name (Name),
          Leander.Calculus.Symbol (Foreign_Name));
       This.Own.Include (Name);
+      --  Quantified like any signature: a primitive such as #primSeq ::
+      --  a -> b -> b is polymorphic, not tied to one a and b shared by
+      --  every use and by the enclosing scope.
       This.Type_Env :=
         This.Type_Env.Compose
           (Core.To_Varid (Name),
-           Leander.Core.Schemes.To_Scheme (Signature));
+           Leander.Core.Schemes.Quantify
+             (Signature.Get_Tyvars, [], Signature));
    end Foreign_Import;
 
    -----------------

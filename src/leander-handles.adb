@@ -288,10 +288,15 @@ package body Leander.Handles is
 
       begin
          Leander.Syntax.Prune;
+         Result.Set_Class_Environment
+           (Class_Environment_Reference (This.Env));
          Infer (Result, Core);
          if not Result.OK then
             Ada.Text_IO.Put_Line
               (Ada.Text_IO.Standard_Error, Result.Error_Message);
+         elsif Result.Rejected then
+            --  Already reported, where it was found.
+            null;
          else
 
             Result.Update_Type (Core);
@@ -707,6 +712,8 @@ package body Leander.Handles is
          Result : Inference_Context :=
                     Initial_Context (This.Env.Type_Env);
       begin
+         Result.Set_Class_Environment
+           (Class_Environment_Reference (This.Env));
          Infer (Result, Core);
          if not Result.OK then
             return Result.Error_Message;

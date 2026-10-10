@@ -2,6 +2,7 @@ private with Ada.Containers.Doubly_Linked_Lists;
 with LEander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Substitutions;
+limited with Leander.Core.Type_Classes;
 with Leander.Core.Type_Env;
 private with Leander.Core.Typeable.Maps;
 with Leander.Core.Typeable;
@@ -14,6 +15,20 @@ package Leander.Core.Inference is
    function Initial_Context
      (Type_Env : Leander.Core.Type_Env.Reference)
       return Inference_Context;
+
+   type Class_Environment_Reference is
+     access constant Leander.Core.Type_Classes.Class_Environment'Class;
+
+   procedure Set_Class_Environment
+     (This    : in out Inference_Context;
+      Classes : Class_Environment_Reference);
+   --  The classes and instances that decide which predicates entail which.
+   --  Only a context that has them checks an explicit binding's body
+   --  against its signature.
+
+   function Class_Environment
+     (This : Inference_Context)
+      return Class_Environment_Reference;
 
    procedure Save_Type_Env
      (This : in out Inference_Context);
@@ -75,6 +90,14 @@ package Leander.Core.Inference is
    --  variable it constrains may not be resolved yet.
 
    function OK (This : Inference_Context) return Boolean;
+
+   procedure Reject (This : in out Inference_Context);
+   --  Note a mistake that has been reported but leaves inference sound,
+   --  such as a body that does not match its signature: the signature
+   --  still types every use, so OK stays True and inference goes on, but
+   --  the result must not be run.
+
+   function Rejected (This : Inference_Context) return Boolean;
    function Error_Message (This : Inference_Context) return String;
 
    function Binding
@@ -148,7 +171,17 @@ private
          Subst         : Leander.Core.Substitutions.Instance :=
                            Leander.Core.Substitutions.Empty;
          Predicates    : Predicate_Lists.List := [];
+         Classes       : Class_Environment_Reference;
+         Rejected      : Boolean := False;
       end record;
+
+   function Rejected (This : Inference_Context) return Boolean
+   is (This.Rejected);
+
+   function Class_Environment
+     (This : Inference_Context)
+      return Class_Environment_Reference
+   is (This.Classes);
 
    function OK (This : Inference_Context) return Boolean
    is (This.Success);
