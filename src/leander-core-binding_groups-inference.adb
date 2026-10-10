@@ -1,4 +1,6 @@
 with Leander.Core.Alts.Inference;
+with Leander.Core.Expressions;
+with Leander.Core.Type_Classes;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Qualifiers;
@@ -58,11 +60,37 @@ package body Leander.Core.Binding_Groups.Inference is
          Q  : constant Core.Qualifiers.Reference := QT.Qualifier;
          T  : constant Core.Types.Reference := QT.Get_Type;
          Start_Env : constant Core.Type_Env.Reference := Context.Type_Env;
+         Base      : constant Natural := Context.Predicate_Count;
+
+         --  The signature's type variables, freshly instantiated.  The
+         --  body may not refine them: see Too_General below.
+         Declared  : constant Core.Tyvars.Tyvar_Array := T.Get_Tyvars;
+
+         procedure Report (Message : String);
+         --  Report Message at the binding.  The context is left alone: the
+         --  declared signature still stands for every use of the binding,
+         --  so the rest of the module can be checked against it, and
+         --  failing the context would only bury this report under the
+         --  ones that failure provokes everywhere else.
+
+         ------------
+         -- Report --
+         ------------
+
+         procedure Report (Message : String) is
+            Body_Expr : constant Core.Expressions.Reference :=
+                          Explicit.Alts (Explicit.Alts'First).Expression;
+         begin
+            Body_Expr.Error (Message);
+            Context.Reject;
+         end Report;
+
       begin
          Infer_Alts (Explicit.Alts, T);
 
          declare
             use type Core.Tyvars.Tyvar_Array;
+            use type Core.Inference.Class_Environment_Reference;
             Subst : constant Substitutions.Instance :=
                       Context.Current_Substitution;
             Q1 : constant Core.Qualifiers.Reference := Q.Apply (Subst);
@@ -71,11 +99,103 @@ package body Leander.Core.Binding_Groups.Inference is
                    Start_Env.Apply (Subst).all.Get_Tyvars;
             Gs : constant Core.Tyvars.Tyvar_Array :=
                    T1.Get_Tyvars / Fs;
-            Sc1 : constant Leander.Core.Schemes.Reference :=
-                    Schemes.Quantify
-                      (Gs, Qualified_Types.Qualified_Type (Q1, T1));
+            Signature : constant String :=
+                          To_String (Explicit.Name)
+                          & " :: " & Explicit.Scheme.Show;
+
+            function Too_General return Boolean;
+            --  True when the body fixes one of the signature's type
+            --  variables: binds it to a type, to a variable of the
+            --  enclosing scope, or to another of them (Jones 1999,
+            --  section 11.6.2: sc /= sc').
+
+            -----------------
+            -- Too_General --
+            -----------------
+
+            function Too_General return Boolean is
+               Images : constant Core.Types.Type_Array
+                 (1 .. Declared'Length) :=
+                   [for I in 1 .. Declared'Length =>
+                      Core.Types.TVar
+                        (Declared (Declared'First + I - 1)).Apply (Subst)];
+            begin
+               for I in Images'Range loop
+                  if not Images (I).Is_Variable then
+                     return True;
+                  end if;
+
+                  declare
+                     V : constant Core.Tyvars.Instance :=
+                           Images (I).Variable;
+                  begin
+                     if Core.Tyvars.Intersection ([V], Fs)'Length > 0
+                       or else
+                         (for some J in Images'First .. I - 1 =>
+                            Images (J).Variable.Name = V.Name)
+                     then
+                        return True;
+                     end if;
+                  end;
+               end loop;
+               return False;
+            end Too_General;
+
          begin
-            pragma Unreferenced (Sc1);
+            --  Only a context that knows the classes checks signatures.
+            --  Class defaults and instance methods are inferred in their
+            --  own contexts, against the class's method schemes, and are
+            --  not checked here.
+            if Context.Class_Environment = null then
+               null;
+            elsif Too_General then
+               Report
+                 ("type signature too general: " & Signature
+                  & ", but its body has type "
+                  & Schemes.Quantify
+                      (Gs, Qualified_Types.Qualified_Type (Q1, T1)).Show);
+            else
+               --  Every predicate the body raises over the signature's own
+               --  type variables has to follow from the declared context
+               --  (section 11.6.2 again: rs must be empty).  The rest are
+               --  about the enclosing scope, and are deferred to it.
+               declare
+                  Raised  : constant Core.Predicates.Predicate_Array :=
+                              Context.Current_Predicates;
+                  Missing : Core.Predicates.Predicate_Array
+                    (1 .. Raised'Last - Base);
+                  Count   : Natural := 0;
+               begin
+                  for K in Base + 1 .. Raised'Last loop
+                     if Core.Tyvars.Intersection
+                       (Raised (K).Get_Type.Get_Tyvars, Gs)'Length > 0
+                       and then not Context.Class_Environment.Entails
+                         (Q1.Predicates, Raised (K))
+                       and then
+                         (for all J in 1 .. Count =>
+                            Missing (J).Show /= Raised (K).Show)
+                     then
+                        Count := Count + 1;
+                        Missing (Count) := Raised (K);
+                     end if;
+                  end loop;
+
+                  if Count > 0 then
+                     declare
+                        use type Core.Predicates.Predicate_Array;
+                     begin
+                        Report
+                          ("context too weak: " & Signature
+                           & ", but its body has type "
+                           & Schemes.Quantify
+                               (Gs,
+                                Qualified_Types.Qualified_Type
+                                  (Q1.Predicates & Missing (1 .. Count),
+                                   T1)).Show);
+                     end;
+                        end if;
+               end;
+            end if;
 
             --  The declared context, as this body's own type variables:
             --  a use site applies one dictionary per predicate, in scheme

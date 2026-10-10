@@ -1161,6 +1161,31 @@ package body Leander.Tests.Integration is
         ("module: a character literal cut off by the line end is reported",
          Test_Root & "test_22_unterminated_char.hs");
 
+      --  Explicit signatures are checked against their bodies (issue #83)
+
+      Test_Module_Reports
+        ("module: a signature more general than its body is reported",
+         Test_Root & "test_26_too_general.hs");
+      Test_Module_Reports
+        ("module: a body that merges two signature variables is reported",
+         Test_Root & "test_26_shared_variables.hs");
+      Test_Module_Reports
+        ("module: a context too weak for the body is reported",
+         Test_Root & "test_26_context_too_weak.hs");
+      Test_Module_Reports
+        ("module: a context about one variable does not cover another",
+         Test_Root & "test_26_context_other_variable.hs");
+      Test_Module_Reports
+        ("module: a local signature is checked",
+         Test_Root & "test_26_local_signature.hs");
+      Test_Module_Reports
+        ("module: a branch of the wrong type is reported",
+         Test_Root & "test_26_last_shaped.hs");
+
+      Test_Module_Clean
+        ("module: signatures their bodies satisfy are accepted",
+         Test_Root & "test_26_signatures_clean.hs");
+
       --  Minimal crash reproducer:
       --  a module-level binding that uses (==)
       --  causes a stack underflow in the SKI machine

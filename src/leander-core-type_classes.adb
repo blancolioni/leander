@@ -1,4 +1,5 @@
 with Leander.Core.Substitutions;
+with Leander.Core.Types;
 
 package body Leander.Core.Type_Classes is
 
@@ -70,12 +71,17 @@ package body Leander.Core.Type_Classes is
       return Boolean
    is
    begin
+      --  By superclass: a predicate entails itself and its superclasses at
+      --  the same type, and only at that type -- Ord a says nothing about
+      --  Eq b.
       for P of Current loop
-         for C of This.Super_Classes (P.Class_Id) loop
-            if C = Check.Class_Id then
-               return True;
-            end if;
-         end loop;
+         if Leander.Core.Types.Equivalent (P.Get_Type, Check.Get_Type) then
+            for C of This.Super_Classes (P.Class_Id) loop
+               if C = Check.Class_Id then
+                  return True;
+               end if;
+            end loop;
+         end if;
       end loop;
 
       declare

@@ -1,6 +1,7 @@
 with Ada.Text_IO;
 
 with Leander.Core.Types.Unification;
+with Leander.Errors;
 with Leander.Names;
 with Leander.Traverseable;
 
@@ -151,6 +152,16 @@ package body Leander.Core.Inference is
          Message);
    end Error;
 
+   ------------
+   -- Reject --
+   ------------
+
+   procedure Reject (This : in out Inference_Context) is
+   begin
+      This.Rejected := True;
+      Leander.Errors.Note_Error;
+   end Reject;
+
    ----------------------
    -- Restore_Type_Env --
    ----------------------
@@ -242,6 +253,18 @@ package body Leander.Core.Inference is
       --  (issue #93).
       Subst.Iterate (Save'Access);
    end Save_Substitution;
+
+   ---------------------------
+   -- Set_Class_Environment --
+   ---------------------------
+
+   procedure Set_Class_Environment
+     (This    : in out Inference_Context;
+      Classes : Class_Environment_Reference)
+   is
+   begin
+      This.Classes := Classes;
+   end Set_Class_Environment;
 
    -------------------
    -- Save_Type_Env --

@@ -258,8 +258,23 @@ For bindings with a declared type signature:
 
 1. Instantiate the declared scheme with fresh type variables
 2. Infer the binding's alts, unifying with the instantiated type
-3. Check that the inferred type is at least as general as the
-   declared type (currently logged but not rejected)
+3. Check the body against the signature (Jones 1999, section 11.6.2):
+   - **Signature too general:** after the substitution, each fresh
+     variable must still be a distinct type variable, and not one of
+     the enclosing scope's. Otherwise the body has fixed it.
+   - **Context too weak:** each predicate the body raises over the
+     signature's own variables must be entailed by the declared
+     context, through superclasses or instances (`Entails`). Predicates
+     over the enclosing scope's variables are deferred to it.
+
+A failed check is reported at the binding and noted with
+`Inference_Context.Reject`, but it does not fail the context. The
+declared signature still types every use of the binding, so the rest
+of the module is still checked against it, and a rejected expression is
+never evaluated. Only a context with a class environment
+(`Set_Class_Environment`) runs these checks: a module's, and an
+expression's. Class defaults and instance methods are inferred in
+contexts of their own and are not checked here.
 
 ## Unification (`leander-core-types-unification.adb`)
 
