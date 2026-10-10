@@ -1,13 +1,12 @@
 with Leander.Core;
 with Leander.Core.Alts;
-with Leander.Core.Bindings;
+with Leander.Core.Bindings.Dependencies;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
 with Leander.Syntax.Bindings.Guards;
 with Leander.Syntax.Bindings.Transform;
 with Leander.Syntax.Expressions;
 
-with WL.Graphs;
 with WL.String_Maps;
 
 package body Leander.Syntax.Bindings is
@@ -19,7 +18,6 @@ package body Leander.Syntax.Bindings is
       record
          Name  : Leander.Names.Leander_Name;
          Alts  : Leander.Core.Alts.Reference_Array (1 .. Alt_Count);
-         Index : Positive;
          T     : Nullable_Type_Reference;
       end record;
 
@@ -33,23 +31,6 @@ package body Leander.Syntax.Bindings is
       Predicates    : Core.Predicates.Predicate_Array;
       Monomorphic   : Boolean)
       return Leander.Core.Binding_Groups.Reference;
-
-   type Graph_Vertex is
-      record
-         Index : Positive;
-         Name  : Leander.Names.Leander_Name;
-      end record;
-
-   function Get_Index (This : Graph_Vertex) return Positive
-   is (This.Index);
-
-   package Binding_Graphs is
-     new WL.Graphs (Positive, Graph_Vertex, Float, 1.0,
-                    Get_Index);
-
-   package Binding_Lists is
-     new Ada.Containers.Doubly_Linked_Lists
-       (Core.Bindings.Reference, Core.Bindings."=");
 
    function Allocate
      (This : Instance)
@@ -175,34 +156,6 @@ package body Leander.Syntax.Bindings is
       use Leander.Core;
       Implicit : Binding_Maps.Map;
       Explicit : Binding_Maps.Map;
-      Next     : Natural := 0;
-      Graph    : Binding_Graphs.Graph;
-
-      function References
-        (Binding : Binding_Entry;
-         Name    : Leander.Names.Leander_Name)
-         return Boolean;
-
-      --  function To_Alts (Equations : Binding_Record_Lists.List)
-      --                    return Alt_Lists.List;
-
-      ----------------
-      -- References --
-      ----------------
-
-      function References
-        (Binding : Binding_Entry;
-         Name    : Leander.Names.Leander_Name)
-         return Boolean
-      is
-      begin
-         for Equation of Binding.Alts loop
-            if Equation.Has_Reference (Core.Varid (Name)) then
-               return True;
-            end if;
-         end loop;
-         return False;
-      end References;
 
    begin
       for Binding of Bindings loop
@@ -225,7 +178,6 @@ package body Leander.Syntax.Bindings is
                     (Alt_Count => Alts'Length,
                      Name      => Binding.Name,
                      Alts      => Alts,
-                     Index     => 1,
                      T         => null));
             end;
          exception
@@ -248,7 +200,6 @@ package body Leander.Syntax.Bindings is
                        (Alt_Count => 0,
                         Name      => Type_Binding.Name,
                         Alts      => [],
-                        Index     => 1,
                         T         => Nullable_Type_Reference
                           (Type_Binding.Type_Expr.To_Core)));
                else
@@ -268,123 +219,80 @@ package body Leander.Syntax.Bindings is
          end;
       end loop;
 
-      for Binding of Implicit loop
-         Next := Next + 1;
-         Binding.Index := Next;
-         Graph.Append (Graph_Vertex'(Next, Binding.Name));
-      end loop;
-
-      for Binding of Implicit loop
-         for Other of Implicit loop
-            if Binding.Index /= Other.Index
-              and then not Graph.Connected (Other.Index, Binding.Index)
-              and then
-                (if Context = Instance_Context
-                 then References (Binding, Other.Name)
-                      and then References (Other, Binding.Name)
-                 else References (Binding, Other.Name)
-                      or else References (Other, Binding.Name))
-            then
-               Graph.Connect (Other.Index, Binding.Index);
-               Graph.Connect (Binding.Index, Other.Index);
-            end if;
-         end loop;
-      end loop;
-
       declare
-         Subgraphs : Binding_Graphs.Sub_Graph_Collection;
-      begin
-         Graph.Get_Connected_Components (Subgraphs);
+         Bs : constant Core.Bindings.Reference_Array :=
+                [for Binding of Implicit =>
+                   Core.Bindings.Implicit_Binding
+                     (Core.Varid (Binding.Name),
+                      [for Alt of Binding.Alts => Alt],
+                      Monomorphic => Monomorphic)];
 
-         declare
-            --  Count : constant Natural :=
-            --            Binding_Graphs.Sub_Graph_Count (Subgraphs);
-            Builder : Core.Binding_Groups.Instance_Builder;
+         function Depends (From, To : Positive) return Boolean;
 
-            function To_Core_Bindings
-              (G : Binding_Graphs.Sub_Graph)
-               return Core.Bindings.Reference_Array;
+         -------------
+         -- Depends --
+         -------------
 
-            function To_Scheme
-              (T : Nullable_Type_Reference)
-               return Leander.Core.Schemes.Reference;
-
-            ----------------------
-            -- To_Core_Bindings --
-            ----------------------
-
-            function To_Core_Bindings
-              (G : Binding_Graphs.Sub_Graph)
-               return Core.Bindings.Reference_Array
-            is
-               List : Binding_Lists.List;
-
-               procedure Add (Vertex : Graph_Vertex);
-
-               ---------
-               -- Add --
-               ---------
-
-               procedure Add (Vertex : Graph_Vertex) is
-                  Binding : constant Binding_Entry :=
-                              Implicit.Element
-                                (Leander.Names.To_String (Vertex.Name));
-
-                  function Get_Alts
-                    return Leander.Core.Alts.Reference_Array;
-
-                  --------------
-                  -- Get_Alts --
-                  --------------
-
-                  function Get_Alts
-                    return Leander.Core.Alts.Reference_Array
-                  is
-                  begin
-                     return [for Alt of Binding.Alts => Alt];
-                  end Get_Alts;
-
-               begin
-                  List.Append
-                    (Core.Bindings.Implicit_Binding
-                       (Core.Varid (Binding.Name), Get_Alts,
-                        Monomorphic => Monomorphic));
-               end Add;
-
-            begin
-               Binding_Graphs.Iterate (G, Add'Access);
-               return [for Ref of List => Ref];
-            end To_Core_Bindings;
-
-            ---------------
-            -- To_Scheme --
-            ---------------
-
-            function To_Scheme
-              (T : Nullable_Type_Reference)
-               return Leander.Core.Schemes.Reference
-            is
-            begin
-               return Core.Schemes.Quantify
-                 (T.Get_Tyvars, T);
-            end To_Scheme;
-
+         function Depends (From, To : Positive) return Boolean is
          begin
-            Builder.Add_Explicit_Bindings
-              ([for Binding of Explicit =>
-                    Core.Bindings.Explicit_Binding
-                  (Core.Varid (Binding.Name),
-                   [for Alt of Binding.Alts => Alt],
-                   To_Scheme (Binding.T))
-               ]);
+            --  An instance method's body names the class's method, not the
+            --  instance's own binding of it, so a reference only one way
+            --  is no dependency at all.
+            return Bs (From).Has_Reference (Bs (To).Name)
+              and then (Context /= Instance_Context
+                        or else Bs (To).Has_Reference (Bs (From).Name));
+         end Depends;
 
-            for I in 1 .. Binding_Graphs.Sub_Graph_Count (Subgraphs)  loop
-               Builder.Add_Implicit_Bindings
-                 (To_Core_Bindings
-                    (Binding_Graphs.Get_Sub_Graph (Subgraphs, I)));
-            end loop;
-            return Builder.Get_Binding_Group;
-         end;
+         Component : constant Core.Bindings.Dependencies.Component_Array :=
+                       Core.Bindings.Dependencies.Components
+                         (Bs, Depends'Access);
+         Builder   : Core.Binding_Groups.Instance_Builder;
+
+         function To_Scheme
+           (T : Nullable_Type_Reference)
+            return Leander.Core.Schemes.Reference;
+
+         ---------------
+         -- To_Scheme --
+         ---------------
+
+         function To_Scheme
+           (T : Nullable_Type_Reference)
+            return Leander.Core.Schemes.Reference
+         is
+         begin
+            return Core.Schemes.Quantify
+              (T.Get_Tyvars, T);
+         end To_Scheme;
+
+      begin
+         Builder.Add_Explicit_Bindings
+           ([for Binding of Explicit =>
+                 Core.Bindings.Explicit_Binding
+               (Core.Varid (Binding.Name),
+                [for Alt of Binding.Alts => Alt],
+                To_Scheme (Binding.T))
+            ]);
+
+         --  One implicit group per dependency component, dependencies
+         --  first: a group is generalised before anything that uses it is
+         --  inferred, so each use instantiates it afresh.
+         for C in 1 .. Core.Bindings.Dependencies.Component_Count (Component)
+         loop
+            declare
+               Group : Core.Bindings.Reference_Array (1 .. Bs'Length);
+               Count : Natural := 0;
+            begin
+               for I in Bs'Range loop
+                  if Component (I) = C then
+                     Count := Count + 1;
+                     Group (Count) := Bs (I);
+                  end if;
+               end loop;
+               Builder.Add_Implicit_Bindings (Group (1 .. Count));
+            end;
+         end loop;
+         return Builder.Get_Binding_Group;
       end;
 
    end To_Binding_Group;
