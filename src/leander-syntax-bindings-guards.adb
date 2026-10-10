@@ -2,6 +2,8 @@ with Ada.Strings.Unbounded;
 
 with Leander.Syntax.Expressions;
 
+with WL.String_Sets;
+
 package body Leander.Syntax.Bindings.Guards is
 
    use Ada.Strings.Unbounded;
@@ -57,6 +59,77 @@ package body Leander.Syntax.Bindings.Guards is
            (Loc, Group, Leander.Syntax.Expressions.Reference (Within)));
    end Let_Be;
 
+   ---------------
+   -- Groupable --
+   ---------------
+
+   function Groupable (Equations : Binding_Record_Lists.List) return Boolean
+   is
+      Arity    : constant Natural :=
+                   (if Equations.Is_Empty then 0
+                    else Equations.First_Element.Pat_Count);
+      Has_Var  : constant Boolean :=
+                   Arity > 0
+                   and then (for some E of Equations =>
+                               E.Pats (1).Is_Variable);
+      Seen_Var : Boolean := False;
+      Keys     : WL.String_Sets.Set;
+      Rest     : Binding_Record_Lists.List;
+   begin
+      --  Transform.To_Alts dispatches on the first column once, giving each
+      --  constructor or literal its own alternative and every equation
+      --  that starts with a variable one more, and then matches the rest
+      --  of the columns within those.  That is right only when it cannot
+      --  change which equation applies: no first-column constructor or
+      --  literal twice (only the first would be kept), none after an
+      --  equation that starts with a variable (it would be tried first),
+      --  and none whose later columns can fail while a variable equation
+      --  could still take the value (nothing would fall through to it).
+      --  The same goes for the variable equations' own later columns.
+      --  One column is always right: the alts compiler stops at the first
+      --  variable pattern itself (issue #120).
+      if Arity <= 1 then
+         return True;
+      end if;
+
+      for E of Equations loop
+         declare
+            Pat : constant Patterns.Reference := E.Pats (1);
+         begin
+            if Pat.Is_Variable then
+               Seen_Var := True;
+               Rest.Append
+                 (Binding_Record'
+                    (Pat_Count   => E.Pat_Count - 1,
+                     Pats        => E.Pats (2 .. E.Pat_Count),
+                     Expr        => E.Expr,
+                     Fallthrough => E.Fallthrough));
+            else
+               declare
+                  Key : constant String :=
+                          (if Pat.Is_Constructor
+                           then "C" & Pat.Constructor_Name
+                           else "L" & Pat.Literal);
+               begin
+                  if Seen_Var or else Keys.Contains (Key) then
+                     return False;
+                  end if;
+                  Keys.Include (Key);
+               end;
+
+               if Has_Var
+                 and then (for some I in 2 .. E.Pat_Count =>
+                             not E.Pats (I).Is_Variable)
+               then
+                  return False;
+               end if;
+            end if;
+         end;
+      end loop;
+
+      return Groupable (Rest);
+   end Groupable;
+
    -----------
    -- Lower --
    -----------
@@ -91,7 +164,13 @@ package body Leander.Syntax.Bindings.Guards is
          end if;
       end loop;
 
-      if not Any_Fails then
+      --  Equations that To_Alts cannot dispatch on in one go are staged
+      --  too, so that each is tried in its turn (issue #120).
+      if Count > 1 and then Arity > 0 and then not Groupable (Equations) then
+         Staged := True;
+      end if;
+
+      if not Any_Fails and then not Staged then
          return;
       end if;
 
@@ -167,46 +246,53 @@ package body Leander.Syntax.Bindings.Guards is
             Next     : Positive)
             return Expression_Reference
          is
-            Group   : constant Reference := Empty (Monomorphic => True);
-            Matcher : constant String :=
-                        Leander.Names.To_String (Leander.Names.New_Name);
-            Applied : Leander.Syntax.Expressions.Reference :=
-                        Leander.Syntax.Expressions.Variable (Loc, Matcher);
             Matched : Expression_Reference := Equation.Expr;
-            Total   : Boolean := True;
          begin
             if Can_Fail (Equation) then
                Matched := Let_Be
                  (Loc, To_String (Equation.Fallthrough), K (Next), Matched);
             end if;
 
-            Group.Add_Binding (Loc, Matcher, Equation.Pats, Matched);
+            --  One column at a time, the first outermost, so that the
+            --  variables each binds are in scope for the rest:
+            --
+            --    let m1 p1 = (let m2 p2 = ... in m2 v2); m1 _ = k_next
+            --    in m1 v1
+            --
+            --  A single column with one pattern and a default is exactly
+            --  what the alts compiler gets right, wherever a later column
+            --  fails.  Matching every column together instead could not
+            --  fall out of a later one (issue #120).
+            for I in reverse 1 .. Arity loop
+               declare
+                  Pat     : constant Patterns.Reference := Equation.Pats (I);
+                  Group   : constant Reference := Empty (Monomorphic => True);
+                  Matcher : constant String :=
+                              Leander.Names.To_String (Leander.Names.New_Name);
+               begin
+                  Group.Add_Binding (Loc, Matcher, [Pat], Matched);
 
-            for Pat of Equation.Pats loop
-               if not Pat.Is_Variable then
-                  Total := False;
-               end if;
+                  --  A pattern that can fail to match needs the same exit
+                  --  as a guard that fails.  One that cannot would only
+                  --  make the alternative unreachable.
+                  if not Pat.Is_Variable then
+                     Group.Add_Binding
+                       (Loc, Matcher, [Patterns.Wildcard (Loc)], K (Next));
+                  end if;
+
+                  Matched := Expression_Reference
+                    (Leander.Syntax.Expressions.Let
+                       (Loc, Group,
+                        Leander.Syntax.Expressions.Application
+                          (Loc,
+                           Leander.Syntax.Expressions.Variable
+                             (Loc, Matcher),
+                           Leander.Syntax.Expressions.Variable
+                             (Loc, Leander.Names.To_String (Vars (I))))));
+               end;
             end loop;
 
-            --  A pattern that can fail to match needs the same exit as a
-            --  guard that fails.  One that cannot would only make the
-            --  alternative unreachable.
-            if not Total then
-               Group.Add_Binding
-                 (Loc, Matcher,
-                  [for I in 1 .. Arity => Patterns.Wildcard (Loc)],
-                  K (Next));
-            end if;
-
-            for I in 1 .. Arity loop
-               Applied := Leander.Syntax.Expressions.Application
-                 (Loc, Applied,
-                  Leander.Syntax.Expressions.Variable
-                    (Loc, Leander.Names.To_String (Vars (I))));
-            end loop;
-
-            return Expression_Reference
-              (Leander.Syntax.Expressions.Let (Loc, Group, Applied));
+            return Matched;
          end Stage;
 
          Stages : array (1 .. Count) of Expression_Reference;

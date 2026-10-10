@@ -56,10 +56,10 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Cons / list patterns `(x:xs)` | ✅ | |
 | Literal patterns | 🟡 | **`Int` only.** Char and float literal patterns fail with "undefined constructor: Char/Double"; string literal patterns fail an assertion in `leander-core-patterns.ads`. |
 | Nested patterns | 🟡 | **One level only.** The core requires constructor arguments to be variables (`leander-core-patterns.ads`), so `Just (x:_)`, `[a,b]` and `(Just x, y)` all fail with "problem in binding". |
-| Multiple equations | ✅ | |
+| Multiple equations | ✅ | Tried top to bottom, each falling through to the next when any of its patterns fails, including in a later column. Equations that can be told apart by their first column alone are dispatched in one step. |
 | As-patterns `@` | ❌ | `a@(Just x)` raises "invalid pattern". |
 | Irrefutable / lazy `~` | ❌ | `~` parses as an unbound variable. |
-| Guards (function & case) | 🟡 | Boolean guards with `,` conjunction, fall-through to the next equation, and `where` over guards all work. Pattern guards and `let` in guards ❌. **A guarded function whose branches return different parameters loses its dictionary**, even at `Int` with a signature: `f :: Int -> Int -> Int; f a b \| a > b = a \| otherwise = b` fails at runtime with "undefined: <Ord $t>". So does a guard that falls through to `f a b = b`. The same happens for any constrained function that returns its own constrained variable, guards or not. |
+| Guards (function & case) | 🟡 | Boolean guards with `,` conjunction, fall-through to the next equation, and `where` over guards all work. Pattern guards and `let` in guards ❌. |
 | Exhaustiveness / redundancy checks | ❌ | No static check. An unmatched value is a run-time error that names where the match failed, e.g. `f.hs:3:7: Non-exhaustive patterns in f`. |
 
 ## Data types
