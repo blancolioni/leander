@@ -167,12 +167,12 @@ Item-by-item status against the Report's Prelude export list is tracked in [#97]
 |---|---|---|
 | List functions | 🟡 | Have: `map filter foldr foldl foldl' foldl1 (++) concat reverse length null head tail last init (!!) take drop takeWhile dropWhile span break iterate repeat replicate cycle zip zipWith and or any all elem notElem lookup sum product maximum minimum`. Also `zip3 zipWith3 unzip unzip3`. **Missing**: `concatMap`, `foldr1`, `splitAt`, `lines`/`words`/`unlines`/`unwords`, scans. `sum` and `product` are `[Int] -> Int`. |
 | Miscellaneous | 🟡 | Have `id const (.) flip ($) ($!) seq not (&&) (\|\|) otherwise fst snd curry uncurry subtract error`. Missing `undefined`, `until`, `asTypeOf`, `(=<<)` (fixity declared, never defined). `subtract` is `Int`-only. |
-| `Maybe` | 🟡 | Type, `maybe`, derived `Eq`, Functor/Applicative/Monad. No `Show` instance; a `showMaybe` helper stands in. Missing `fromMaybe`, `isJust`, `catMaybes`, `mapMaybe`, … |
-| `Either` | 🟡 | Type, `either` and derived `Eq`. No Functor/Monad/Show instances. |
+| `Maybe` | 🟡 | Type, `maybe`, derived `Eq`, `Show`, Functor/Applicative/Monad. Missing `fromMaybe`, `isJust`, `catMaybes`, `mapMaybe`, … |
+| `Either` | 🟡 | Type, `either`, derived `Eq` and `Show`. No Functor/Monad instances. |
 | Tuples | 🟡 | `Eq`, `Ord` and `Show` instances up to size 7 (the Report asks for 15, plus `Bounded` and `Read`). |
 | `Eq`/`Ord`/`Enum`/`Bounded` | 🟡 | `Eq`: `Bool`, `Int`, `Char`, `[a]`, plus derived `Ordering`/`Maybe`/`Either`. `Ord`: `Int` and `Char` only, with `compare`/`max`/`min` defaults. `Enum`: `Int` and `Char`. `Bounded`: `Int` only. |
 | `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]` (Functor/Applicative only), `Maybe` and `IO`. **No `Monad []`.** No `*>`/`<*`/`liftA2`/`fail`. |
-| `Show` | 🟡 | `show` only (no `showsPrec`/`shows`/`showString`). Instances for `Bool`, `Int` and tuples up to size 7 only, so no list, `Maybe` or `Char` `Show`. |
+| `Show` | ✅ | As in the Report: `showsPrec`, `show` and `showList`, with `ShowS`, `shows`, `showChar`, `showString` and `showParen`. Instances for `Bool`, `Int`, `Char` (with the Report's escapes, and strings through `showList`), `[a]`, `()`, `Ordering`, `Maybe`, `Either` and tuples up to size 7. No `deriving Show` yet. |
 | `Read` | ❌ | Absent. |
 | `Monoid`/`Foldable`/`Traversable` | ❌ | Absent. |
 
@@ -197,7 +197,7 @@ These are wrong answers or crashes in forms that are otherwise supported.
 
 1. ~~**Prelude breadth.**~~ Mostly landed: folds, zips, `drop`/`takeWhile`/`dropWhile`/`span`/`break`, `elem`/`lookup`/`(!!)`, `replicate`/`iterate`/`repeat`/`cycle`, `any`/`all`/`and`/`or`, `maximum`/`minimum`, `Either`+`either`. Still missing: `concatMap`, `lines`/`words`/`unlines`/`unwords`, scans, `fromMaybe` and friends, `even`/`odd`, `quot`/`rem`, `(^)`, `undefined`, `Monad []`.
 2. ~~**Guards** (function equations + case alts).~~ Landed for boolean guards; pattern guards and `let` in guards remain.
-3. **`deriving Show`** (then `Ord`). `Show` is needed to print data types at the REPL/`print`; currently only hand-written `Bool`/`Int`. Mirror the existing `Eq` generator (`leander-syntax-deriving.adb`). Hand-written `Show` instances for lists, `Char`, `Maybe` and pairs belong with it.
+3. **`deriving Show`** (then `Ord`). `Show` is needed to print a user's data types at the REPL/`print`. Mirror the existing `Eq` generator (`leander-syntax-deriving.adb`). The hand-written instances for lists, `Char`, `Maybe`, `Either` and tuples are in place.
 
 ### Tier 2 — foundational
 

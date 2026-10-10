@@ -1087,6 +1087,119 @@ package body Leander.Tests.Integration is
          "dmLetters == ""abcde""", "K",
          Handle);
 
+      --  Show as the Haskell 2010 Report has it (issue #79)
+
+      Test_Module
+        ("module: show: shInt",
+         Test_Root & "test_29_show.hs",
+         "shInt", "K",
+         Handle);
+      Test_Module
+        ("module: show: shNegative",
+         Test_Root & "test_29_show.hs",
+         "shNegative", "K",
+         Handle);
+      Test_Module
+        ("module: show: shNegativeArg",
+         Test_Root & "test_29_show.hs",
+         "shNegativeArg", "K",
+         Handle);
+      Test_Module
+        ("module: show: shNested",
+         Test_Root & "test_29_show.hs",
+         "shNested", "K",
+         Handle);
+      Test_Module
+        ("module: show: shList",
+         Test_Root & "test_29_show.hs",
+         "shList", "K",
+         Handle);
+      Test_Module
+        ("module: show: shEmptyList",
+         Test_Root & "test_29_show.hs",
+         "shEmptyList", "K",
+         Handle);
+      Test_Module
+        ("module: show: shChar",
+         Test_Root & "test_29_show.hs",
+         "shChar", "K",
+         Handle);
+      Test_Module
+        ("module: show: shQuoteChar",
+         Test_Root & "test_29_show.hs",
+         "shQuoteChar", "K",
+         Handle);
+      Test_Module
+        ("module: show: shNewline",
+         Test_Root & "test_29_show.hs",
+         "shNewline", "K",
+         Handle);
+      Test_Module
+        ("module: show: shString",
+         Test_Root & "test_29_show.hs",
+         "shString", "K",
+         Handle);
+      Test_Module
+        ("module: show: shEscapes",
+         Test_Root & "test_29_show.hs",
+         "shEscapes", "K",
+         Handle);
+      Test_Module
+        ("module: show: shStrings",
+         Test_Root & "test_29_show.hs",
+         "shStrings", "K",
+         Handle);
+      Test_Module
+        ("module: show: shEither",
+         Test_Root & "test_29_show.hs",
+         "shEither", "K",
+         Handle);
+      Test_Module
+        ("module: show: shOrdering",
+         Test_Root & "test_29_show.hs",
+         "shOrdering", "K",
+         Handle);
+      Test_Module
+        ("module: show: shUnit",
+         Test_Root & "test_29_show.hs",
+         "shUnit", "K",
+         Handle);
+      Test_Module
+        ("module: show: shMaybes",
+         Test_Root & "test_29_show.hs",
+         "shMaybes", "K",
+         Handle);
+      Test_Module
+        ("module: show: shProtected",
+         Test_Root & "test_29_show.hs",
+         "shProtected", "K",
+         Handle);
+      Test_Module
+        ("module: show: shPrecedence",
+         Test_Root & "test_29_show.hs",
+         "shPrecedence", "K",
+         Handle);
+      Test_Module
+        ("module: show: shShows",
+         Test_Root & "test_29_show.hs",
+         "shShows", "K",
+         Handle);
+      Test_Module
+        ("module: show: shParen",
+         Test_Root & "test_29_show.hs",
+         "shParen", "K",
+         Handle);
+      Test_Module
+        ("module: show: shUserList",
+         Test_Root & "test_29_show.hs",
+         "shUserList", "K",
+         Handle);
+      Test_Module
+        ("module: show: shUserMaybe",
+         Test_Root & "test_29_show.hs",
+         "shUserMaybe", "K",
+         Handle);
+
       --  A failed match names the function and where it is (issue #116)
 
       Test_Runtime_Error
