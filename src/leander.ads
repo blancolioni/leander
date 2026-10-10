@@ -7,6 +7,12 @@ package Leander is
 
    type Handle is tagged private;
 
+   Compile_Error : exception;
+   --  Raised by Compile, Evaluate and Execute when the expression does not
+   --  type-check, or is rejected for not matching a signature.  The errors
+   --  have already been reported where they were found, and nothing has
+   --  been run.
+
    function Create
      (Size      : Natural := 64 * 1024;
       User_Data : access User_Data_Interface'Class := null)

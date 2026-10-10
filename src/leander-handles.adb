@@ -291,12 +291,17 @@ package body Leander.Handles is
          Result.Set_Class_Environment
            (Class_Environment_Reference (This.Env));
          Infer (Result, Core);
+         --  Nothing is installed for an expression that failed, so there
+         --  is nothing for the machine to run: the caller has to be told,
+         --  or it evaluates an empty stack (issue #117).
          if not Result.OK then
             Ada.Text_IO.Put_Line
               (Ada.Text_IO.Standard_Error, Result.Error_Message);
+            raise Leander.Compile_Error with Result.Error_Message;
          elsif Result.Rejected then
             --  Already reported, where it was found.
-            null;
+            raise Leander.Compile_Error with
+              "rejected: " & Expression;
          else
 
             Result.Update_Type (Core);
