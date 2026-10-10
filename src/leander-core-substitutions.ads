@@ -46,6 +46,13 @@ package Leander.Core.Substitutions is
       Name : Leander.Names.Leander_Name)
       return Nullable_Type_Reference;
 
+   procedure Iterate
+     (This    : Instance;
+      Process : not null access procedure
+        (Name : Leander.Names.Leander_Name;
+         Ty   : not null access constant Leander.Core.Types.Instance'Class));
+   --  Each binding of This, in order.
+
 private
 
    type Subst_Record is

@@ -347,6 +347,14 @@ package body Leander.Tests.Integration is
                  "Int", "3",
                  Handle);
 
+      --  Prelude's last returned [x] from one branch and an element from
+      --  the other.  Inference used to drop the conflict instead of
+      --  reporting it (issue #93).
+
+      Test_Eval ("last [1,2,3]",
+                 "Int", "3",
+                 Handle);
+
       --  A dot only joins a qualified name when it is written tight
       --  against a module-shaped component either side, so composition
       --  keeps working whether or not it is spaced.
@@ -570,6 +578,36 @@ package body Leander.Tests.Integration is
         ("module: the same guarded function at another instance",
          Test_Root & "test_20_guards.hs",
          "gdOrdChar", "1",
+         Handle);
+      Test_Module
+        ("module: a guard returning either parameter (first)",
+         Test_Root & "test_20_guards.hs",
+         "gdMaxFirst", "7",
+         Handle);
+      Test_Module
+        ("module: a guard returning either parameter (second)",
+         Test_Root & "test_20_guards.hs",
+         "gdMaxSecond", "7",
+         Handle);
+      Test_Module
+        ("module: a guard falling out to rebound parameters (guard)",
+         Test_Root & "test_20_guards.hs",
+         "gdPickGuard", "1",
+         Handle);
+      Test_Module
+        ("module: a guard falling out to rebound parameters (fall)",
+         Test_Root & "test_20_guards.hs",
+         "gdPickFall", "5",
+         Handle);
+      Test_Module
+        ("module: a constrained guard returning a parameter (Int)",
+         Test_Root & "test_20_guards.hs",
+         "gdMaxOrdInt", "9",
+         Handle);
+      Test_Module
+        ("module: a constrained guard returning a parameter (Char)",
+         Test_Root & "test_20_guards.hs",
+         "gdMaxOrdChar", "122",
          Handle);
       Test_Module
         ("module: a guard reads a where binding",
