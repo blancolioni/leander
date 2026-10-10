@@ -1534,6 +1534,35 @@ package body Leander.Tests.Integration is
          "viaNamedMethod", "5",
          Handle);
 
+      --  An imported class's defaults are compiled once, by the module
+      --  that declares the class, in its own scope (issue #122).
+
+      Test_Module
+        ("module: an imported default uses a helper its module hides",
+         Modules_Root & "UseGreeting.hs",
+         "ugGreetBool", "K",
+         Handle);
+      Test_Module
+        ("module: an instance here uses an imported default",
+         Modules_Root & "UseGreeting.hs",
+         "ugGreetPet", "K",
+         Handle);
+      Test_Module
+        ("module: an imported default whose helper is exported",
+         Modules_Root & "UseGreeting.hs",
+         "ugHailPet", "K",
+         Handle);
+      Test_Module
+        ("module: instances here use the Prelude's defaults",
+         Modules_Root & "UseGreeting.hs",
+         "ugDefaults", "K",
+         Handle);
+      Test_Module
+        ("module: an instance here uses showList's default",
+         Modules_Root & "UseGreeting.hs",
+         "ugShowList", "K",
+         Handle);
+
       --  The control for everything below: a module doing correctly what
       --  each rejection case does wrongly. Without it those cases could
       --  all be passing on error state left behind by something else.

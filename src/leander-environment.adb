@@ -1143,12 +1143,28 @@ package body Leander.Environment is
       --  can reference ordinary top-level bindings (e.g. Eq's "/=" default
       --  calling "not"), whose schemes only exist in This.Type_Env once the
       --  Infer call above has run.
-      for Class of This.Classes loop
+      --
+      --  Only for the classes this module declares (issue #122).  An
+      --  imported class's defaults were compiled by the module that
+      --  declares it, in that module's scope, and are reached from here
+      --  by linkage like any other binding: their schemes arrive with the
+      --  import, and a "default:" name is never prefixed.  Compiling them
+      --  again here would see only what that module exports, and an
+      --  imported class sits in This.Classes under two keys, so it would
+      --  be compiled twice under one name.
+      for Position in This.Classes.Iterate loop
          declare
+            Class   : constant Leander.Core.Type_Classes.Reference :=
+                        Type_Class_Maps.Element (Position);
+            Key     : constant String := Type_Class_Maps.Key (Position);
+            Own     : constant Boolean :=
+                        Key = Core.To_String (Class.Id)
+                        and then This.Own.Contains (Key);
             Methods : constant Core.Varid_Array := Class.Methods;
          begin
             for I in Methods'Range loop
-               if Class.Has_Default (Methods (I))
+               if Own
+                 and then Class.Has_Default (Methods (I))
                  and then Class.Bindings.Lookup
                    (Leander.Names.Leander_Name (Methods (I))).Alts'Length > 0
                then
@@ -1283,17 +1299,26 @@ package body Leander.Environment is
          end;
       end loop;
 
-      for Class of This.Classes loop
-         if This.Instances.Contains
-           (Leander.Names.Leander_Name (Class.Id))
-         then
-            for Inst of This.Instances.Element
-              (Leander.Names.Leander_Name (Class.Id))
-            loop
-               Elaborate_Instance (Class, Inst);
-            end loop;
-         end if;
-      end loop;
+      --  An imported class sits in This.Classes under its qualified name
+      --  and, when visible, its bare one too; its instances are elaborated
+      --  once (issue #122).
+      declare
+         Seen : WL.String_Sets.Set;
+      begin
+         for Class of This.Classes loop
+            if not Seen.Contains (Core.To_String (Class.Id))
+              and then This.Instances.Contains
+                (Leander.Names.Leander_Name (Class.Id))
+            then
+               Seen.Include (Core.To_String (Class.Id));
+               for Inst of This.Instances.Element
+                 (Leander.Names.Leander_Name (Class.Id))
+               loop
+                  Elaborate_Instance (Class, Inst);
+               end loop;
+            end if;
+         end loop;
+      end;
    end Elaborate;
 
    -----------
