@@ -60,28 +60,29 @@ class Eq a where
     x == y = not (x /= y)
 ```
 
-Default method bodies are parsed and stored alongside the class
-declaration. In the parser, a class's syntax-level bindings are
-saved in the `Parse_Context` via `Add_Class` and retrieved with
-`Class_Bindings`. At the core level, the `Type_Class` record holds
-these defaults in its `Bindings` field.
+Default method bodies are stored with the class: the `Type_Class`
+record holds them in its `Bindings` field.
 
-When an instance declaration is parsed, any method not explicitly
-defined is copied from the class defaults before the instance is
-registered:
+Each default is compiled once, generically, by the module that
+declares the class, during `Environment.Elaborate`, after the module's
+own bindings have been inferred. It's stored as an ordinary value
+under a synthetic name, `default:Class:method`, taking the class's
+dictionary as a parameter. Because it's compiled in the declaring
+module's scope, a default can use that module's private helpers.
 
-```ada
--- leander-parser-declarations.adb, Parse_Instance_Declaration
-Bindings.Copy_Missing_Bindings (Context.Class_Bindings (Class_Name));
-Context.Environment.Type_Instance (..., Bindings => Bindings.To_Core);
-```
+An instance that omits a method gets a one-line binding that calls
+the default. It's elaborated like any other method, so the default
+receives that instance's own dictionary.
 
-`Copy_Missing_Bindings` (`leander-syntax-bindings.adb`) appends
-each class default whose name is absent from the instance's binding
-list. By the time `Type_Instance` is called, the binding group
-passed in already includes defaults for every unimplemented method.
-This means the `Elaborate` procedure sees a complete binding group
-and never needs to fall back to class-level defaults at runtime.
+A module that imports a class doesn't compile its defaults again.
+The schemes for the `default:` names come in with the import, and
+the values are reached by linkage, the same way as any other imported
+binding (a `default:` name is never prefixed). Recompiling them in
+the importer would see only what the class's module exports, and an
+imported class is listed under both its qualified and its bare name,
+so it would be compiled twice (issue #122). For the same reason, the
+instances of an imported class are elaborated once per class, not
+once per name.
 
 ## Instance declarations
 
