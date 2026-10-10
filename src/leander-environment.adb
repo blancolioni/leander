@@ -1018,6 +1018,60 @@ package body Leander.Environment is
                               end if;
                            end;
                         end loop;
+
+                        --  Then the dictionary of each direct superclass at
+                        --  the instance type, found like any other: Ord Int
+                        --  carries Eq Int (issue #129).  A superclass with
+                        --  no instance makes this instance an error, as in
+                        --  Haskell, rather than a failure at link time.
+                        declare
+                           Context_Ps : constant
+                             Leander.Core.Predicates.Predicate_Array :=
+                               Inst.Element.Qualifier.Predicates;
+                           At_Type    : constant Leander.Core.Types.Reference
+                             := Leander.Core.Types.Reference
+                                  (Inst_Type.Apply
+                                     (Inst_Context.Current_Substitution));
+                        begin
+                           for Super of Class.Super_Classes loop
+                              declare
+                                 P : constant
+                                   Leander.Core.Predicates.Instance :=
+                                     Leander.Core.Predicates.Predicate
+                                       (Super, At_Type);
+                                 Found : Boolean := True;
+                              begin
+                                 if not P.Get_Type.all.Head_Normal_Form then
+                                    declare
+                                       Ps : constant
+                                         Leander.Core.Predicates
+                                           .Predicate_Array :=
+                                             This.By_Instance (P, Found);
+                                    begin
+                                       pragma Unreferenced (Ps);
+                                    end;
+                                 elsif not This.Entails (Context_Ps, P) then
+                                    Found := False;
+                                 end if;
+
+                                 if not Found then
+                                    Error
+                                      ("instance "
+                                       & Inst.Element.Predicate.Show
+                                       & ": no instance for " & P.Show
+                                       & ", which is a superclass of "
+                                       & Core.To_String (Class.Id));
+                                    Leander.Errors.Note_Error;
+                                 end if;
+
+                                 D := Leander.Calculus.Apply
+                                   (D,
+                                    Leander.Core.Expressions.Dictionary
+                                      (This'Unchecked_Access, P));
+                              end;
+                           end loop;
+                        end;
+
                         D := Leander.Calculus.Lambda ("$class", D);
                         declare
                            Dict_Name : constant String :=
@@ -1047,6 +1101,12 @@ package body Leander.Environment is
                                                .Current_Substitution)))];
 
                         begin
+                           --  A superclass of a context predicate -- Eq a,
+                           --  for an instance whose context is Ord a -- is
+                           --  selected from that predicate's dictionary,
+                           --  not passed separately.
+                           D := Leander.Core.Expressions.Supply_Superclasses
+                             (D, Qs, Inst_Context, This'Unchecked_Access);
 
                            for P of reverse All_Ps loop
                               declare
@@ -1711,8 +1771,40 @@ package body Leander.Environment is
                                   Tie_Recursion => not Binding.Is_Explicit);
                      Seen : WL.String_Sets.Set;
                   begin
+                     --  An explicit binding takes one dictionary per
+                     --  predicate of its declared context, in declared
+                     --  order, which is what a use site applies; a
+                     --  superclass of one of them is selected from it
+                     --  rather than passed (issue #129).
+                     if Binding.Is_Explicit then
+                        declare
+                           Declared : constant Leander.Core.Predicates
+                             .Predicate_Array := Binding.Dictionaries;
+                           Dicts    : constant Leander.Core.Predicates
+                             .Predicate_Array (1 .. Declared'Length) :=
+                               [for I in 1 .. Declared'Length =>
+                                  Leander.Core.Predicates.Predicate
+                                    (Declared (Declared'First + I - 1)
+                                       .Class_Id,
+                                     Leander.Core.Types.Reference
+                                       (Declared (Declared'First + I - 1)
+                                          .Get_Type.Apply
+                                            (This.Context
+                                               .Current_Substitution)))];
+                        begin
+                           Tree := Leander.Core.Expressions.Supply_Superclasses
+                             (Tree, Dicts, This.Context, This'Access);
+                           for P of reverse Dicts loop
+                              Seen.Include ("<" & P.Show & ">");
+                              Tree := Leander.Calculus.Lambda
+                                ("<" & P.Show & ">", Tree);
+                           end loop;
+                        end;
+                     end if;
+
                      for P of This.Context.Current_Predicates loop
                         if P.Get_Type.all.Get_Tyvars'Length > 0
+                          and then not Binding.Is_Explicit
                         then
                            declare
                               Dict : constant String :=
@@ -1848,6 +1940,31 @@ package body Leander.Environment is
    is
       Methods : constant Core.Varid_Array :=
                   Class.Methods;
+      Supers  : constant Core.Conid_Array := Class.Super_Classes;
+
+      --  A dictionary is a Scott tuple of the class's methods followed by
+      --  the dictionaries of its direct superclasses, in declared order
+      --  (issue #129).  Field I of Field_Count is selected by
+      --  \$inst. $inst (\1 .. Field_Count. I).
+      Field_Count : constant Natural := Methods'Length + Supers'Length;
+
+      function Selector (Field : Positive) return Leander.Calculus.Tree;
+
+      --------------
+      -- Selector --
+      --------------
+
+      function Selector (Field : Positive) return Leander.Calculus.Tree is
+         E : Leander.Calculus.Tree := Leander.Calculus.Symbol (Field);
+      begin
+         for J in reverse 1 .. Field_Count loop
+            E := Leander.Calculus.Lambda (J, E);
+         end loop;
+         return Leander.Calculus.Lambda
+           ("$inst",
+            Leander.Calculus.Apply (Leander.Calculus.Symbol ("$inst"), E));
+      end Selector;
+
    begin
       This.Classes.Insert (Core.To_String (Class.Id), Class);
       This.Own.Include (Core.To_String (Class.Id));
@@ -1859,19 +1976,20 @@ package body Leander.Environment is
            This.Type_Env.Compose
              (Methods (I),
               Class.Method_Scheme (Methods (I)));
-         declare
-            D : Leander.Calculus.Tree := Leander.Calculus.Symbol ("$inst");
-            E : Leander.Calculus.Tree :=
-                  Leander.Calculus.Symbol (I);
-         begin
-            for J in reverse Methods'Range loop
-               E := Leander.Calculus.Lambda (J, E);
-            end loop;
-            D := Leander.Calculus.Apply (D, E);
-            D := Leander.Calculus.Lambda ("$inst", D);
-            This.Values.Insert
-              (Leander.Names.Leander_Name (Methods (I)), D);
-         end;
+         This.Values.Insert
+           (Leander.Names.Leander_Name (Methods (I)),
+            Selector (I - Methods'First + 1));
+      end loop;
+
+      --  "$super:Ord:Eq" selects an Ord dictionary's Eq dictionary.  A
+      --  "$" name is never module-qualified, so an importer reaches it by
+      --  linkage like the method selectors.
+      for I in Supers'Range loop
+         This.Values.Insert
+           (Leander.Names.To_Leander_Name
+              (Leander.Core.Type_Classes.Superclass_Selector_Name
+                 (Class.Id, Supers (I))),
+            Selector (Methods'Length + I - Supers'First + 1));
       end loop;
    end Type_Class;
 

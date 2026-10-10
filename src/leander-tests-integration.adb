@@ -1328,6 +1328,49 @@ package body Leander.Tests.Integration is
          "dcRing", "K",
          Handle);
 
+      --  A constraint provides its superclasses (issue #129)
+
+      Test_Module
+        ("module: superclass: scSameInt",
+         Test_Root & "test_33_superclasses.hs",
+         "scSameInt", "K",
+         Handle);
+      Test_Module
+        ("module: superclass: scSameChar",
+         Test_Root & "test_33_superclasses.hs",
+         "scSameChar", "K",
+         Handle);
+      Test_Module
+        ("module: superclass: scListsEqual",
+         Test_Root & "test_33_superclasses.hs",
+         "scListsEqual", "K",
+         Handle);
+      Test_Module
+        ("module: superclass: scShown",
+         Test_Root & "test_33_superclasses.hs",
+         "scShown", "K",
+         Handle);
+      Test_Module
+        ("module: superclass: scMonad",
+         Test_Root & "test_33_superclasses.hs",
+         "scMonad", "K",
+         Handle);
+      Test_Module
+        ("module: superclass: scDeclared",
+         Test_Root & "test_33_superclasses.hs",
+         "scDeclared", "K",
+         Handle);
+      Test_Module
+        ("module: superclass: scInstance",
+         Test_Root & "test_33_superclasses.hs",
+         "scInstance", "K",
+         Handle);
+      Test_Module
+        ("module: superclass: scThroughInstance",
+         Test_Root & "test_33_superclasses.hs",
+         "scThroughInstance", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
@@ -1691,6 +1734,10 @@ package body Leander.Tests.Integration is
       Test_Module_Reports
         ("module: a character literal cut off by the line end is reported",
          Test_Root & "test_22_unterminated_char.hs");
+
+      Test_Module_Reports
+        ("module: an instance without its superclass's instance is reported",
+         Test_Root & "test_33_missing_superclass.hs");
 
       --  Explicit signatures are checked against their bodies (issue #83)
 

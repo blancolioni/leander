@@ -31,14 +31,18 @@ the environment registers two things for each method:
 
 ### Selector construction
 
-For a class with N methods, the i-th method (1-indexed) gets the
-selector:
+A dictionary is a Scott-encoded tuple: the class's N methods, then
+the dictionaries of its S direct superclasses, in declared order. The
+i-th method (1-indexed) gets the selector:
 
-    \$inst. $inst (\$1.\$2...\$N. $i)
+    \$inst. $inst (\$1.\$2...\$(N+S). $i)
 
 This applies the dictionary `$inst` to a projection function that
-takes N arguments and returns the i-th one — using the same Scott
-encoding as algebraic data types.
+takes all N+S fields and returns the i-th one, using the same Scott
+encoding as algebraic data types. The j-th superclass gets a selector
+for field N+j, named `$super:Class:Super`, for example
+`$super:Ord:Eq`. A `$` name is never module-qualified, so an importer
+reaches it by linkage.
 
 For `Eq` with methods `(==)` and `(/=)`:
 
@@ -266,6 +270,22 @@ This is used during:
 2. **Predicate reduction** — if both `Eq a` and `Ord a` appear in a
    predicate set, `Simplify` removes `Eq a` because it is entailed
    by `Ord a`.
+
+3. **Dictionaries** (issue #129):
+   - **Instances:** an instance's dictionary carries a dictionary for
+     each direct superclass at the instance type, found by ordinary
+     instance search, so `<Ord Int>` holds `<Eq Int>`. An instance
+     whose superclass has no instance is reported where it's declared.
+   - **Using a superclass:** wherever dictionary parameters are bound
+     (an explicit binding's declared context, a local binding's
+     scheme, an instance's context), a dictionary the body needs that
+     isn't a parameter, but is a superclass of one, is selected from
+     it rather than passed: `Ord a` provides `<Eq a>` as
+     `$super:Ord:Eq <Ord a>`. This is
+     `Expressions.Supply_Superclasses`.
+   - **Order of parameters:** an explicit binding's parameters follow
+     its declared context, in declared order, because that's what a
+     use site applies.
 
 Superclass resolution is implemented in `Type_Classes.Super_Classes`,
 which returns the class itself followed by the transitive closure of
