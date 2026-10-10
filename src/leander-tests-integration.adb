@@ -314,6 +314,23 @@ package body Leander.Tests.Integration is
                  "Bool", "K I",
                  Handle);
 
+      --  A let binding sees only the bindings nested outside it, so they
+      --  must nest in dependency order however they are written; and
+      --  bindings that refer to each other must be compiled together
+      --  (issue #63).
+
+      Test_Eval ("let { a = 1; b = a + 1 } in b",
+                 "Int", "2",
+                 Handle);
+      Test_Eval ("let { b = a + 1; a = 1 } in b",
+                 "Int", "2",
+                 Handle);
+      Test_Eval
+        ("let { ev 0 = True; ev n = od (n - 1); "
+         & "od 0 = False; od n = ev (n - 1) } in ev 10",
+         "Bool", "K",
+         Handle);
+
       --  The same, for a class with no defaulting to fall back on: the
       --  monad is fixed only by the use site.
 
@@ -599,6 +616,49 @@ package body Leander.Tests.Integration is
         ("module: a local constrained binding takes its dictionary",
          Test_Root & "test_21_recursive_bindings.hs",
          "rbLocalSame", "1",
+         Handle);
+
+      --  Dependency order and mutual recursion in let and where (issue #63)
+
+      Test_Module
+        ("module: a local binding sees a sibling written after it",
+         Test_Root & "test_24_let_dependencies.hs",
+         "ldChain", "11",
+         Handle);
+      Test_Module
+        ("module: mutually recursive local lists",
+         Test_Root & "test_24_let_dependencies.hs",
+         "ldCycle", "7",
+         Handle);
+      Test_Module
+        ("module: mutually recursive local functions (even)",
+         Test_Root & "test_24_let_dependencies.hs",
+         "ldEven", "K",
+         Handle);
+      Test_Module
+        ("module: mutually recursive local functions (odd)",
+         Test_Root & "test_24_let_dependencies.hs",
+         "ldOdd", "K I",
+         Handle);
+      Test_Module
+        ("module: a constraint shared by a local group (even)",
+         Test_Root & "test_24_let_dependencies.hs",
+         "ldEvenMatch", "K",
+         Handle);
+      Test_Module
+        ("module: a constraint shared by a local group (odd)",
+         Test_Root & "test_24_let_dependencies.hs",
+         "ldOddMatch", "K I",
+         Handle);
+      Test_Module
+        ("module: a polymorphic local group used at two types",
+         Test_Root & "test_24_let_dependencies.hs",
+         "ldLocalAlt", "K",
+         Handle);
+      Test_Module
+        ("module: a top-level binding is generalised before its users",
+         Test_Root & "test_24_let_dependencies.hs",
+         "ldPolyUse", "K",
          Handle);
 
       --  Escapes in string and character literals (issue #96)

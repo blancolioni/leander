@@ -20,6 +20,14 @@ package Leander.Core.Binding_Groups is
      (This : Instance'Class)
       return Varid_Array;
 
+   function Implicit_Group
+     (This : Instance'Class;
+      Name : Varid)
+      return Leander.Core.Bindings.Reference_Array;
+   --  The implicit bindings inferred together with Name, Name included:
+   --  each uses the others monomorphically, applying no dictionaries.
+   --  Empty if Name is not an implicit binding of This.
+
    function Has_Reference
      (This : Instance'Class;
       To   : Varid)
