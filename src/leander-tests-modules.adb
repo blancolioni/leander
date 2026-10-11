@@ -265,6 +265,8 @@ package body Leander.Tests.Modules is
                    & "|showLitChar|showLitString|protectEsc"
                    & "|isDecDigit|asciiTab"  --  Show Char helpers
                    & "|bindIO|returnIO"  --  IO's Monad methods
+                   & "|IOResult|IOSuccess|IOFailure|unIO"  --  IO's result
+                   & "|IOErrorKind|IOUserError|MkIOError"  --  abstract IOError
                    & "|fst3|snd3|thd3"   --  unzip3's selectors
                    & "|thenCmp"          --  tuple Ord helper
                    & "|";

@@ -536,6 +536,10 @@ package body Leander.Tests.Integration is
          "error (""a"" ++ show 12)",
          "a12");
       Test_Runtime_Error
+        ("runtime error: an IOError nothing catches",
+         "runIO (ioError (userError ""uncaught""))",
+         "user error (uncaught)");
+      Test_Runtime_Error
         ("runtime error: a Prelude error",
          "head []",
          "Prelude.head: empty list");
@@ -1488,6 +1492,44 @@ package body Leander.Tests.Integration is
         ("module: literals: olRange",
          Test_Root & "test_37_literals.hs",
          "olRange", "K",
+         Handle);
+
+      --  IO actions fail with an IOError, which catch handles (issue #88)
+
+      Test_Module
+        ("module: IO errors: ieCaught",
+         Test_Root & "test_38_io_errors.hs",
+         "ieCaught", "K",
+         Handle);
+      Test_Module
+        ("module: IO errors: ieFlow",
+         Test_Root & "test_38_io_errors.hs",
+         "ieFlow", "K",
+         Handle);
+      Test_Module
+        ("module: IO errors: ieNoError",
+         Test_Root & "test_38_io_errors.hs",
+         "ieNoError", "K",
+         Handle);
+      Test_Module
+        ("module: IO errors: ieNested",
+         Test_Root & "test_38_io_errors.hs",
+         "ieNested", "K",
+         Handle);
+      Test_Module
+        ("module: IO errors: ieMapM",
+         Test_Root & "test_38_io_errors.hs",
+         "ieMapM", "K",
+         Handle);
+      Test_Module
+        ("module: IO errors: ieEq",
+         Test_Root & "test_38_io_errors.hs",
+         "ieEq", "K",
+         Handle);
+      Test_Module
+        ("module: IO errors: ieDo",
+         Test_Root & "test_38_io_errors.hs",
+         "ieDo", "K",
          Handle);
 
       --  Tuples larger than pairs (issue #80)

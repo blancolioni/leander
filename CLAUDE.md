@@ -90,7 +90,7 @@ SKI machine values are shown in combinator notation: `K` = `True`, `K I` = `Fals
 
 ## IO Encoding
 
-`IO a` is `Int -> (a, Int)` (a state-passing function over a world token). `runIO` seeds it with `1`. `putChar` calls the `#primPutChar` primitive. The do-notation desugaring in the parser lowers `do { x <- e; ... }` to `e >>= \x -> ...` before reaching the core IR. Details in [share/leander/docs/io.md](share/leander/docs/io.md).
+`IO a` is `Int -> IOResult a` (a state-passing function over a world token), where an `IOResult` is either `IOSuccess a w` or `IOFailure e w` with an `IOError`; `bindIO` stops at a failure and `catch` handles it. `runIO` seeds it with `1`, and raises an uncaught `IOError` as a runtime error. `putChar` calls the `#primPutChar` primitive. The do-notation desugaring in the parser lowers `do { x <- e; ... }` to `e >>= \x -> ...` before reaching the core IR. Details in [share/leander/docs/io.md](share/leander/docs/io.md).
 
 ## Foreign Imports
 

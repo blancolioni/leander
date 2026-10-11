@@ -135,13 +135,14 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 
 | Feature | Status | Note |
 |---|---|---|
-| IO monad (`Int -> (a, Int)`) | ✅ | World-passing ADT. |
+| IO monad (`Int -> IOResult a`) | ✅ | World-passing ADT; an action succeeds with its result or fails with an `IOError`. |
 | `do` desugaring for IO | ✅ | |
 | `>>=` / `>>` / `return` | ✅ | |
 | `putChar`/`putStr`/`putStrLn`/`print` | ✅ | |
 | `mapM`/`mapM_`/`sequence`/`sequence_` | ✅ | Monad-generic. |
 | Input (`getLine`/`getChar`/`readFile`) | ❌ | **Output only** — single `#putChar` primitive. |
 | `main :: IO ()` entry | ✅ | Driver runs `runIO main`. |
+| `IOError`/`ioError`/`userError`/`catch` | 🟡 | Haskell 98 Prelude style (#88): `catch` handles `IOError`s, not `error` or a failed match. An uncaught one is a runtime error. Only user errors exist until input primitives can fail. No `System.IO.Error` (`catchIOError`, `isUserError`, `ioeGetErrorString`). |
 | `foreign import` | 🟡 | `skit` backend only (internal primitives); not H2010 FFI (`ccall`, `foreign export`). |
 
 ## Numeric tower
