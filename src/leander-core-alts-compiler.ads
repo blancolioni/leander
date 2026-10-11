@@ -4,6 +4,7 @@ with Ada.Containers.Vectors;
 with Leander.Calculus;
 with Leander.Core.Inference;
 with Leander.Core.Predicates;
+with Leander.Core.Types;
 with Leander.Data_Types;
 with Leander.Environment;
 
@@ -72,6 +73,11 @@ private
          DT           : Leander.Data_Types.Reference;
          Con_Pats     : Con_Pat_Expr_Vectors.Vector;
          Con_Dfl      : Con_Pat_Expr;
+         Literal_Type : Leander.Core.Types.Reference :=
+                          Leander.Core.Types.T_Int;
+         --  In Compare_Mode, the literals' type.  At Int they are compared
+         --  with the primitive; at any other, with that type's (==)
+         --  against fromInteger n.
          Failure      : Ada.Strings.Unbounded.Unbounded_String :=
                           Ada.Strings.Unbounded.To_Unbounded_String
                             ("Non-exhaustive patterns");

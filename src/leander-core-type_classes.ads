@@ -62,6 +62,15 @@ package Leander.Core.Type_Classes is
    is ("$super:" & To_String (Class) & ":" & To_String (Super));
    --  The value that selects a Class dictionary's Super dictionary.
 
+   function Method_Selector_Name
+     (Class : Conid;
+      Method : Varid)
+      return String
+   is ("$method:" & To_String (Class) & ":" & To_String (Method));
+   --  Another name for a method's selector, one that no module can shadow
+   --  or qualify: what the compiler refers to when it inserts a method
+   --  call of its own, such as fromInteger for a literal.
+
    type Class_Environment is interface;
 
    function Get_Class

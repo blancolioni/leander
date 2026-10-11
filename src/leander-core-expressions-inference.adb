@@ -1,5 +1,6 @@
 with Ada.Exceptions;
 with Leander.Core.Binding_Groups.Inference;
+with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
 with Leander.Core.Substitutions;
@@ -132,7 +133,21 @@ package body Leander.Core.Expressions.Inference is
                   end if;
                end;
             when ELit =>
-               Bind (E, E.Literal.Get_Type);
+               if E.Literal.Is_Integer then
+                  --  n is fromInteger n, at whatever Num type the context
+                  --  makes it, defaulting to Int when nothing does (#82).
+                  declare
+                     T : constant Core.Types.Reference :=
+                           Core.Types.New_TVar;
+                  begin
+                     Bind (E,
+                           Qualified_Types.Qualified_Type
+                             ([Predicates.Predicate (To_Conid ("Num"), T)],
+                              T));
+                  end;
+               else
+                  Bind (E, E.Literal.Get_Type);
+               end if;
                return Substitutions.Empty;
             when EApp =>
                declare

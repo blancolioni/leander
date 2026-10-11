@@ -638,6 +638,34 @@ package body Leander.Core.Expressions is
             Result := Env.Constructor (Leander.Names.Leander_Name (This.Con_Id));
          when ELit =>
             Result := This.Literal.To_Calculus;
+
+            --  An integer literal is fromInteger n at its Num type, except
+            --  at Int, where it is just n (#82).
+            if This.Literal.Is_Integer
+              and then This.Has_Qualified_Type_Value
+            then
+               declare
+                  Ps : constant Leander.Core.Predicates.Predicate_Array :=
+                         This.Qualified_Type.Predicates;
+               begin
+                  if Ps'Length > 0
+                    and then not Leander.Core.Types.Equivalent
+                      (Ps (Ps'First).Get_Type.Apply
+                         (Types.Current_Substitution),
+                       Leander.Core.Types.T_Int)
+                  then
+                     Result := Apply
+                       (Apply
+                          (Symbol
+                             (Leander.Core.Type_Classes.Method_Selector_Name
+                                (Ps (Ps'First).Class_Id,
+                                 To_Varid ("fromInteger"))),
+                           Dict_Expr (Env, Ps (Ps'First))),
+                        Result);
+                     Types.Save_Predicates (Ps);
+                  end if;
+               end;
+            end if;
          when EApp =>
             Result := Apply
               (This.Left.To_Calculus (Types, Env),

@@ -20,6 +20,8 @@ foreign import skit "#eq" #primIntEq :: Int -> Int -> Bool
 foreign import skit "#eq" #primCharEq :: Char -> Char -> Bool
 
 foreign import skit "#id" #primIntToChar :: Int -> Char
+-- Until Integer is arbitrary precision (#86), an Integer is an Int.
+foreign import skit "#id" #primIntegerToInt :: Integer -> Int
 foreign import skit "#id" #primCharToInt :: Char -> Int
 
 foreign import skit "#le" #primIntLeq :: Int -> Int -> Bool
@@ -657,7 +659,7 @@ instance Num Int where
     negate x = 0 - x
     abs x = if x < 0 then 0 - x else x
     signum x = if x < 0 then 0 - 1 else if x == 0 then 0 else 1
-    fromInteger n = 0
+    fromInteger = #primIntegerToInt
 
 mod, div :: Int -> Int -> Int
 mod = #primIntMod

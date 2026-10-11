@@ -1,3 +1,4 @@
+with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
 with Leander.Core.Type_Env;
@@ -47,7 +48,20 @@ package body Leander.Core.Patterns.Inference is
                end if;
             end;
          when PLit =>
-            Bind (Pattern, Pattern.Literal.Get_Type);
+            if Pattern.Literal.Is_Integer then
+               --  Matched by x == fromInteger n, at whatever type the
+               --  context makes it (Haskell 2010, section 3.17.2; #82).
+               declare
+                  T : constant Types.Reference := Types.New_TVar;
+               begin
+                  Bind (Pattern, Qualified_Types.Qualified_Type ([], T));
+                  Context.Save_Predicates
+                    ([Predicates.Predicate (To_Conid ("Num"), T),
+                      Predicates.Predicate (To_Conid ("Eq"), T)]);
+               end;
+            else
+               Bind (Pattern, Pattern.Literal.Get_Type);
+            end if;
          when PCon =>
             declare
                use Leander.Core.Type_Env;

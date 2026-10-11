@@ -1452,6 +1452,44 @@ package body Leander.Tests.Integration is
          "npColumns", "K",
          Handle);
 
+      --  Integer literals are overloaded, and default to Int (issue #82)
+
+      Test_Module
+        ("module: literals: olLiteral",
+         Test_Root & "test_37_literals.hs",
+         "olLiteral", "K",
+         Handle);
+      Test_Module
+        ("module: literals: olArith",
+         Test_Root & "test_37_literals.hs",
+         "olArith", "K",
+         Handle);
+      Test_Module
+        ("module: literals: olShown",
+         Test_Root & "test_37_literals.hs",
+         "olShown", "K",
+         Handle);
+      Test_Module
+        ("module: literals: olPattern",
+         Test_Root & "test_37_literals.hs",
+         "olPattern", "K",
+         Handle);
+      Test_Module
+        ("module: literals: olGeneric",
+         Test_Root & "test_37_literals.hs",
+         "olGeneric", "K",
+         Handle);
+      Test_Module
+        ("module: literals: olDefault",
+         Test_Root & "test_37_literals.hs",
+         "olDefault", "K",
+         Handle);
+      Test_Module
+        ("module: literals: olRange",
+         Test_Root & "test_37_literals.hs",
+         "olRange", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
