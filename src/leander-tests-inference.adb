@@ -24,7 +24,8 @@ package body Leander.Tests.Inference is
       Loc : constant Leander.Source.Source_Location :=
               Leander.Source.No_Location;
    begin
-      Test (Literal (Loc, Int ("1")), "Int");
+      --  An integer literal is Num a => a (#82); the context is not shown.
+      Test (Literal (Loc, Int ("1")), "a");
       Test (Lambda
             (Loc, To_Varid ("x"),
                Variable (Loc, To_Varid ("x"))),

@@ -1771,40 +1771,43 @@ package body Leander.Environment is
                                   Tie_Recursion => not Binding.Is_Explicit);
                      Seen : WL.String_Sets.Set;
                   begin
-                     --  An explicit binding takes one dictionary per
-                     --  predicate of its declared context, in declared
-                     --  order, which is what a use site applies; a
-                     --  superclass of one of them is selected from it
-                     --  rather than passed (issue #129).
-                     if Binding.Is_Explicit then
-                        declare
-                           Declared : constant Leander.Core.Predicates
-                             .Predicate_Array := Binding.Dictionaries;
-                           Dicts    : constant Leander.Core.Predicates
-                             .Predicate_Array (1 .. Declared'Length) :=
-                               [for I in 1 .. Declared'Length =>
-                                  Leander.Core.Predicates.Predicate
+                     --  A binding takes one dictionary per predicate of its
+                     --  scheme, in the scheme's order, which is what a use
+                     --  site applies -- an explicit binding's declared
+                     --  context, an implicit one's inferred one (#129,
+                     --  #82).  A superclass of one of them is selected from
+                     --  it rather than passed.
+                     declare
+                        Declared : constant Leander.Core.Predicates
+                          .Predicate_Array := Binding.Dictionaries;
+                        Dicts    : constant Leander.Core.Predicates
+                          .Predicate_Array (1 .. Declared'Length) :=
+                            [for I in 1 .. Declared'Length =>
+                               Leander.Core.Predicates.Predicate
+                                 (Declared (Declared'First + I - 1)
+                                    .Class_Id,
+                                  Leander.Core.Types.Reference
                                     (Declared (Declared'First + I - 1)
-                                       .Class_Id,
-                                     Leander.Core.Types.Reference
-                                       (Declared (Declared'First + I - 1)
-                                          .Get_Type.Apply
-                                            (This.Context
-                                               .Current_Substitution)))];
-                        begin
-                           Tree := Leander.Core.Expressions.Supply_Superclasses
-                             (Tree, Dicts, This.Context, This'Access);
-                           for P of reverse Dicts loop
-                              Seen.Include ("<" & P.Show & ">");
-                              Tree := Leander.Calculus.Lambda
-                                ("<" & P.Show & ">", Tree);
-                           end loop;
-                        end;
-                     end if;
+                                       .Get_Type.Apply
+                                         (This.Context
+                                            .Current_Substitution)))];
+                     begin
+                        Tree := Leander.Core.Expressions.Supply_Superclasses
+                          (Tree, Dicts, This.Context, This'Access);
+                        for P of reverse Dicts loop
+                           Seen.Include ("<" & P.Show & ">");
+                           Tree := Leander.Calculus.Lambda
+                             ("<" & P.Show & ">", Tree);
+                        end loop;
+                     end;
 
+                     --  Anything else an implicit binding's body still
+                     --  refers to, as before.
                      for P of This.Context.Current_Predicates loop
                         if P.Get_Type.all.Get_Tyvars'Length > 0
                           and then not Binding.Is_Explicit
+                          and then Leander.Calculus.Has_Reference
+                            (Tree, "<" & P.Show & ">")
                         then
                            declare
                               Dict : constant String :=
@@ -1978,6 +1981,11 @@ package body Leander.Environment is
               Class.Method_Scheme (Methods (I)));
          This.Values.Insert
            (Leander.Names.Leander_Name (Methods (I)),
+            Selector (I - Methods'First + 1));
+         This.Values.Insert
+           (Leander.Names.To_Leander_Name
+              (Leander.Core.Type_Classes.Method_Selector_Name
+                 (Class.Id, Methods (I))),
             Selector (I - Methods'First + 1));
       end loop;
 

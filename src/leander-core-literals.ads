@@ -16,6 +16,9 @@ package Leander.Core.Literals is
      (This : Instance)
       return Leander.Calculus.Tree;
 
+   function Is_Integer (This : Instance) return Boolean;
+   --  An integer literal is overloaded: Num a => a, meaning fromInteger n.
+
    function Integer_Literal
      (Image : String)
       return Instance;
@@ -46,5 +49,8 @@ private
      (This : Instance)
       return String
    is (Ada.Strings.Unbounded.To_String (This.Image));
+
+   function Is_Integer (This : Instance) return Boolean
+   is (This.Tag = LInteger);
 
 end Leander.Core.Literals;

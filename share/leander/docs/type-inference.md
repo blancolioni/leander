@@ -142,8 +142,15 @@ in the type environment, instantiate it, and bind.
 
 ### Literal (ELit)
 
-Bind the expression to the literal's intrinsic type (e.g., integer
-literals get type `Int`, character literals get type `Char`).
+An integer literal is overloaded: it gets a fresh type variable `a`,
+and raises the predicate `Num a`. It compiles to
+`fromInteger <Num a> n`, through the selector alias
+`$method:Num:fromInteger`, which no module can shadow, or to the plain
+constant `n` when `a` turns out to be `Int`. Any other literal gets its
+intrinsic type: `Char`, `[Char]`, and `Double` for a floating literal.
+
+A type variable that only numeric classes constrain, and that the
+type never fixes, is defaulted (see *Defaulting* below).
 
 ### Application (EApp)
 
@@ -188,7 +195,31 @@ the variable bound to a monotype scheme of that variable.
 
 ### Literal pattern (PLit)
 
-Bind the pattern to the literal's type.
+An integer literal pattern gets a fresh type `a`, and raises `Num a`
+and `Eq a`: it matches `x` when `x == fromInteger n`. At `Int` the
+alternatives compiler compares with the primitive instead. Other
+literal patterns get the literal's own type.
+
+## Defaulting (`leander-core-inference-defaulting.adb`)
+
+A type variable is ambiguous when a predicate mentions it but no type
+ever will: it isn't in the binding's type or the environment
+(Haskell 2010, section 4.3.4). After context reduction, so that
+`Eq [a]` counts as `Eq a`, an ambiguous variable is defaulted when:
+- every predicate on it is `C a`;
+- at least one `C` is a numeric class;
+- all of them are standard classes.
+
+It becomes the first default type that is an instance of every one of
+them. That is `Int` for now; the Report's `(Integer, Double)` waits for
+#86 and #85. Defaulting runs where a binding group is generalised, for
+explicit bindings too, and on a top-level expression. An expression
+that is to be *evaluated* defaults every such variable, even one its
+type mentions: `1 + 2` runs as an `Int`.
+
+A predicate left with no type variables and no instance, such as
+`Num Bool` from `1 + True`, is then a type error
+(`Defaulting.Check_Instances`).
 
 ### Constructor pattern (PCon)
 

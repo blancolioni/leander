@@ -26,16 +26,18 @@ package body Leander.Tests.Prelude is
                   Context.Load_Module
                     ("./share/leander/modules/Prelude.hs");
    begin
-      Test ("1", "Int", Context, Prelude);
+      --  Integer literals are overloaded (#82); these types are shown
+      --  without their Num context.
+      Test ("1", "a", Context, Prelude);
       Test ("True", "Bool", Context, Prelude);
       Test ("False", "Bool", Context, Prelude);
       Test ("[]", "[a]", Context, Prelude);
-      Test ("(:) 1 []", "[Int]", Context, Prelude);
-      Test ("let x = 1 in x", "Int", Context, Prelude);
+      Test ("(:) 1 []", "[a]", Context, Prelude);
+      Test ("let x = 1 in x", "a", Context, Prelude);
       Test ("let x = [] in x", "[a]", Context, Prelude);
-      Test ("let {x=1;y=x} in x", "Int", Context, Prelude);
-      Test ("let {x=1;y=x} in y", "Int", Context, Prelude);
-      Test ("let {x=y;y=1} in x", "Int", Context, Prelude);
+      Test ("let {x=1;y=x} in x", "a", Context, Prelude);
+      Test ("let {x=1;y=x} in y", "a", Context, Prelude);
+      Test ("let {x=y;y=1} in x", "a", Context, Prelude);
       Test ("null", "[a] -> Bool", Context, Prelude);
       Test ("null []", "Bool", Context, Prelude);
    end Run_Tests;

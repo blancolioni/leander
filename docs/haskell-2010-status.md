@@ -18,7 +18,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 
 | Feature | Status | Note |
 |---|---|---|
-| Integer literals | ✅ | Decimal, hex (`0x1F`) and octal (`0o17`). |
+| Integer literals | ✅ | Decimal, hex (`0x1F`) and octal (`0o17`). Overloaded: `Num a => a`, compiled as `fromInteger n`, or the plain constant at `Int`. |
 | Floating literals | 🟡 | Lexed per the Report (`1.5`, `2e3`, `2.5E-1`; `[1..5]` is a range). Typed `Double`, but the value **rounds to an integer** (`3.7` gives `4`), and nothing has a `Double` instance, so `3.7 + 1` fails to type-check (see Numeric). |
 | Char literals | ✅ | Latin-1 only. On Windows, `leander -e "'a'"` loses the quotes before leander sees them (GNAT's runtime strips a leading quote pair from an argument); the same literal in a source file is fine. |
 | String literals | ✅ | Latin-1 only. |
@@ -54,7 +54,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Variable / wildcard `_` | ✅ | |
 | Constructor patterns | ✅ | |
 | Cons / list patterns `(x:xs)` | ✅ | |
-| Literal patterns | 🟡 | **`Int` only.** Char and float literal patterns fail with "undefined constructor: Char/Double"; string literal patterns fail an assertion in `leander-core-patterns.ads`. |
+| Literal patterns | 🟡 | Integer literal patterns at any `Num` type, matched with `==` against `fromInteger n` (by the primitive at `Int`). Char and float literal patterns fail with "undefined constructor: Char/Double"; string literal patterns fail an assertion in `leander-core-patterns.ads`. |
 | Nested patterns | ✅ | To any depth, in function equations, `case` and lambdas: `Just (x:_)`, `x:y:rest`, `[a,b]`, `(Just x, y)`, `Just 0`. The core still takes only variables as constructor arguments, so each equation with a nested pattern is matched one pattern at a time, an inner pattern being matched against a fresh variable once the outer match has bound it. |
 | Multiple equations | ✅ | Tried top to bottom, each falling through to the next when any of its patterns fails, including in a later column. Equations that can be told apart by their first column alone are dispatched in one step. |
 | As-patterns `@` | ❌ | `a@(Just x)` raises "invalid pattern". |
@@ -92,7 +92,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Expression annotations `e :: T` | ❌ | No `ESig` form: `(1 :: Int)` fails with "expected ')'". |
 | Polymorphic recursion | 🟡 | Only for signature-annotated bindings. |
 | Monomorphism restriction | ❌ | Implicit bindings always generalized. |
-| Type defaulting (numeric) | ❌ | Ambiguous numeric predicates never resolved. Rarely visible yet, because literals are monomorphic `Int`. |
+| Type defaulting (numeric) | 🟡 | The Report's rules (section 4.3.4), with `Int` as the only default type until there are others (#86, #85). No `default` declaration yet. |
 | Ambiguity detection | ❌ | Unresolvable predicates silently kept. |
 | Higher-rank types | ❌ | (Correctly — not H2010.) |
 
@@ -148,13 +148,13 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 
 | Feature | Status | Note |
 |---|---|---|
-| `Num` | 🟡 | Only instance is `Int`, and its `fromInteger` returns `0` regardless of the argument. |
+| `Num` | 🟡 | Only instance is `Int`. `fromInteger` works, an `Integer` being an `Int` until #86. |
 | `Real`, `Integral`, `Fractional`, `Floating`, `RealFrac`, `RealFloat` | ❌ | Entire hierarchy below `Num` missing. |
 | `Int` | ✅ | Machine integer; `minBound` is `-536870912`. |
 | `Integer` (bignum) | ❌ | Not arbitrary precision. It appears only in `fromInteger`'s signature. |
 | `Float` / `Double` | ❌ | The type constructors exist and float literals are typed `Double`, but the value **rounds to an integer** and there are no instances, so no float arithmetic. |
 | `Rational` / `Word` | ❌ | Absent. |
-| Overloaded numeric literals + defaulting | ❌ | An integer literal is monomorphic `Int`; never wrapped in `fromInteger`. |
+| Overloaded numeric literals + defaulting | 🟡 | Integer literals are overloaded and default to `Int` (#82). Floating literals still wait for #85. |
 | `div`/`mod` | ✅ | `Int -> Int -> Int`, not class methods. |
 | `quot`/`rem`/`divMod`/`quotRem`, `^`/`^^`/`**` | ❌ | Fixities declared, functions never defined. |
 | `even`/`odd`/`gcd`/`lcm`/`fromIntegral` | ❌ | Absent. |
@@ -191,7 +191,6 @@ These are wrong answers or crashes in forms that are otherwise supported.
 - ~~**`['a' .. 'e']` runs out of memory.**~~ Fixed in [#94](https://github.com/blancolioni/leander/issues/94). Any class default that used its own method was compiled as a call to itself; `Enum`'s `enumFromTo` was the case the Prelude hit.
 - ~~**`[1..5]` lexes `1.` as a float.**~~ Fixed by the new lexer ([#99](https://github.com/blancolioni/leander/issues/99)). [#95](https://github.com/blancolioni/leander/issues/95)
 - ~~**Char literal lexing.**~~ Fixed in [#96](https://github.com/blancolioni/leander/issues/96). Most of what was reported came from the Windows argument layer; the real faults were an end-of-line crash and missing Haskell escapes.
-- **`fromInteger` for `Int` returns `0`.** Harmless today because literals never go through it, but it will bite as soon as item 7 lands. Tracked in [#82](https://github.com/blancolioni/leander/issues/82).
 
 ### Tier 1 — cheap, high-frequency (do first)
 
@@ -207,7 +206,7 @@ These are wrong answers or crashes in forms that are otherwise supported.
 
 ### Tier 3 — correctness cliffs (bigger, sequence together)
 
-7. **Real numeric literals: overloading + defaulting + `Float`/`Double`.** Today floats silently truncate to `Int` and literals are monomorphic `Int`. Insert `fromInteger`/`fromRational` at literal sites, add numeric-tower classes (`Fractional`, `Integral`, …), and add machine float support — this ties directly to **ADR 0001** (object representation / NaN-boxing). Pair with **type defaulting** and **ambiguity detection** (both currently absent) so overloaded literals are usable and ambiguous programs are rejected.
+7. **Real numeric literals: `Float`/`Double`.** Integer literals are overloaded and defaulted (#82), but floats still silently truncate to `Int`. Insert `fromRational` at floating literal sites, add numeric-tower classes (`Fractional`, `Integral`, …), and add machine float support — this ties directly to **ADR 0001** (object representation / NaN-boxing). Extend **type defaulting** to the Report's `(Integer, Double)` add the `default` declaration, and reject an ambiguous type that defaulting cannot resolve (**ambiguity detection** is still absent).
 8. **Enforce signature generality** (stop discarding the inferred-vs-declared check).
 
 ### Tier 4 — breadth when needed

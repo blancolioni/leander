@@ -1,4 +1,5 @@
 with Leander.Core.Alts.Inference;
+with Leander.Core.Inference.Defaulting;
 with Leander.Core.Expressions;
 with Leander.Core.Type_Classes;
 with Leander.Core.Predicates;
@@ -87,6 +88,23 @@ package body Leander.Core.Binding_Groups.Inference is
 
       begin
          Infer_Alts (Explicit.Alts, T);
+
+         --  A type variable in neither the signature's type nor the
+         --  environment is ambiguous, and is defaulted (#82).
+         declare
+            Now    : constant Substitutions.Instance :=
+                       Context.Current_Substitution;
+            Raised : constant Core.Predicates.Predicate_Array :=
+                       Context.Current_Predicates;
+         begin
+            Core.Inference.Defaulting.Default_Ambiguous
+              (Context, Raised (Base + 1 .. Raised'Last),
+               Keep => Core.Tyvars.Union
+                 (T.Apply (Now).Get_Tyvars,
+                  Start_Env.Apply (Now).all.Get_Tyvars));
+            Core.Inference.Defaulting.Check_Instances
+              (Context, Raised (Base + 1 .. Raised'Last));
+         end;
 
          declare
             use type Core.Tyvars.Tyvar_Array;
@@ -276,8 +294,32 @@ package body Leander.Core.Binding_Groups.Inference is
             Gs : constant Core.Tyvars.Tyvar_Array :=
                    New_Tyvars (Ts'First) / Fs;
 
-            All_Ps : constant Core.Predicates.Predicate_Array :=
-                       Context.Current_Predicates;
+            function Defaulted return Core.Predicates.Predicate_Array;
+            --  The context's predicates, once the group's ambiguous type
+            --  variables -- in none of its types, nor the environment --
+            --  have been defaulted (#82).
+
+            ---------------
+            -- Defaulted --
+            ---------------
+
+            function Defaulted return Core.Predicates.Predicate_Array is
+               Raised : constant Core.Predicates.Predicate_Array :=
+                          Context.Current_Predicates;
+            begin
+               if Bs'Length > 0 then
+                  Core.Inference.Defaulting.Default_Ambiguous
+                    (Context,
+                     Raised (Base (Bs'First) + 1 .. Base (Bs'Last + 1)),
+                     Keep => Core.Tyvars.Union (New_Tyvars (Ts'First), Fs));
+                  Core.Inference.Defaulting.Check_Instances
+                    (Context,
+                     Raised (Base (Bs'First) + 1 .. Base (Bs'Last + 1)));
+               end if;
+               return Context.Current_Predicates;
+            end Defaulted;
+
+            All_Ps : constant Core.Predicates.Predicate_Array := Defaulted;
 
             --  The same predicates, still attached to the context's type
             --  variables.  A monomorphic binding defers all of its

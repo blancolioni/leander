@@ -11,6 +11,7 @@ with Leander.Calculus;
 with Leander.Core.Expressions;
 with Leander.Core.Expressions.Inference;
 with Leander.Core.Inference;
+with Leander.Core.Inference.Defaulting;
 with Leander.Core.Predicates;
 with Leander.Core.Qualified_Types;
 with Leander.Core.Schemes;
@@ -301,6 +302,16 @@ package body Leander.Handles is
          Result.Set_Class_Environment
            (Class_Environment_Reference (This.Env));
          Infer (Result, Core);
+
+         --  An expression is evaluated at one type, so every type variable
+         --  a numeric class constrains is defaulted, even one its type
+         --  mentions: 1 + 2 is an Int (#82).
+         if Result.OK then
+            Leander.Core.Inference.Defaulting.Default_Ambiguous
+              (Result, Result.Current_Predicates, Keep => []);
+            Leander.Core.Inference.Defaulting.Check_Instances
+              (Result, Result.Current_Predicates);
+         end if;
          --  Nothing is installed for an expression that failed, so there
          --  is nothing for the machine to run: the caller has to be told,
          --  or it evaluates an empty stack (issue #117).
@@ -777,6 +788,17 @@ package body Leander.Handles is
          Result.Set_Class_Environment
            (Class_Environment_Reference (This.Env));
          Infer (Result, Core);
+
+         --  Whatever the expression's type does not mention is ambiguous,
+         --  and is defaulted: print 3, show (1 + 2) (#82).
+         if Result.OK then
+            Leander.Core.Inference.Defaulting.Default_Ambiguous
+              (Result, Result.Current_Predicates,
+               Keep => Result.Binding (Core).Apply
+                 (Result.Current_Substitution).Get_Tyvars);
+            Leander.Core.Inference.Defaulting.Check_Instances
+              (Result, Result.Current_Predicates);
+         end if;
          if not Result.OK then
             return Result.Error_Message;
          else

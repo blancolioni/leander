@@ -1,4 +1,5 @@
-with Leander.Core.Types;
+with Leander.Core.Expressions;
+with Leander.Core.Type_Classes;
 
 package body Leander.Core.Alts.Compiler is
 
@@ -41,8 +42,37 @@ package body Leander.Core.Alts.Compiler is
       Alts     : Reference_Array)
    is
       First_Alt : constant Reference := Alts (Alts'First);
+      Literal   : constant Boolean :=
+                    (for some Alt of Alts =>
+                       Alt.Pat.Is_Literal
+                       and then Alt.Pat.Literal.Is_Integer);
    begin
-      if Pat_Type.Is_Variable then
+      --  Integer literal patterns at a type other than Int: they are
+      --  overloaded, so the type may be a variable here (#82).
+      if Literal
+        and then not (Pat_Type.Is_Constructor
+                      and then Pat_Type.Head = To_Conid ("Int"))
+      then
+         This.Compare_Mode := True;
+         This.Literal_Type := Pat_Type;
+         for Alt of Alts loop
+            declare
+               Pat  : constant Nullable_Pattern_Reference := Alt.Pat;
+            begin
+               if Pat.Is_Variable then
+                  This.Con_Dfl := (Nullable_Pattern (Pat),
+                                   Nullable_Expression (Alt.Expr));
+                  exit;
+               end if;
+
+               This.Con_Pats.Append
+                 (Con_Pat_Expr'
+                    (Nullable_Pattern (Pat),
+                     Nullable_Expression (Alt.Expr)));
+            end;
+         end loop;
+
+      elsif Pat_Type.Is_Variable then
          This.Con_Dfl := (Nullable_Pattern (First_Alt.Pat),
                           Nullable_Expression (First_Alt.Expr));
       elsif Pat_Type.Is_Constructor
@@ -214,18 +244,63 @@ package body Leander.Core.Alts.Compiler is
                        Symbol (V));
                end if;
             end if;
-            for Cp of reverse This.Con_Pats loop
-               R :=
-                 Apply
-                   (Apply
+            if Leander.Core.Types.Equivalent
+              (This.Literal_Type, Leander.Core.Types.T_Int)
+            then
+               for Cp of reverse This.Con_Pats loop
+                  R :=
+                    Apply
                       (Apply
                          (Apply
-                              (Symbol ("#eq"),
-                               Symbol (V)),
-                          Cp.Pat.Literal.To_Calculus),
-                       Cp.Expr.To_Calculus (This.Context, This.Env)),
-                    R);
-            end loop;
+                            (Apply
+                                 (Symbol ("#eq"),
+                                  Symbol (V)),
+                             Cp.Pat.Literal.To_Calculus),
+                          Cp.Expr.To_Calculus (This.Context, This.Env)),
+                       R);
+               end loop;
+            else
+               --  (==) <Eq t> v (fromInteger <Num t> n) is a Bool, which
+               --  as a Scott encoding chooses between the two branches.
+               declare
+                  Eq_P  : constant Leander.Core.Predicates.Instance :=
+                            Leander.Core.Predicates.Predicate
+                              (To_Conid ("Eq"), This.Literal_Type);
+                  Num_P : constant Leander.Core.Predicates.Instance :=
+                            Leander.Core.Predicates.Predicate
+                              (To_Conid ("Num"), This.Literal_Type);
+               begin
+                  for Cp of reverse This.Con_Pats loop
+                     R :=
+                       Apply
+                         (Apply
+                            (Apply
+                               (Apply
+                                  (Apply
+                                     (Symbol
+                                        (Leander.Core.Type_Classes
+                                         .Method_Selector_Name
+                                           (To_Conid ("Eq"),
+                                            To_Varid ("=="))),
+                                      Leander.Core.Expressions.Dictionary
+                                        (This.Env, Eq_P)),
+                                   Symbol (V)),
+                                Apply
+                                  (Apply
+                                     (Symbol
+                                        (Leander.Core.Type_Classes
+                                         .Method_Selector_Name
+                                           (To_Conid ("Num"),
+                                            To_Varid ("fromInteger"))),
+                                      Leander.Core.Expressions.Dictionary
+                                        (This.Env, Num_P)),
+                                   Cp.Pat.Literal.To_Calculus)),
+                             Cp.Expr.To_Calculus (This.Context, This.Env)),
+                          R);
+                  end loop;
+                  This.Context.Save_Predicates ([Eq_P, Num_P]);
+               end;
+            end if;
          else
             R := Symbol (V);
             for I in 1 .. This.Con_Pats.Last_Index loop
