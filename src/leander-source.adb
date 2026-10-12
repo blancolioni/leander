@@ -1,8 +1,8 @@
+with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Directories;
+with Ada.Strings.Hash;
 with Ada.Text_IO;
-
-with WL.String_Maps;
 
 package body Leander.Source is
 
@@ -11,7 +11,11 @@ package body Leander.Source is
        (Source_File_Id, String);
 
    package File_Name_Maps is
-     new WL.String_Maps (Source_File_Id);
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Source_File_Id,
+        Hash            => Ada.Strings.Hash,
+        Equivalent_Keys => "=");
 
    File_Name_Vector : File_Name_Vectors.Vector;
    File_Name_Map    : File_Name_Maps.Map;

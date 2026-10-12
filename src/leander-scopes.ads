@@ -1,6 +1,7 @@
 with Ada.Strings.Unbounded;
 
-private with WL.String_Maps;
+private with Ada.Containers.Indefinite_Hashed_Maps;
+private with Ada.Strings.Hash;
 
 with Leander.Environment;
 
@@ -56,8 +57,12 @@ private
    use Ada.Strings.Unbounded;
 
    package Module_Maps is
-     new WL.String_Maps (Leander.Environment.Reference,
-                         Leander.Environment."=");
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Leander.Environment.Reference,
+        Hash            => Ada.Strings.Hash,
+        Equivalent_Keys => "=",
+        "="             => Leander.Environment."=");
 
    type Instance is tagged limited
       record

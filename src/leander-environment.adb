@@ -1,4 +1,5 @@
 with Ada.Containers.Doubly_Linked_Lists;
+with Ada.Containers.Indefinite_Hashed_Maps;
 with Ada.Containers.Indefinite_Hashed_Sets;
 with Ada.Strings.Hash;
 with Ada.Text_IO;
@@ -15,8 +16,6 @@ with Leander.Environment.Prelude;
 with Leander.Errors;
 with Leander.Names.Maps;
 with Leander.Source;
-with WL.String_Maps;
-with WL.String_Sets;
 
 package body Leander.Environment is
 
@@ -25,18 +24,25 @@ package body Leander.Environment is
        (Element_Type        => String,
         Hash                => Ada.Strings.Hash,
         Equivalent_Elements => "=");
-   --  Haskell names are case-sensitive, and WL.String_Sets is not: to it
-   --  the function ioError and the type IOError are one name.  A module's
-   --  own names and its exports mix values with types and constructors,
-   --  so they need a set that tells them apart (#140).
+   --  Haskell names are case-sensitive: the function ioError and the type
+   --  IOError are two names.  So every set and map keyed by a name hashes
+   --  and compares it exactly (#140, #143).
 
    package Tycon_Maps is
-     new WL.String_Maps (Leander.Data_Types.Reference,
-                         Leander.Data_Types."=");
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Leander.Data_Types.Reference,
+        Hash            => Ada.Strings.Hash,
+        Equivalent_Keys => "=",
+        "="             => Leander.Data_Types."=");
 
    package Type_Class_Maps is
-     new WL.String_Maps (Leander.Core.Type_Classes.Reference,
-                         Leander.Core.Type_Classes."=");
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Leander.Core.Type_Classes.Reference,
+        Hash            => Ada.Strings.Hash,
+        Equivalent_Keys => "=",
+        "="             => Leander.Core.Type_Classes."=");
 
    type Con_Record is
       record
@@ -46,7 +52,11 @@ package body Leander.Environment is
       end record;
 
    package Con_Maps is
-     new WL.String_Maps (Con_Record);
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Con_Record,
+        Hash            => Ada.Strings.Hash,
+        Equivalent_Keys => "=");
 
    package Value_Maps is
      new Leander.Names.Maps
@@ -541,7 +551,7 @@ package body Leander.Environment is
                          This.Values.Get_Keys;
             Union    : constant Leander.Names.Name_Array :=
                          Declared & Forced;
-            Seen     : WL.String_Sets.Set;
+            Seen     : Name_Sets.Set;
             Result   : Leander.Names.Name_Array
                          (1 .. Declared'Length + Forced'Length);
             Count    : Natural := 0;
@@ -1291,7 +1301,7 @@ package body Leander.Environment is
                         Tree : Leander.Calculus.Tree :=
                                  Explicit.To_Calculus
                                    (Method_Context, This'Unchecked_Access);
-                        Seen : WL.String_Sets.Set;
+                        Seen : Name_Sets.Set;
                         Full_Predicates : Leander.Core.Predicates
                           .Predicate_Array
                             (1 .. Method_Context.Current_Predicates'Length
@@ -1414,7 +1424,7 @@ package body Leander.Environment is
       --  and, when visible, its bare one too; its instances are elaborated
       --  once (issue #122).
       declare
-         Seen : WL.String_Sets.Set;
+         Seen : Name_Sets.Set;
       begin
          for Class of This.Classes loop
             if not Seen.Contains (Core.To_String (Class.Id))
@@ -1797,7 +1807,7 @@ package body Leander.Environment is
                                Binding.To_Calculus
                                  (This.Context, This'Access,
                                   Tie_Recursion => not Binding.Is_Explicit);
-                     Seen : WL.String_Sets.Set;
+                     Seen : Name_Sets.Set;
                   begin
                      --  A binding takes one dictionary per predicate of its
                      --  scheme, in the scheme's order, which is what a use
