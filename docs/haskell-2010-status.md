@@ -88,7 +88,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Hindley-Milner inference | ✅ | Robinson unification, occurs check, Algorithm-W. |
 | Let-polymorphism / generalization | ✅ | |
 | Binding-group dependency analysis | 🟡 | Inference consumes pre-grouped SCCs from an upstream builder. |
-| Type signatures (top-level) | 🟡 | Used to seed inference, and a plain mismatch (`f :: Int -> Bool; f x = x`) is rejected. But the **inferred-vs-declared generality check is discarded**: `f :: a -> a; f x = x + 1` loads, and so does the Prelude's own `last`, whose body returns `[x]` against `[a] -> a`. |
+| Type signatures (top-level) | 🟡 | A type constructor a signature names must be in scope, though it may be declared later (#142). Used to seed inference, and a plain mismatch (`f :: Int -> Bool; f x = x`) is rejected. But the **inferred-vs-declared generality check is discarded**: `f :: a -> a; f x = x + 1` loads, and so does the Prelude's own `last`, whose body returns `[x]` against `[a] -> a`. |
 | Expression annotations `e :: T` | ❌ | No `ESig` form: `(1 :: Int)` fails with "expected ')'". |
 | Polymorphic recursion | 🟡 | Only for signature-annotated bindings. |
 | Monomorphism restriction | ❌ | Implicit bindings always generalized. |

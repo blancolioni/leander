@@ -150,6 +150,21 @@ identified by name, and the exporting module built its constructors'
 schemes against the unprefixed one, so emitting the key would leave
 `Shapes.Shape` refusing to unify with `Shape`.
 
+A type name has to name something in scope (#142). An unqualified one
+cannot be checked where it is written, because a signature may name a type
+declared further down. So `Parse_Atomic_Type` records the name and its
+location with the module's scope (`Scopes.Defer_Type`).
+`Check_Deferred_Types` reports each one with "unknown type constructor"
+once the declarations are all in, unless it is then one of:
+- a type or class in the module's environment, which holds only what its
+  imports made visible bare;
+- a synonym;
+- a machine primitive (`Core.Types.Is_Primitive_Name`: `Char`, `Int`,
+  `Integer`, `Float`, `Double`).
+
+A qualified name needs none of this: `Resolve` has already checked it
+against the module it names.
+
 ## Export lists
 
 A module with no export list exports everything it declares, which is not
