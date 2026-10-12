@@ -52,7 +52,12 @@ package body Leander.Scopes is
       Name    : out Ada.Strings.Unbounded.Unbounded_String;
       Message : out Ada.Strings.Unbounded.Unbounded_String)
    is
-      pragma Unreferenced (Space);
+      Exported_Space : constant Leander.Environment.Export_Space :=
+                         (case Space is
+                             when Value_Space | Constructor_Space =>
+                                Leander.Environment.Value_Names,
+                             when Type_Space | Class_Space =>
+                                Leander.Environment.Type_Names);
    begin
       Message := Null_Unbounded_String;
 
@@ -85,7 +90,7 @@ package body Leander.Scopes is
                      --  Is_Exported, not Declares: a name the module
                      --  keeps to itself is no more reachable behind a
                      --  qualifier than it is bare.
-                     if Env.Is_Exported (Simple) then
+                     if Env.Is_Exported (Simple, Exported_Space) then
                         Name :=
                           To_Unbounded_String (Env.Canonical_Name (Simple));
                      else

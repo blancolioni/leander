@@ -125,7 +125,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Feature | Status | Note |
 |---|---|---|
 | `module Name where` header | ✅ | Dotted names. The header names the module; the file base name must match its last component. |
-| Export lists | ✅ | `name`, `(op)`, `T(..)`, `T(C1,C2)`, `C(..)`, `C(m1,m2)`. A name kept back is unreachable even qualified. `module M` re-export rejected. |
+| Export lists | ✅ | `name`, `(op)`, `T(..)`, `T(C1,C2)`, `C(..)`, `C(m1,m2)`. A name kept back is unreachable even qualified. Types and values are separate namespaces, so `T` alone exports no constructor `T` (#140). `module M` re-export rejected. |
 | `import` declarations | ✅ | Resolved by name: `Data.List` is `Data/List.hs` under the importing file's directory, then each `-i` directory, then the installed module directory. Cycles are reported. |
 | Qualified / `hiding` / `as` / import lists | 🟡 | All enforced, including `T(..)` and `C(..)` expansion. Qualified operators work in a section (`(M.+)`) but not infix (`a M.+ b`). Fixities, like synonyms, are process-global, so `hiding` does not affect parsing. |
 | Multiple modules / separate compilation | 🟡 | Several modules load and link together, but their own top-level names still share one namespace inside a handle. Separate compilation is not there yet: `--precompile` writes a `.skix` for any module, but only the Prelude's is read back. |

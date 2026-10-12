@@ -1,18 +1,16 @@
 module Prelude
   ( Bool(..), Either(..), IO(..), IOError, Maybe(..), Ordering(..),
     Applicative(..), Bounded(..), Enum(..), Eq(..), Functor(..),
-    Monad(..), Num(..), Ord(..), Show(..), all, and, any, break, concat,
-    catch, const, curry, cycle, div, drop, dropWhile, elem, error, filter,
-    flip, foldl, foldl', foldl1, foldr, fst, head, id, init, ioError,
-    iterate,
-    last, length, lookup, map, mapM, mapM_, maximum, minimum, mod, not,
-    notElem, null, or, otherwise, print, product, putChar, putStr,
-    putStrLn, repeat, replicate, reverse, runIO, seq, sequence,
-    sequence_, showChar, showParen, showString, shows, snd, span,
-    subtract, sum, tail, take,
-    takeWhile, uncurry, unzip, userError, unzip3, zip, zip3, zipWith, zipWith3,
-    (!!), ($), ($!), (&&), (++), (.),
-    (||)
+    Monad(..), Num(..), Ord(..), Show(..), all, and, any, break, catch,
+    concat, const, curry, cycle, div, drop, dropWhile, either, elem,
+    error, filter, flip, foldl, foldl', foldl1, foldr, fst, head, id,
+    init, ioError, iterate, last, length, lookup, map, mapM, mapM_,
+    maximum, maybe, minimum, mod, not, notElem, null, or, otherwise,
+    print, product, putChar, putStr, putStrLn, repeat, replicate,
+    reverse, runIO, seq, sequence, sequence_, showChar, showParen,
+    showString, shows, snd, span, subtract, sum, tail, take, takeWhile,
+    uncurry, unzip, unzip3, userError, zip, zip3, zipWith, zipWith3,
+    (!!), ($), ($!), (&&), (++), (.), (||)
   ) where
 
 type String = [Char]
