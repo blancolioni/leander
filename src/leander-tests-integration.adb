@@ -1585,6 +1585,34 @@ package body Leander.Tests.Integration is
          "tsForward", "K",
          Handle);
 
+      --  Pattern bindings in let, where and at top level (issue #112)
+
+      Test_Module
+        ("module: pattern binding: a tuple",
+         Test_Root & "test_42_pattern_bindings.hs",
+         "pbTuple", "K",
+         Handle);
+      Test_Module
+        ("module: pattern binding: constructor and cons",
+         Test_Root & "test_42_pattern_bindings.hs",
+         "pbCons", "K",
+         Handle);
+      Test_Module
+        ("module: pattern binding: a recursive result",
+         Test_Root & "test_42_pattern_bindings.hs",
+         "pbRecursive", "K",
+         Handle);
+      Test_Module
+        ("module: pattern binding: an unused component is not forced",
+         Test_Root & "test_42_pattern_bindings.hs",
+         "pbLazily", "K",
+         Handle);
+      Test_Module
+        ("module: pattern binding: at top level",
+         Test_Root & "test_42_pattern_bindings.hs",
+         "pbTopLevel", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module

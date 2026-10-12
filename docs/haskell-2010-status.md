@@ -58,6 +58,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Nested patterns | ✅ | To any depth, in function equations, `case` and lambdas: `Just (x:_)`, `x:y:rest`, `[a,b]`, `(Just x, y)`, `Just 0`. The core still takes only variables as constructor arguments, so each equation with a nested pattern is matched one pattern at a time, an inner pattern being matched against a fresh variable once the outer match has bound it. |
 | Multiple equations | ✅ | Tried top to bottom, each falling through to the next when any of its patterns fails, including in a later column. Equations that can be told apart by their first column alone are dispatched in one step. |
 | Infix definitions | ✅ | `x <+> y = …`, operator or backticked name, with a whole pattern either side (`Just x <|> _`), and the Report's `( funlhs ) apat` form, `(f <+> g) x = …` (#132). |
+| Pattern bindings | ✅ | `(a, b) = e` in `let`, `where` and at top level, lazily: `e` is matched only when one of the variables is used, and then as a whole (#112). No guards on a pattern binding. |
 | As-patterns `@` | ❌ | `a@(Just x)` raises "invalid pattern". |
 | Irrefutable / lazy `~` | ❌ | `~` parses as an unbound variable. |
 | Guards (function & case) | 🟡 | Boolean guards with `,` conjunction, fall-through to the next equation, and `where` over guards all work. Pattern guards and `let` in guards ❌. |

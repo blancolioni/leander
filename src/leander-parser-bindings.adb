@@ -1,5 +1,6 @@
 with Ada.Strings.Unbounded;
 with Leander.Core;
+with Leander.Names;
 with Leander.Parser.Tokens;            use Leander.Parser.Tokens;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
@@ -21,6 +22,74 @@ package body Leander.Parser.Bindings is
    function Parse_LHS
      (Context : Parse_Context'Class)
       return Leander.Syntax.Bindings.Binding_LHS;
+   --  A binding's left-hand side: a name and its argument patterns, or,
+   --  for a pattern binding, no name and the pattern alone.
+
+   procedure Add_Pattern_Binding
+     (To   : Leander.Syntax.Bindings.Reference;
+      Loc  : Leander.Source.Source_Location;
+      Pat  : Leander.Syntax.Patterns.Reference;
+      Expr : Leander.Syntax.Expressions.Reference);
+
+   -------------------------
+   -- Add_Pattern_Binding --
+   -------------------------
+
+   procedure Add_Pattern_Binding
+     (To   : Leander.Syntax.Bindings.Reference;
+      Loc  : Leander.Source.Source_Location;
+      Pat  : Leander.Syntax.Patterns.Reference;
+      Expr : Leander.Syntax.Expressions.Reference)
+   is
+      --  "pat = e" is lazy (Haskell 2010, section 4.4.3.2): nothing is
+      --  matched until one of the variables pat binds is used.  So bind a
+      --  fresh v = e, and each variable x of pat to (\pat -> x) v, which
+      --  matches only when x is wanted, and fails there if it does not.
+      V : constant String := Leander.Names.To_String (Leander.Names.New_Name);
+
+      procedure Bind_Variables (P : Leander.Syntax.Patterns.Reference);
+
+      --------------------
+      -- Bind_Variables --
+      --------------------
+
+      procedure Bind_Variables (P : Leander.Syntax.Patterns.Reference) is
+      begin
+         if P.Is_Variable then
+            if P.Variable_Name /= "_" then
+               --  (\pat -> x) v, written as the parser writes a lambda that
+               --  has to match: let sel pat = x in sel v.  Monomorphic,
+               --  being synthesised for this one use.
+               declare
+                  Sel : constant String :=
+                          Leander.Names.To_String (Leander.Names.New_Name);
+                  Bs  : constant Leander.Syntax.Bindings.Reference :=
+                          Leander.Syntax.Bindings.Empty (Monomorphic => True);
+               begin
+                  Bs.Add_Binding
+                    (Loc, Sel, [Pat],
+                     Syntax.Expressions.Variable (Loc, P.Variable_Name));
+                  To.Add_Binding
+                    (Loc, P.Variable_Name, [],
+                     Syntax.Expressions.Let
+                       (Loc, Bs,
+                        Syntax.Expressions.Application
+                          (Loc,
+                           Syntax.Expressions.Variable (Loc, Sel),
+                           Syntax.Expressions.Variable (Loc, V))));
+               end;
+            end if;
+         elsif P.Is_Constructor then
+            for Arg of P.Constructor_Args loop
+               Bind_Variables (Arg);
+            end loop;
+         end if;
+      end Bind_Variables;
+
+   begin
+      To.Add_Binding (Loc, V, [], Expr);
+      Bind_Variables (Pat);
+   end Add_Pattern_Binding;
 
    -------------------
    -- Parse_Binding --
@@ -77,7 +146,9 @@ package body Leander.Parser.Bindings is
 
    begin
       if Tok = Tok_Comma or else Tok = Tok_Colon_Colon then
-         if Syntax.Bindings.Pats (LHS)'Length /= 0 then
+         if Syntax.Bindings.Name (LHS) = ""
+           or else Syntax.Bindings.Pats (LHS)'Length /= 0
+         then
             Error ("expect a single name in type Binding");
          end if;
          Parse_Type_Bindings ([Core.To_Varid (Syntax.Bindings.Name (LHS))]);
@@ -131,9 +202,18 @@ package body Leander.Parser.Bindings is
             --  The 'where' group wraps the whole guard chain, not each
             --  arm: its bindings are in scope in the guards as well as in
             --  the bodies.
-            To.Add_Binding
-              (Loc, LHS, Expr,
-               Ada.Strings.Unbounded.To_String (RHS.Fallthrough));
+            if Syntax.Bindings.Name (LHS) = "" then
+               if Ada.Strings.Unbounded.Length (RHS.Fallthrough) > 0 then
+                  Report (Loc, "a pattern binding cannot have guards");
+               else
+                  Add_Pattern_Binding
+                    (To, Loc, Syntax.Bindings.Pats (LHS) (1), Expr);
+               end if;
+            else
+               To.Add_Binding
+                 (Loc, LHS, Expr,
+                  Ada.Strings.Unbounded.To_String (RHS.Fallthrough));
+            end if;
          end;
       else
          Error ("expected '::', '=' or '|' at " & Tok'Image);
@@ -187,6 +267,13 @@ package body Leander.Parser.Bindings is
         (Pat : Syntax.Patterns.Reference;
          Loc : Leander.Source.Source_Location)
          return Leander.Syntax.Bindings.Binding_LHS;
+
+      function Pattern_LHS
+        (Pat : Syntax.Patterns.Reference)
+         return Leander.Syntax.Bindings.Binding_LHS
+      is (Syntax.Bindings.Create_Binding_LHS ("", [Pat]));
+      --  A pattern binding has no name of its own: Parse_Binding expands
+      --  it into one binding per variable the pattern binds.
       --  "pat varop pat", with Pat the start of the left operand.
 
       ---------------
@@ -200,7 +287,10 @@ package body Leander.Parser.Bindings is
       is
          Left : constant Syntax.Patterns.Reference := Parse_Operand (Pat, Loc);
       begin
-         if not At_Operator then
+         if Tok = Tok_Equal or else Tok = Tok_Vertical_Bar then
+            --  "pat = exp": a pattern binding (#112).
+            return Pattern_LHS (Left);
+         elsif not At_Operator then
             Error ("syntax error");
             raise Parse_Error;
          end if;
@@ -215,6 +305,12 @@ package body Leander.Parser.Bindings is
                                (Context),
                              Right_Loc);
          begin
+            if Name (Name'First) = ':' then
+               --  A constructor operator defines nothing: "x : xs = e"
+               --  is a pattern binding of a cons pattern.
+               return Pattern_LHS
+                 (Syntax.Patterns.Constructor (Loc, Name, [Left, Right]));
+            end if;
             return Syntax.Bindings.Create_Binding_LHS (Name, [Left, Right]);
          end;
       end Infix_LHS;

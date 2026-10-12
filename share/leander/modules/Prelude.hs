@@ -457,21 +457,18 @@ zipWith3 z as bs cs = case as of
                                     (c:cs) -> z a b c : zipWith3 z as bs cs
 
 -- unzip transforms a list of pairs into a pair of lists, and unzip3 a
--- list of triples into a triple of lists.  Each list is built lazily.
+-- list of triples into a triple of lists.  Each list is built lazily: the
+-- pattern binding in the where clause matches only when a list is used.
 
-unzip            :: [(a,b)] -> ([a],[b])
-unzip []         =  ([], [])
-unzip (p:ps)     =  (fst p : fst r, snd p : snd r)
-                    where r = unzip ps
+unzip                :: [(a,b)] -> ([a],[b])
+unzip []             =  ([], [])
+unzip ((a,b):ps)     =  (a:as, b:bs)
+                        where (as, bs) = unzip ps
 
-unzip3           :: [(a,b,c)] -> ([a],[b],[c])
-unzip3 []        =  ([], [], [])
-unzip3 (t:ts)    =  (fst3 t : fst3 r, snd3 t : snd3 r, thd3 t : thd3 r)
-                    where r = unzip3 ts
-
-fst3 (x,_,_)     =  x
-snd3 (_,y,_)     =  y
-thd3 (_,_,z)     =  z
+unzip3               :: [(a,b,c)] -> ([a],[b],[c])
+unzip3 []            =  ([], [], [])
+unzip3 ((a,b,c):ts)  =  (a:as, b:bs, c:cs)
+                        where (as, bs, cs) = unzip3 ts
 
 filter :: (a -> Bool) -> [a] -> [a]
 filter p [] = []
