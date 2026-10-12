@@ -149,6 +149,18 @@ difference. `Is_Exported` settles two cases before consulting any list:
 - **always** built-in syntax and the synthetic names dictionary passing
   resolves by string.
 
+An export list speaks about two namespaces, kept as two sets
+(`Export_Space`): types and classes (`Type_Names`), and values, data
+constructors and methods (`Value_Names`). A capitalised name standing alone
+in the list is a type or a class, and has to be one: a constructor can be
+named only inside its type's parentheses, as `T(C)` or `T(..)` (Haskell
+2010, section 5.2). So `data Box = Box Int` exported as `Box` gives an
+importer the type and not the constructor (#140). `Import` asks about a
+type constructor or class in `Type_Names`, and about a constructor or
+value in `Value_Names`. A qualified name asks in the namespace the parser
+read it in. The sets, and `Own`, are case-sensitive: `ioError` and
+`IOError` are different names. `WL.String_Sets` would not tell them apart.
+
 The list is applied *after* the declarations are parsed: `T(..)` cannot
 name its constructors, and an export naming something the module never
 declared cannot be spotted, any earlier. By then the parser sits on

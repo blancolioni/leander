@@ -17,6 +17,7 @@ package body Leander.Tests.Modules is
    procedure Test_Load_By_Name;
    procedure Test_Value_Names;
    procedure Test_Prelude_Exports;
+   procedure Test_Export_Spaces;
 
    function Ends_With (Value, Suffix : String) return Boolean
    is (Value'Length >= Suffix'Length
@@ -53,6 +54,7 @@ package body Leander.Tests.Modules is
       Test_Load_By_Name;
       Test_Value_Names;
       Test_Prelude_Exports;
+      Test_Export_Spaces;
    end Run_Tests;
 
    ------------------------
@@ -251,6 +253,7 @@ package body Leander.Tests.Modules is
 
    procedure Test_Prelude_Exports is
       use Ada.Strings.Unbounded;
+      use all type Leander.Environment.Export_Space;
 
       --  The Prelude withholds these deliberately. Everything else it
       --  declares has to be in its export list, so that the list is
@@ -280,6 +283,16 @@ package body Leander.Tests.Modules is
       function Is_Withheld (Name : String) return Boolean
       is (Ada.Strings.Fixed.Index (Withheld, "|" & Name & "|") > 0);
 
+      function Exported
+        (Name  : String;
+         Space : Leander.Environment.Export_Space)
+         return Boolean
+      is (Prelude.Is_Exported (Name, Space));
+
+      function Exported (Name : String) return Boolean
+      is (Exported (Name, Type_Names) or else Exported (Name, Value_Names));
+      --  Declared_Names does not say which namespace a name is in.
+
    begin
       for N of Prelude.Declared_Names loop
          declare
@@ -290,7 +303,7 @@ package body Leander.Tests.Modules is
             if Item'Length > 0
               and then Item (Item'First) /= '#'
               and then not Is_Withheld (Item)
-              and then not Prelude.Is_Exported (Item)
+              and then not Exported (Item)
             then
                Append (Missing, " " & Item);
             end if;
@@ -308,16 +321,88 @@ package body Leander.Tests.Modules is
       end if;
 
       Test ("prelude: a withheld name really is withheld",
-            not Prelude.Is_Exported ("mcons"));
+            not Exported ("mcons"));
       Test ("prelude: a primitive is never exported",
-            not Prelude.Is_Exported ("#primIntAdd"));
+            not Exported ("#primIntAdd"));
       Test ("prelude: built-in syntax is always exported",
-            Prelude.Is_Exported (":")
-            and then Prelude.Is_Exported ("[]"));
+            Exported (":", Value_Names)
+            and then Exported ("[]", Value_Names));
+
+      --  Types and values are exported separately (#140).
+      Test ("prelude: Maybe(..) exports the type and its constructors",
+            Exported ("Maybe", Type_Names)
+            and then Exported ("Just", Value_Names)
+            and then not Exported ("Maybe", Value_Names));
+      Test ("prelude: a type exported alone is a type",
+            Exported ("IOError", Type_Names));
+      Test ("prelude: a type exported alone is not a value",
+            not Exported ("IOError", Value_Names));
+
+      --  Names differ by case alone: ioError is exported, and that
+      --  says nothing about a value IOError.
+      Test ("prelude: export names are case-sensitive",
+            Exported ("ioError", Value_Names)
+            and then not Exported ("IOerror", Value_Names));
    exception
       when E : others =>
          Error ("prelude: exports",
                 Ada.Exceptions.Exception_Message (E));
    end Test_Prelude_Exports;
+
+   ------------------------
+   -- Test_Export_Spaces --
+   ------------------------
+
+   procedure Test_Export_Spaces is
+      use all type Leander.Environment.Element_Class;
+      use all type Leander.Environment.Export_Space;
+      Context : Leander.Parser.Parse_Context;
+      Prelude : constant Leander.Environment.Reference :=
+                  Context.Load_Module
+                    ("./share/leander/modules/Prelude.hs");
+   begin
+      Context.New_Environment (Prelude);
+
+      declare
+         Exporter : constant Leander.Environment.Reference :=
+                      Context.Load_Module_By_Name
+                        ("Abstract", From_Dir => Fixture_Dir);
+         Importer : constant Leander.Environment.Reference :=
+                      Context.Load_Module
+                        (Fixture_Dir & "/UseAbstract.hs");
+
+         function Has
+           (Name  : String;
+            Class : Leander.Environment.Element_Class)
+            return Boolean
+         is (Importer.Exists (Leander.Names.To_Leander_Name (Name), Class));
+
+      begin
+         --  A type and a constructor that share a name are exported one
+         --  at a time (#140). Box is exported as a type alone; Pack is
+         --  exported as a constructor of Wrap, and the type Pack is not.
+         Test ("module: a type exported alone is exported as a type",
+               Exporter.Is_Exported ("Box", Type_Names));
+         Test ("module: a type exported alone is not exported as a value",
+               not Exporter.Is_Exported ("Box", Value_Names));
+         Test ("module: a constructor exported is exported as a value",
+               Exporter.Is_Exported ("Pack", Value_Names));
+         Test ("module: a constructor exported is not exported as a type",
+               not Exporter.Is_Exported ("Pack", Type_Names));
+
+         Test ("module: an importer sees a type exported alone",
+               Has ("Box", Type_Constructor));
+         Test ("module: an importer does not see its constructor",
+               not Has ("Box", Constructor));
+         Test ("module: an importer sees an exported constructor",
+               Has ("Pack", Constructor));
+         Test ("module: an importer does not see the type of that name",
+               not Has ("Pack", Type_Constructor));
+      end;
+   exception
+      when E : others =>
+         Error ("module: export spaces",
+                Ada.Exceptions.Exception_Message (E));
+   end Test_Export_Spaces;
 
 end Leander.Tests.Modules;

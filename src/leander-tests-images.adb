@@ -9,6 +9,7 @@ with Leander.Core.Type_Classes.Serialize;
 with Leander.Core.Type_Synonyms;
 with Leander.Data_Types;
 with Leander.Data_Types.Serialize;
+with Leander.Environment;
 with Leander.Primitives;
 with Leander.Resources;
 
@@ -324,23 +325,29 @@ package body Leander.Tests.Images is
          --  Decoded by hand rather than through Try_Load_Image, which
          --  only ever runs for the Prelude: what is under test is the
          --  payload itself.
-         if BB.Get_U8 (Bytes, C) = 2 then
+         if BB.Get_U8 (Bytes, C) = 3 then
             Restricted := BB.Get_U8 (Bytes, C) = 0;
-            declare
-               Count : constant Natural := BB.Get_U32 (Bytes, C);
-            begin
-               for I in 1 .. Count loop
-                  declare
-                     N : constant String := BB.Get_String (Bytes, C);
-                  begin
-                     if N = "visible" then
-                        Has_Public := True;
-                     elsif N = "secret" then
-                        Has_Secret := True;
-                     end if;
-                  end;
-               end loop;
-            end;
+
+            --  The type names, then the value names (#140): "visible" is
+            --  a value, and has to be among the second.
+            for Space in Leander.Environment.Export_Space loop
+               declare
+                  use all type Leander.Environment.Export_Space;
+                  Count : constant Natural := BB.Get_U32 (Bytes, C);
+               begin
+                  for I in 1 .. Count loop
+                     declare
+                        N : constant String := BB.Get_String (Bytes, C);
+                     begin
+                        if N = "visible" then
+                           Has_Public := Space = Value_Names;
+                        elsif N = "secret" then
+                           Has_Secret := True;
+                        end if;
+                     end;
+                  end loop;
+               end;
+            end loop;
          end if;
       end On_Annotation;
 

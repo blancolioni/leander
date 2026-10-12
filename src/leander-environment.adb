@@ -1,4 +1,6 @@
 with Ada.Containers.Doubly_Linked_Lists;
+with Ada.Containers.Indefinite_Hashed_Sets;
+with Ada.Strings.Hash;
 with Ada.Text_IO;
 with Leander.Core.Alts;
 with Leander.Core.Binding_Groups.Inference;
@@ -17,6 +19,16 @@ with WL.String_Maps;
 with WL.String_Sets;
 
 package body Leander.Environment is
+
+   package Name_Sets is
+     new Ada.Containers.Indefinite_Hashed_Sets
+       (Element_Type        => String,
+        Hash                => Ada.Strings.Hash,
+        Equivalent_Elements => "=");
+   --  Haskell names are case-sensitive, and WL.String_Sets is not: to it
+   --  the function ioError and the type IOError are one name.  A module's
+   --  own names and its exports mix values with types and constructors,
+   --  so they need a set that tells them apart (#140).
 
    package Tycon_Maps is
      new WL.String_Maps (Leander.Data_Types.Reference,
@@ -58,6 +70,8 @@ package body Leander.Environment is
    package Instance_Maps is
      new Leander.Names.Maps (Instance_Lists.List, Instance_Lists."=");
 
+   type Export_Sets is array (Export_Space) of Name_Sets.Set;
+
    type Instance is new Abstraction with
       record
          Name                  : Leander.Names.Leander_Name;
@@ -70,8 +84,8 @@ package body Leander.Environment is
          Type_Env              : Leander.Core.Type_Env.Reference;
          Classes               : Type_Class_Maps.Map;
          Instances             : Instance_Maps.Map;
-         Own                   : WL.String_Sets.Set;
-         Exports               : WL.String_Sets.Set;
+         Own                   : Name_Sets.Set;
+         Exports               : Export_Sets;
          Exports_All           : Boolean := True;
       end record;
       --  Own holds the names this module declares itself, as opposed to
@@ -212,16 +226,19 @@ package body Leander.Environment is
    is (This.Exports_All);
 
    overriding function Export_Names
-     (This : Instance)
+     (This  : Instance;
+      Space : Export_Space)
       return Leander.Names.Name_Array;
 
    overriding procedure Add_Export
-     (This : in out Instance;
-      Name : String);
+     (This  : in out Instance;
+      Name  : String;
+      Space : Export_Space);
 
    overriding function Is_Exported
-     (This : Instance;
-      Name : String)
+     (This  : Instance;
+      Name  : String;
+      Space : Export_Space)
       return Boolean;
 
    overriding function Declared_Names
@@ -273,7 +290,7 @@ package body Leander.Environment is
      (This : Instance)
       return Leander.Names.Name_Array
    is
-      Result : Leander.Names.Name_Array (1 .. This.Own.Count);
+      Result : Leander.Names.Name_Array (1 .. Natural (This.Own.Length));
       Next   : Natural := 0;
 
       procedure Save (Item : String);
@@ -289,7 +306,9 @@ package body Leander.Environment is
       end Save;
 
    begin
-      This.Own.Iterate (Save'Access);
+      for Name of This.Own loop
+         Save (Name);
+      end loop;
       return Result (1 .. Next);
    end Declared_Names;
 
@@ -322,11 +341,12 @@ package body Leander.Environment is
    ----------------
 
    overriding procedure Add_Export
-     (This : in out Instance;
-      Name : String)
+     (This  : in out Instance;
+      Name  : String;
+      Space : Export_Space)
    is
    begin
-      This.Exports.Include (Name);
+      This.Exports (Space).Include (Name);
    end Add_Export;
 
    ------------------
@@ -334,10 +354,12 @@ package body Leander.Environment is
    ------------------
 
    overriding function Export_Names
-     (This : Instance)
+     (This  : Instance;
+      Space : Export_Space)
       return Leander.Names.Name_Array
    is
-      Result : Leander.Names.Name_Array (1 .. This.Exports.Count);
+      Result : Leander.Names.Name_Array
+                 (1 .. Natural (This.Exports (Space).Length));
       Next   : Natural := 0;
 
       procedure Save (Item : String);
@@ -353,7 +375,9 @@ package body Leander.Environment is
       end Save;
 
    begin
-      This.Exports.Iterate (Save'Access);
+      for Name of This.Exports (Space) loop
+         Save (Name);
+      end loop;
       return Result (1 .. Next);
    end Export_Names;
 
@@ -362,8 +386,9 @@ package body Leander.Environment is
    -----------------
 
    overriding function Is_Exported
-     (This : Instance;
-      Name : String)
+     (This  : Instance;
+      Name  : String;
+      Space : Export_Space)
       return Boolean
    is
    begin
@@ -384,7 +409,7 @@ package body Leander.Environment is
       elsif This.Exports_All then
          return This.Own.Contains (Name);
       else
-         return This.Exports.Contains (Name);
+         return This.Exports (Space).Contains (Name);
       end if;
    end Is_Exported;
 
@@ -1507,8 +1532,11 @@ package body Leander.Environment is
       Wholesale : constant Boolean :=
                     Mode = All_Names and then E.Exports_All;
 
-      function Exported (Name : String) return Boolean
-      is (not E.Own.Contains (Name) or else E.Is_Exported (Name));
+      function Exported
+        (Name  : String;
+         Space : Export_Space)
+         return Boolean
+      is (not E.Own.Contains (Name) or else E.Is_Exported (Name, Space));
       --  What the exporting module inherited is left alone: its export
       --  list speaks about its own declarations, and the copies it
       --  carries are already under whatever key they should have. That
@@ -1587,7 +1615,7 @@ package body Leander.Environment is
          declare
             Bare : constant String := Tycon_Maps.Key (Position);
          begin
-            if Exported (Bare) then
+            if Exported (Bare, Type_Names) then
                Add_Tycon (Canonical (Bare), Tycon_Maps.Element (Position));
                if Visible (Bare) then
                   Add_Tycon (Bare, Tycon_Maps.Element (Position));
@@ -1600,7 +1628,7 @@ package body Leander.Environment is
          declare
             Bare : constant String := Con_Maps.Key (Position);
          begin
-            if Exported (Bare) then
+            if Exported (Bare, Value_Names) then
                Add_Con (Canonical (Bare), Con_Maps.Element (Position));
                if Visible (Bare) then
                   Add_Con (Bare, Con_Maps.Element (Position));
@@ -1613,7 +1641,7 @@ package body Leander.Environment is
          declare
             Bare : constant String := Type_Class_Maps.Key (Position);
          begin
-            if Exported (Bare) then
+            if Exported (Bare, Type_Names) then
                Add_Class (Canonical (Bare), Type_Class_Maps.Element (Position));
                if Visible (Bare) then
                   Add_Class (Bare, Type_Class_Maps.Element (Position));
@@ -1655,7 +1683,7 @@ package body Leander.Environment is
             Bare : constant String := Leander.Names.To_String (Name);
             Key  : constant String := Canonical (Bare);
          begin
-            if not Exported (Bare) then
+            if not Exported (Bare, Value_Names) then
                return;
             end if;
 

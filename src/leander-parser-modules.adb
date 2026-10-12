@@ -64,20 +64,36 @@ package body Leander.Parser.Modules is
       Exports  : Leander.Syntax.Modules.Export_List;
       Location : Leander.Source.Source_Location)
    is
-      procedure Export (Item : String);
+      use all type Leander.Environment.Export_Space;
+
+      procedure Export
+        (Item  : String;
+         Space : Leander.Environment.Export_Space);
+
+      function Is_Type_Or_Class (Item : String) return Boolean
+      is (Env.Exists (Leander.Names.To_Leander_Name (Item),
+                      Leander.Environment.Type_Constructor)
+          or else Env.Exists (Leander.Names.To_Leander_Name (Item),
+                              Leander.Environment.Class_Binding));
 
       ------------
       -- Export --
       ------------
 
-      procedure Export (Item : String) is
+      procedure Export
+        (Item  : String;
+         Space : Leander.Environment.Export_Space)
+      is
       begin
-         if Env.Declares (Item) then
-            Env.Add_Export (Item);
+         if Env.Declares (Item)
+           and then (Space = Value_Names or else Is_Type_Or_Class (Item))
+         then
+            Env.Add_Export (Item, Space);
          else
             Report (Location,
-                    "module " & Env.Name & " exports " & Item
-                    & ", which it does not declare");
+                    "module " & Env.Name & " exports "
+                    & (if Space = Type_Names then "type " else "")
+                    & Item & ", which it does not declare");
          end if;
       end Export;
 
@@ -88,7 +104,13 @@ package body Leander.Parser.Modules is
          declare
             Item : constant String := Exports.Name (I);
          begin
-            Export (Item);
+            --  A capitalised name standing alone is a type or a class: a
+            --  constructor can only be named inside its type's
+            --  parentheses (Haskell 2010, section 5.2).
+            Export (Item,
+                    (if Item (Item'First) in 'A' .. 'Z'
+                     then Type_Names
+                     else Value_Names));
 
             if Exports.Exports_Constructors (I) then
                --  "T(..)" means a data type's constructors or a class's
@@ -103,7 +125,8 @@ package body Leander.Parser.Modules is
                   begin
                      for J in 1 .. DT.Constructor_Count loop
                         Export
-                          (Leander.Core.To_String (DT.Constructor_Name (J)));
+                          (Leander.Core.To_String (DT.Constructor_Name (J)),
+                           Value_Names);
                      end loop;
                   end;
                elsif Env.Exists (Leander.Names.To_Leander_Name (Item),
@@ -112,12 +135,12 @@ package body Leander.Parser.Modules is
                   for M of Env.Get_Class (Leander.Core.To_Conid (Item))
                              .Methods
                   loop
-                     Export (Leander.Core.To_String (M));
+                     Export (Leander.Core.To_String (M), Value_Names);
                   end loop;
                end if;
             else
                for J in 1 .. Exports.Constructor_Count (I) loop
-                  Export (Exports.Constructor (I, J));
+                  Export (Exports.Constructor (I, J), Value_Names);
                end loop;
             end if;
          end;
