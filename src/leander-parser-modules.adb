@@ -1,4 +1,6 @@
 with Leander.Core;
+with Leander.Core.Type_Synonyms;
+with Leander.Core.Types;
 with Leander.Data_Types;
 with Leander.Environment.Prelude;
 with Leander.Source;
@@ -38,6 +40,12 @@ package body Leander.Parser.Modules is
       Exports  : Leander.Syntax.Modules.Export_List;
       Location : Leander.Source.Source_Location);
 
+   procedure Check_Deferred_Types
+     (Context : Parse_Context'Class;
+      Env     : Leander.Environment.Reference);
+   --  Report each type name the module wrote that no type, class, synonym
+   --  or primitive answers to, now that every declaration is in (#142).
+
    procedure Parse_Import
      (Context  : in out Parse_Context'Class;
       Env      : Leander.Environment.Reference;
@@ -54,6 +62,43 @@ package body Leander.Parser.Modules is
    --  restricts is what may be written, so the decision it carries is
    --  passed to Environment.Import, which acts on it by choosing which
    --  keys a name arrives under rather than by removing anything.
+
+   --------------------------
+   -- Check_Deferred_Types --
+   --------------------------
+
+   procedure Check_Deferred_Types
+     (Context : Parse_Context'Class;
+      Env     : Leander.Environment.Reference)
+   is
+      procedure Check
+        (Name     : String;
+         Location : Leander.Source.Source_Location);
+
+      -----------
+      -- Check --
+      -----------
+
+      procedure Check
+        (Name     : String;
+         Location : Leander.Source.Source_Location)
+      is
+         Key : constant Leander.Names.Leander_Name :=
+                 Leander.Names.To_Leander_Name (Name);
+      begin
+         if not Env.Exists (Key, Leander.Environment.Type_Constructor)
+           and then not Env.Exists (Key, Leander.Environment.Class_Binding)
+           and then not Leander.Core.Type_Synonyms.Exists
+                          (Leander.Core.To_Conid (Name))
+           and then not Leander.Core.Types.Is_Primitive_Name (Name)
+         then
+            Report (Location, "unknown type constructor: " & Name);
+         end if;
+      end Check;
+
+   begin
+      Context.Scope.Iterate_Deferred_Types (Check'Access);
+   end Check_Deferred_Types;
 
    -------------------
    -- Apply_Exports --
@@ -377,6 +422,10 @@ package body Leander.Parser.Modules is
          when Parse_Error =>
             null;
       end;
+
+      --  So does checking the type names that were not in scope where
+      --  they were written: by now any declaration of them is in.
+      Check_Deferred_Types (Context, Env);
 
       --  Applying Exports belongs here, after the declarations exist:
       --  "T(..)" cannot name its constructors, and "exports a name this

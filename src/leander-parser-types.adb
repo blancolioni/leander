@@ -23,6 +23,7 @@ package body Leander.Parser.Types is
       return Leander.Syntax.Types.Reference
    is
       use Leander.Syntax.Types;
+      use type Leander.Scopes.Reference;
       Loc    : constant Leander.Source.Source_Location :=
                  Current_Source_Location;
 
@@ -112,6 +113,12 @@ package body Leander.Parser.Types is
                           (Context.Environment.Data_Type
                              (Core.To_Conid (Key)).Id));
                   else
+                     --  Not a type in scope, yet: it may be declared
+                     --  further down. A qualified name has been checked
+                     --  already, against the module it names.
+                     if Written = Simple and then Context.Scope /= null then
+                        Context.Scope.Defer_Type (Key, Loc);
+                     end if;
                      return Constructor (Loc, Key);
                   end if;
                end;
