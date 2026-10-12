@@ -159,7 +159,10 @@ importer the type and not the constructor (#140). `Import` asks about a
 type constructor or class in `Type_Names`, and about a constructor or
 value in `Value_Names`. A qualified name asks in the namespace the parser
 read it in. The sets, and `Own`, are case-sensitive: `ioError` and
-`IOError` are different names. `WL.String_Sets` would not tell them apart.
+`IOError` are different names. So is every map and set keyed by a name,
+module name or file name: each is an `Ada.Containers.Indefinite_Hashed_*`
+instance with `Ada.Strings.Hash` and `"="` (#143), rather than the
+case-insensitive `WL.String_Maps`.
 
 The list is applied *after* the declarations are parsed: `T(..)` cannot
 name its constructors, and an export naming something the module never

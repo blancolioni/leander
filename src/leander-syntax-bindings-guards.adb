@@ -1,11 +1,17 @@
+with Ada.Containers.Indefinite_Hashed_Sets;
 with Ada.Containers.Vectors;
+with Ada.Strings.Hash;
 with Ada.Strings.Unbounded;
 
 with Leander.Syntax.Expressions;
 
-with WL.String_Sets;
-
 package body Leander.Syntax.Bindings.Guards is
+
+   package String_Sets is
+     new Ada.Containers.Indefinite_Hashed_Sets
+       (Element_Type        => String,
+        Hash                => Ada.Strings.Hash,
+        Equivalent_Elements => "=");
 
    use Ada.Strings.Unbounded;
 
@@ -84,7 +90,7 @@ package body Leander.Syntax.Bindings.Guards is
                    and then (for some E of Equations =>
                                E.Pats (1).Is_Variable);
       Seen_Var : Boolean := False;
-      Keys     : WL.String_Sets.Set;
+      Keys     : String_Sets.Set;
       Rest     : Binding_Record_Lists.List;
    begin
       --  Transform.To_Alts dispatches on the first column once, giving each

@@ -1,5 +1,7 @@
+with Ada.Containers.Indefinite_Hashed_Sets;
 with Ada.Containers.Vectors;
 with Ada.Exceptions;
+with Ada.Strings.Hash;
 with Ada.Strings.Unbounded;
 
 with Leander.Allocator;
@@ -11,9 +13,13 @@ with Leander.Core.Type_Instances;
 with Leander.Core.Types;
 with Leander.Environment;
 
-with WL.String_Sets;
-
 package body Leander.Core.Expressions is
+
+   package String_Sets is
+     new Ada.Containers.Indefinite_Hashed_Sets
+       (Element_Type        => String,
+        Hash                => Ada.Strings.Hash,
+        Equivalent_Elements => "=");
 
    type Variable_Reference is access all Instance;
 
@@ -507,7 +513,7 @@ package body Leander.Core.Expressions is
       package Pending_Vectors is
         new Ada.Containers.Vectors (Positive, Pending);
 
-      Known  : WL.String_Sets.Set;
+      Known  : String_Sets.Set;
       Queue  : Pending_Vectors.Vector;
       Result : Selection_Vectors.Vector;
       Next   : Positive := 1;
