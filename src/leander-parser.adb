@@ -1,7 +1,10 @@
 with Ada.Characters.Handling;
+with Ada.Containers.Indefinite_Hashed_Maps;
+with Ada.Containers.Indefinite_Hashed_Sets;
 with Ada.Containers.Indefinite_Vectors;
 with Ada.Directories;
 with Ada.Strings.Fixed;
+with Ada.Strings.Hash;
 
 with Leander.Errors;
 with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
@@ -11,9 +14,6 @@ with Leander.Parser.Expressions;
 with Leander.Parser.Modules;
 
 with Leander.Resources;
-
-with WL.String_Maps;
-with WL.String_Sets;
 
 package body Leander.Parser is
 
@@ -28,9 +28,19 @@ package body Leander.Parser is
    is (Name (Name'First) in 'A' .. 'Z'
        or else Name (Name'First) = ':');
 
+   package Module_Name_Sets is
+     new Ada.Containers.Indefinite_Hashed_Sets
+       (Element_Type        => String,
+        Hash                => Ada.Strings.Hash,
+        Equivalent_Elements => "=");
+
    package Loaded_Module_Maps is
-     new WL.String_Maps (Leander.Environment.Reference,
-                         Leander.Environment."=");
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Leander.Environment.Reference,
+        Hash            => Ada.Strings.Hash,
+        Equivalent_Keys => "=",
+        "="             => Leander.Environment."=");
 
    package String_Vectors is
      new Ada.Containers.Indefinite_Vectors (Positive, String);
@@ -45,7 +55,7 @@ package body Leander.Parser is
    --  not have to reopen it just to read its header. A miss here is only
    --  ever a cost, never an error: the name map above still catches it.
 
-   Loading_Modules   : WL.String_Sets.Set;
+   Loading_Modules   : Module_Name_Sets.Set;
    --  Modules whose parse is in progress, so that a cycle is a diagnostic
    --  rather than a recursion down to the lexer's open-file limit.
 
@@ -280,12 +290,12 @@ package body Leander.Parser is
                --  lets through would leak this lexer frame. Loading one
                --  module from inside another compounds that, so close the
                --  frame we opened before propagating.
-               Loading_Modules.Delete (Module);
+               Loading_Modules.Exclude (Module);
                Close;
                raise;
          end;
 
-         Loading_Modules.Delete (Module);
+         Loading_Modules.Exclude (Module);
          Loaded_Module_Map.Insert (Module, Env);
          Loaded_Path_Map.Insert (Full, Env);
          Close;

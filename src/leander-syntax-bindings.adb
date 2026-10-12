@@ -1,3 +1,6 @@
+with Ada.Containers.Indefinite_Hashed_Maps;
+with Ada.Strings.Hash;
+
 with Leander.Core;
 with Leander.Core.Alts;
 with Leander.Core.Bindings.Dependencies;
@@ -6,8 +9,6 @@ with Leander.Core.Schemes;
 with Leander.Syntax.Bindings.Guards;
 with Leander.Syntax.Bindings.Transform;
 with Leander.Syntax.Expressions;
-
-with WL.String_Maps;
 
 package body Leander.Syntax.Bindings is
 
@@ -22,7 +23,11 @@ package body Leander.Syntax.Bindings is
       end record;
 
    package Binding_Maps is
-     new WL.String_Maps (Binding_Entry);
+     new Ada.Containers.Indefinite_Hashed_Maps
+       (Key_Type        => String,
+        Element_Type    => Binding_Entry,
+        Hash            => Ada.Strings.Hash,
+        Equivalent_Keys => "=");
 
    function To_Binding_Group
      (Bindings      : Name_Binding_Lists.List;

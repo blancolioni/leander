@@ -1532,6 +1532,24 @@ package body Leander.Tests.Integration is
          "ieDo", "K",
          Handle);
 
+      --  Names that differ only in case are different names (issue #143)
+
+      Test_Module
+        ("module: case-sensitive values",
+         Test_Root & "test_39_case.hs",
+         "csValues", "K",
+         Handle);
+      Test_Module
+        ("module: case-sensitive types and constructors",
+         Test_Root & "test_39_case.hs",
+         "csTypes", "K",
+         Handle);
+      Test_Module
+        ("module: case-sensitive classes and methods",
+         Test_Root & "test_39_case.hs",
+         "csClasses", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
