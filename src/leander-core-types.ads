@@ -89,6 +89,11 @@ package Leander.Core.Types is
    function T_Error   return Reference;
    function T_Unit    return Reference;
    function T_Char    return Reference;
+   function Is_Primitive_Name (Name : String) return Boolean
+   is (Name in "Char" | "Int" | "Integer" | "Float" | "Double");
+   --  A type the machine provides, as opposed to one a data declaration
+   --  makes: it is in scope everywhere, and no module declares it.
+
    function T_Int     return Reference;
    function T_Integer return Reference;
    function T_Float   return Reference;

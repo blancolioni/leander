@@ -17,6 +17,22 @@ package body Leander.Scopes is
       end if;
    end Add_Module;
 
+   ----------------
+   -- Defer_Type --
+   ----------------
+
+   procedure Defer_Type
+     (This     : in out Instance;
+      Name     : String;
+      Location : Leander.Source.Source_Location)
+   is
+   begin
+      This.Deferred_Types.Append
+        (Deferred_Type'(Length   => Name'Length,
+                        Location => Location,
+                        Name     => Name));
+   end Defer_Type;
+
    ------------------
    -- Is_Qualified --
    ------------------
@@ -31,6 +47,22 @@ package body Leander.Scopes is
       return Dot > Written'First
         and then Written (Written'First) in 'A' .. 'Z';
    end Is_Qualified;
+
+   ----------------------------
+   -- Iterate_Deferred_Types --
+   ----------------------------
+
+   procedure Iterate_Deferred_Types
+     (This    : Instance;
+      Process : not null access
+        procedure (Name     : String;
+                   Location : Leander.Source.Source_Location))
+   is
+   begin
+      for Item of This.Deferred_Types loop
+         Process (Item.Name, Item.Location);
+      end loop;
+   end Iterate_Deferred_Types;
 
    ---------------
    -- New_Scope --

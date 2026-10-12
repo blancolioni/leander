@@ -1550,6 +1550,14 @@ package body Leander.Tests.Integration is
          "csClasses", "K",
          Handle);
 
+      --  A type may be named before it is declared (issue #142)
+
+      Test_Module
+        ("module: types and synonyms named before their declarations",
+         Test_Root & "test_40_type_scope.hs",
+         "tsForward", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
@@ -1836,6 +1844,11 @@ package body Leander.Tests.Integration is
          Modules_Root & "UsePairHiding.hs",
          "uphValue", "K",
          Handle);
+      Test_Module
+        ("module: a hidden type is still reachable qualified",
+         Modules_Root & "UsePairQualifiedType.hs",
+         "upqValue", "K",
+         Handle);
 
       Test_Main
         ("--main: a module that imports another",
@@ -1949,6 +1962,28 @@ package body Leander.Tests.Integration is
       Test_Module_Fails
         ("module: hiding a type hides a constructor of that name",
          Modules_Root & "bad/BadHidingCon.hs");
+
+      --  A type name has to name a type in scope (issue #142)
+
+      Test_Module_Fails
+        ("module: an unknown type in a signature is rejected",
+         Modules_Root & "bad/BadUnknownType.hs");
+
+      Test_Module_Fails
+        ("module: an unknown type in a constructor field is rejected",
+         Modules_Root & "bad/BadUnknownField.hs");
+
+      Test_Module_Fails
+        ("module: an unknown type in an instance head is rejected",
+         Modules_Root & "bad/BadUnknownInstance.hs");
+
+      Test_Module_Fails
+        ("module: a type the module does not export is rejected",
+         Modules_Root & "bad/BadHiddenType.hs");
+
+      Test_Module_Fails
+        ("module: a type an import hides is rejected",
+         Modules_Root & "bad/BadHidingType.hs");
 
       Test_Module_Fails
         ("module: an import after other declarations is rejected",

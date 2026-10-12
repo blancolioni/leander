@@ -1,9 +1,11 @@
 with Ada.Strings.Unbounded;
 
 private with Ada.Containers.Indefinite_Hashed_Maps;
+private with Ada.Containers.Indefinite_Vectors;
 private with Ada.Strings.Hash;
 
 with Leander.Environment;
+with Leander.Source;
 
 package Leander.Scopes is
 
@@ -52,6 +54,21 @@ package Leander.Scopes is
    --  name carries its module, the scope table cannot tell a name this
    --  module declares from one a lambda binds, so it does not try.
 
+   procedure Defer_Type
+     (This     : in out Instance;
+      Name     : String;
+      Location : Leander.Source.Source_Location);
+   --  Name was written as a type constructor where no type of that name
+   --  was in scope yet. It may still be declared further down the module,
+   --  so it is checked once the module's declarations are all in, rather
+   --  than here (#142).
+
+   procedure Iterate_Deferred_Types
+     (This    : Instance;
+      Process : not null access
+        procedure (Name     : String;
+                   Location : Leander.Source.Source_Location));
+
 private
 
    use Ada.Strings.Unbounded;
@@ -64,9 +81,19 @@ private
         Equivalent_Keys => "=",
         "="             => Leander.Environment."=");
 
+   type Deferred_Type (Length : Natural) is
+      record
+         Location : Leander.Source.Source_Location;
+         Name     : String (1 .. Length);
+      end record;
+
+   package Deferred_Type_Vectors is
+     new Ada.Containers.Indefinite_Vectors (Positive, Deferred_Type);
+
    type Instance is tagged limited
       record
-         Modules : Module_Maps.Map;
+         Modules        : Module_Maps.Map;
+         Deferred_Types : Deferred_Type_Vectors.Vector;
       end record;
 
 end Leander.Scopes;
