@@ -1,4 +1,5 @@
 private with Ada.Containers.Indefinite_Vectors;
+private with Ada.Containers.Vectors;
 private with Ada.Strings.Unbounded;
 
 package Leander.Syntax.Modules is
@@ -88,8 +89,13 @@ package Leander.Syntax.Modules is
       Hiding : Boolean);
 
    procedure Add_Name
-     (This : in out Import_Declaration'Class;
-      Name : String);
+     (This        : in out Import_Declaration'Class;
+      Name        : String;
+      Subordinate : Boolean := False);
+   --  Subordinate for a name written inside a type's or class's
+   --  parentheses -- the constructors of "T(C1, C2)" or the methods of
+   --  "C(m1)" -- which is always a value. A name standing alone may be a
+   --  type or a class (Haskell 2010, section 5.3.1).
 
    procedure Add_Wildcard_Name
      (This : in out Import_Declaration'Class;
@@ -125,6 +131,12 @@ package Leander.Syntax.Modules is
       return String
      with Pre => Index <= This.Name_Count;
 
+   function Is_Subordinate
+     (This  : Import_Declaration'Class;
+      Index : Positive)
+      return Boolean
+     with Pre => Index <= This.Name_Count;
+
    function Is_Selective (This : Import_Declaration'Class) return Boolean;
    --  True when this import restricts or renames what it brings into
    --  scope, rather than bringing the whole module in unqualified. That
@@ -146,6 +158,9 @@ private
          Constructors      : String_Vectors.Vector;
       end record;
 
+   package Boolean_Vectors is
+     new Ada.Containers.Vectors (Positive, Boolean);
+
    package Export_Entry_Vectors is
      new Ada.Containers.Indefinite_Vectors (Positive, Export_Entry);
 
@@ -163,6 +178,7 @@ private
          Name_List   : Boolean := False;
          Hiding      : Boolean := False;
          Names       : String_Vectors.Vector;
+         Subordinate : Boolean_Vectors.Vector;
          Wildcards   : String_Vectors.Vector;
       end record;
 

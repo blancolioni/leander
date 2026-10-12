@@ -44,11 +44,13 @@ package body Leander.Syntax.Modules is
    --------------
 
    procedure Add_Name
-     (This : in out Import_Declaration'Class;
-      Name : String)
+     (This        : in out Import_Declaration'Class;
+      Name        : String;
+      Subordinate : Boolean := False)
    is
    begin
       This.Names.Append (Name);
+      This.Subordinate.Append (Subordinate);
    end Add_Name;
 
    -----------------------
@@ -181,6 +183,16 @@ package body Leander.Syntax.Modules is
    is (This.Qualified
        or else This.Name_List
        or else This.Alias_Name /= Null_Unbounded_String);
+
+   --------------------
+   -- Is_Subordinate --
+   --------------------
+
+   function Is_Subordinate
+     (This  : Import_Declaration'Class;
+      Index : Positive)
+      return Boolean
+   is (This.Subordinate.Element (Index));
 
    -----------------
    -- Module_Name --

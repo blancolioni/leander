@@ -399,6 +399,36 @@ package body Leander.Tests.Modules is
          Test ("module: an importer does not see the type of that name",
                not Has ("Pack", Type_Constructor));
       end;
+
+      --  And an import list keeps them apart (#144).
+      declare
+         Type_Only : constant Leander.Environment.Reference :=
+                       Context.Load_Module
+                         (Fixture_Dir & "/UsePairType.hs");
+         Hiding    : constant Leander.Environment.Reference :=
+                       Context.Load_Module
+                         (Fixture_Dir & "/UsePairHiding.hs");
+
+         function Has
+           (Env   : Leander.Environment.Reference;
+            Name  : String;
+            Class : Leander.Environment.Element_Class)
+            return Boolean
+         is (Env.Exists (Leander.Names.To_Leander_Name (Name), Class));
+
+      begin
+         Test ("module: importing a type alone brings in the type",
+               Has (Type_Only, "Pair", Type_Constructor));
+         Test ("module: importing a type alone leaves its constructor out",
+               not Has (Type_Only, "Pair", Constructor));
+         Test ("module: hiding a type hides the type",
+               not Has (Hiding, "Pair", Type_Constructor));
+         Test ("module: hiding a type hides a constructor of its name",
+               not Has (Hiding, "Pair", Constructor));
+         Test ("module: either way, the constructor is there qualified",
+               Has (Type_Only, "Pair.Pair", Constructor)
+               and then Has (Hiding, "Pair.Pair", Constructor));
+      end;
    exception
       when E : others =>
          Error ("module: export spaces",

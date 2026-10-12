@@ -1823,6 +1823,20 @@ package body Leander.Tests.Integration is
          "uaPacked", "7",
          Handle);
 
+      --  An import list keeps types and values apart too (issue #144):
+      --  Pair exports a type and a constructor that are both Pair.
+      Test_Module
+        ("module: importing a type alone still reaches its constructor "
+         & "qualified",
+         Modules_Root & "UsePairType.hs",
+         "uptValue", "K",
+         Handle);
+      Test_Module
+        ("module: hiding a type leaves the rest of the module",
+         Modules_Root & "UsePairHiding.hs",
+         "uphValue", "K",
+         Handle);
+
       Test_Main
         ("--main: a module that imports another",
          Modules_Root & "UseShapes.hs");
@@ -1927,6 +1941,14 @@ package body Leander.Tests.Integration is
       Test_Module_Fails
         ("module: exporting a constructor as though a type is rejected",
          Modules_Root & "bad/BadExportCon.hs");
+
+      Test_Module_Fails
+        ("module: importing a type alone does not import its constructor",
+         Modules_Root & "bad/BadImportTypeOnly.hs");
+
+      Test_Module_Fails
+        ("module: hiding a type hides a constructor of that name",
+         Modules_Root & "bad/BadHidingCon.hs");
 
       Test_Module_Fails
         ("module: an import after other declarations is rejected",
