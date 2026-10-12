@@ -24,7 +24,9 @@ jobs:
       uses: alire-project/setup-alire@v2
       with:
         version: 2.1.0
-        toolchain: gnat_native^15 gprbuild
+        # gprbuild 26.0.1's archive no longer matches the checksum in the
+        # Alire index (release integrity test failed); pin 25 until it does.
+        toolchain: gnat_native^15 gprbuild^25
 
     - name: Show toolchain
       run: alr toolchain
