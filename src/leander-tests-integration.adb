@@ -1791,6 +1791,20 @@ package body Leander.Tests.Integration is
          "throughExport", "42",
          Handle);
 
+      --  A type and a value of the same name are exported separately
+      --  (issue #140): Abstract exports the type Box without its
+      --  constructor Box, and the constructor Pack without a type Pack.
+      Test_Module
+        ("module: a type exported alone is usable through its functions",
+         Modules_Root & "UseAbstract.hs",
+         "uaValue", "42",
+         Handle);
+      Test_Module
+        ("module: a constructor exported under a type's name is usable",
+         Modules_Root & "UseAbstract.hs",
+         "uaPacked", "7",
+         Handle);
+
       Test_Main
         ("--main: a module that imports another",
          Modules_Root & "UseShapes.hs");
@@ -1883,6 +1897,18 @@ package body Leander.Tests.Integration is
       Test_Module_Fails
         ("module: naming a non-exported class method is rejected",
          Modules_Root & "bad/BadClassMethod.hs");
+
+      Test_Module_Fails
+        ("module: the constructor of a type exported alone is rejected",
+         Modules_Root & "bad/BadAbstractCon.hs");
+
+      Test_Module_Fails
+        ("module: that constructor is rejected behind a qualifier too",
+         Modules_Root & "bad/BadAbstractQualified.hs");
+
+      Test_Module_Fails
+        ("module: exporting a constructor as though a type is rejected",
+         Modules_Root & "bad/BadExportCon.hs");
 
       Test_Module_Fails
         ("module: an import after other declarations is rejected",

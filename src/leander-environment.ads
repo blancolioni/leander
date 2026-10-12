@@ -26,6 +26,13 @@ package Leander.Environment is
      (Type_Constructor, Constructor, Variable_Binding,
       Class_Binding);
 
+   type Export_Space is (Type_Names, Value_Names);
+   --  An export list speaks about two namespaces (Haskell 2010, section
+   --  5.2): type constructors and classes, and values -- variables, data
+   --  constructors and methods.  A type and a constructor may share a
+   --  name, and exporting one says nothing about the other: "T" in a list
+   --  is the type alone, and its constructors need "T(..)" (#140).
+
    function Name (This : Abstraction) return String is abstract;
 
    function Exists
@@ -168,8 +175,9 @@ package Leander.Environment is
 
    procedure Start_Exports (This : in out Abstraction) is abstract;
    procedure Add_Export
-     (This : in out Abstraction;
-      Name : String)
+     (This  : in out Abstraction;
+      Name  : String;
+      Space : Export_Space)
       is abstract;
    --  Record that this module has an export list, and add one name to it.
    --  A module that never calls Start_Exports exports everything it
@@ -179,11 +187,12 @@ package Leander.Environment is
    --  module never declared cannot be spotted, any earlier.
 
    function Is_Exported
-     (This : Abstraction;
-      Name : String)
+     (This  : Abstraction;
+      Name  : String;
+      Space : Export_Space)
       return Boolean
       is abstract;
-   --  Whether another module may see Name. Always False for a machine
+   --  Whether another module may see Name in Space. Always False for a machine
    --  primitive, which is an FFI symbol rather than a Haskell entity, and
    --  always True for built-in syntax and for the synthetic names that
    --  dictionary passing resolves by string.
@@ -195,11 +204,13 @@ package Leander.Environment is
    --  nothing.
 
    function Export_Names
-     (This : Abstraction)
+     (This  : Abstraction;
+      Space : Export_Space)
       return Leander.Names.Name_Array
       is abstract;
-   --  The names the module's export list mentions, once expanded. Empty
-   --  when Exports_Everything, which is not the same as an empty list.
+   --  The names in Space the module's export list mentions, once
+   --  expanded. Empty when Exports_Everything, which is not the same as
+   --  an empty list.
 
    function Canonical_Name
      (This : Abstraction;

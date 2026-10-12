@@ -55,9 +55,12 @@ package body Leander.Handles is
    Synonym_Prefix  : constant String := "synonym:";
    Meta_Prefix     : constant String := "__leander_meta__:";
 
-   Meta_Version : constant := 2;
+   Meta_Version : constant := 3;
    --  1: a bare version byte, meaning only "this image covers everything".
    --  2: that byte followed by the module's export state.
+   --  3: as 2, with the export list split into its type names and its
+   --     value names (#140). A version 2 list cannot say which a name
+   --     was, so such an image falls back to the source.
    --
    --  The export state extends this payload rather than taking a prefix of
    --  its own on purpose. A reader that predates it ignores the bytes
@@ -503,15 +506,20 @@ package body Leander.Handles is
       begin
          if Export_Name = Meta_Name then
             declare
-               Exported : constant Leander.Names.Name_Array :=
-                            This.Env.Export_Names;
-               W        : Leander.Byte_Buffers.Writer;
+               W : Leander.Byte_Buffers.Writer;
             begin
                W.Put_U8 (Meta_Version);
                W.Put_U8 (Boolean'Pos (This.Env.Exports_Everything));
-               W.Put_U32 (Exported'Length);
-               for N of Exported loop
-                  W.Put_String (Leander.Names.To_String (N));
+               for Space in Leander.Environment.Export_Space loop
+                  declare
+                     Exported : constant Leander.Names.Name_Array :=
+                                  This.Env.Export_Names (Space);
+                  begin
+                     W.Put_U32 (Exported'Length);
+                     for N of Exported loop
+                        W.Put_String (Leander.Names.To_String (N));
+                     end loop;
+                  end;
                end loop;
                return W.To_Bytes;
             end;
@@ -1291,15 +1299,18 @@ package body Leander.Handles is
                      when Meta_Version =>
                         Full_Coverage := True;
                         if BB.Get_U8 (Bytes, C) = 0 then
-                           declare
-                              Count : constant Natural :=
-                                        BB.Get_U32 (Bytes, C);
-                           begin
-                              Env.Start_Exports;
-                              for I in 1 .. Count loop
-                                 Env.Add_Export (BB.Get_String (Bytes, C));
-                              end loop;
-                           end;
+                           Env.Start_Exports;
+                           for Space in Leander.Environment.Export_Space loop
+                              declare
+                                 Count : constant Natural :=
+                                           BB.Get_U32 (Bytes, C);
+                              begin
+                                 for I in 1 .. Count loop
+                                    Env.Add_Export
+                                      (BB.Get_String (Bytes, C), Space);
+                                 end loop;
+                              end;
+                           end loop;
                         end if;
                      when others =>
                         --  A format from the future. Leaving Full_Coverage
