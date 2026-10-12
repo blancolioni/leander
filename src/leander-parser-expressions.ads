@@ -39,6 +39,10 @@ private package Leander.Parser.Expressions is
    --  continue this right-hand side.  Nothing else can begin with '|' here,
    --  so being greedy is safe.
 
+   function Parse_Atomic_Expression
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Expressions.Reference;
+
    function Parse_Atomic_Pattern
      (Context : Parse_Context'Class)
       return Leander.Syntax.Patterns.Reference;

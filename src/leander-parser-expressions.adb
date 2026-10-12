@@ -45,10 +45,6 @@ package body Leander.Parser.Expressions is
 
    function At_Atomic_Expression return Boolean;
 
-   function Parse_Atomic_Expression
-     (Context : Parse_Context'Class)
-      return Leander.Syntax.Expressions.Reference;
-
    function Parse_Left_Expression
      (Context : Parse_Context'Class)
       return Leander.Syntax.Expressions.Reference;

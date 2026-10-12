@@ -12,6 +12,8 @@ private package Leander.Syntax.Expressions.Variables is
      (This : Instance)
       return Leander.Core.Expressions.Reference;
 
+   function Variable_Name (This : Instance) return String;
+
 private
 
    type Instance is new Parent with
@@ -42,5 +44,8 @@ private
       Name     : String)
       return Reference
    is (Allocate (Instance'(Location, Leander.Core.To_Varid (Name))));
+
+   function Variable_Name (This : Instance) return String
+   is (Core.To_String (This.Name));
 
 end Leander.Syntax.Expressions.Variables;
