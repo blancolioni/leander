@@ -115,12 +115,16 @@ package Leander.Environment is
      (This    : in out Abstraction;
       Env     : not null access Abstraction'Class;
       Mode    : Import_Visibility := All_Names;
-      Names   : Leander.Names.Name_Array := [])
+      Types   : Leander.Names.Name_Array := [];
+      Values  : Leander.Names.Name_Array := [])
    is abstract;
    --  Bring Env into scope. Env's own declarations always arrive under
    --  their canonical names, so that they can be reached with a qualifier
    --  whatever the import says, and additionally under their bare names
-   --  when Mode and Names make them visible unqualified. Nothing is ever
+   --  when Mode and the list make them visible unqualified. The list is
+   --  in two parts, as an export list is: Types speaks about Env's type
+   --  constructors and classes, and Values about its values, constructors
+   --  and methods (#144). Nothing is ever
    --  removed: a name this import does not make visible is simply never
    --  inserted bare, which is what makes writing it bare fail.
 

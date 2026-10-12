@@ -124,7 +124,8 @@ package body Leander.Environment is
      (This    : in out Instance;
       Env     : not null access Abstraction'Class;
       Mode    : Import_Visibility := All_Names;
-      Names   : Leander.Names.Name_Array := []);
+      Types   : Leander.Names.Name_Array := [];
+      Values  : Leander.Names.Name_Array := []);
 
    overriding procedure Bindings
      (This   : in out Instance;
@@ -1527,11 +1528,15 @@ package body Leander.Environment is
      (This    : in out Instance;
       Env     : not null access Abstraction'Class;
       Mode    : Import_Visibility := All_Names;
-      Names   : Leander.Names.Name_Array := [])
+      Types   : Leander.Names.Name_Array := [];
+      Values  : Leander.Names.Name_Array := [])
    is
       E : Instance'Class renames Instance'Class (Env.all);
 
-      function Visible (Name : String) return Boolean;
+      function Visible
+        (Name  : String;
+         Space : Export_Space)
+         return Boolean;
       function Canonical (Name : String) return String
       is (if E.Own.Contains (Name) then E.Canonical_Name (Name) else Name);
 
@@ -1554,7 +1559,11 @@ package body Leander.Environment is
       --  a known looseness, harmless while every module imports the
       --  Prelude for itself.
 
-      function Visible (Name : String) return Boolean is
+      function Visible
+        (Name  : String;
+         Space : Export_Space)
+         return Boolean
+      is
          Listed : Boolean := False;
       begin
          if not E.Own.Contains (Name) then
@@ -1570,11 +1579,16 @@ package body Leander.Environment is
             when No_Names =>
                return False;
             when Only_Names | Except_Names =>
-               for N of Names loop
-                  if Leander.Names.To_String (N) = Name then
-                     Listed := True;
-                  end if;
-               end loop;
+               declare
+                  List : constant Leander.Names.Name_Array :=
+                           (if Space = Type_Names then Types else Values);
+               begin
+                  for N of List loop
+                     if Leander.Names.To_String (N) = Name then
+                        Listed := True;
+                     end if;
+                  end loop;
+               end;
                return (if Mode = Only_Names then Listed else not Listed);
          end case;
       end Visible;
@@ -1627,7 +1641,7 @@ package body Leander.Environment is
          begin
             if Exported (Bare, Type_Names) then
                Add_Tycon (Canonical (Bare), Tycon_Maps.Element (Position));
-               if Visible (Bare) then
+               if Visible (Bare, Type_Names) then
                   Add_Tycon (Bare, Tycon_Maps.Element (Position));
                end if;
             end if;
@@ -1640,7 +1654,7 @@ package body Leander.Environment is
          begin
             if Exported (Bare, Value_Names) then
                Add_Con (Canonical (Bare), Con_Maps.Element (Position));
-               if Visible (Bare) then
+               if Visible (Bare, Value_Names) then
                   Add_Con (Bare, Con_Maps.Element (Position));
                end if;
             end if;
@@ -1653,7 +1667,7 @@ package body Leander.Environment is
          begin
             if Exported (Bare, Type_Names) then
                Add_Class (Canonical (Bare), Type_Class_Maps.Element (Position));
-               if Visible (Bare) then
+               if Visible (Bare, Type_Names) then
                   Add_Class (Bare, Type_Class_Maps.Element (Position));
                end if;
             end if;
@@ -1702,7 +1716,7 @@ package body Leander.Environment is
                Any := True;
             end if;
 
-            if not Wholesale and then Visible (Bare) then
+            if not Wholesale and then Visible (Bare, Value_Names) then
                Imported.Insert (Bare, Scheme);
                Any := True;
             end if;

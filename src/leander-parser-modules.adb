@@ -172,7 +172,9 @@ package body Leander.Parser.Modules is
                 then Leander.Environment.Except_Names
                 else Leander.Environment.Only_Names);
 
-      function Visible_Names return Leander.Names.Name_Array;
+      function Visible_Names
+        (Space : Leander.Environment.Export_Space)
+         return Leander.Names.Name_Array;
       function Sub_Names_Of (Name : String)
         return Leander.Names.Name_Array;
       function Wildcard_Constructors (From : Positive)
@@ -249,18 +251,47 @@ package body Leander.Parser.Modules is
       -- Visible_Names --
       -------------------
 
-      function Visible_Names return Leander.Names.Name_Array is
+      function Visible_Names
+        (Space : Leander.Environment.Export_Space)
+         return Leander.Names.Name_Array
+      is
+         use all type Leander.Environment.Export_Space;
          use type Leander.Names.Name_Array;
          Written : Leander.Names.Name_Array (1 .. Import.Name_Count);
+         Count   : Natural := 0;
       begin
-         for I in Written'Range loop
-            Written (I) := Leander.Names.To_Leander_Name (Import.Name (I));
+         for I in 1 .. Import.Name_Count loop
+            declare
+               Item    : constant String := Import.Name (I);
+               Alone   : constant Boolean := not Import.Is_Subordinate (I);
+               Capital : constant Boolean := Item (Item'First) in 'A' .. 'Z';
+
+               --  A capitalised name alone is a type or a class, and
+               --  everything else a value (Haskell 2010, section 5.3.1).
+               --  Except that hiding C hides a data constructor C as well:
+               --  "hiding (C)" could not name it any other way.
+               In_Space : constant Boolean :=
+                            (case Space is
+                                when Type_Names  => Alone and then Capital,
+                                when Value_Names =>
+                                   not (Alone and then Capital)
+                                   or else Import.Is_Hiding);
+            begin
+               if In_Space then
+                  Count := Count + 1;
+                  Written (Count) := Leander.Names.To_Leander_Name (Item);
+               end if;
+            end;
          end loop;
 
          --  "T(..)" asks for whatever constructors T turns out to have,
          --  which only the module being imported can say -- so it is
          --  expanded here rather than where it was written.
-         return Written & Wildcard_Constructors (1);
+         if Space = Value_Names then
+            return Written (1 .. Count) & Wildcard_Constructors (1);
+         else
+            return Written (1 .. Count);
+         end if;
       end Visible_Names;
 
    begin
@@ -274,7 +305,10 @@ package body Leander.Parser.Modules is
       elsif Imported = Env then
          Error ("module " & Name & " cannot import itself");
       else
-         Env.Import (Imported, Mode, Visible_Names);
+         Env.Import
+           (Imported, Mode,
+            Types  => Visible_Names (Leander.Environment.Type_Names),
+            Values => Visible_Names (Leander.Environment.Value_Names));
          Context.Scope.Add_Module (Alias, Imported);
 
       end if;
@@ -503,7 +537,8 @@ package body Leander.Parser.Modules is
                      Scan;
                   else
                      while At_Name loop
-                        Import.Add_Name (Scan_Identifier);
+                        Import.Add_Name
+                          (Scan_Identifier, Subordinate => True);
                         exit when Tok /= Tok_Comma;
                         Scan;
                      end loop;

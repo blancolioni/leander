@@ -102,6 +102,18 @@ it stands for depends on what was named: a data type's constructors, or
 a class's methods. A class's methods can also be named individually, as
 `Eq((==), (/=))`.
 
+An import list speaks about the same two namespaces as an export list
+(#144). `Import` takes its names as two lists, `Types` and `Values`. A
+capitalised name standing alone is a type or class. A name written inside
+parentheses, or brought in by `(..)`, is a constructor or method. Any
+other name is a value. So with `data Pair = Pair Int Int` exported as
+`Pair(..)`, `import M (Pair)` brings in the type and leaves the
+constructor reachable only as `M.Pair`. `hiding` keeps the Report's one
+exception (section 5.3.1): `hiding (Pair)` hides a data constructor
+`Pair` as well, since a hiding list could not name it any other way.
+`Import_Declaration` remembers which names were written in parentheses
+(`Is_Subordinate`), because the parser flattens them into one list.
+
 `qualified`, `hiding` and `as` are contextual identifiers, not tokens.
 `Leander.Parser.Lexical`'s `Keywords` string is positional against
 `First_Keyword`, so adding a keyword silently shifts every later one. Each
