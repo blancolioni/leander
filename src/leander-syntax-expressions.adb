@@ -7,6 +7,40 @@ with Leander.Syntax.Expressions.Variables;
 
 package body Leander.Syntax.Expressions is
 
+   ---------------
+   -- Arguments --
+   ---------------
+
+   function Arguments (This : not null Reference) return Reference_Array is
+   begin
+      if This.all in Applications.Instance'Class then
+         declare
+            App : Applications.Instance'Class renames
+                    Applications.Instance'Class (This.all);
+         begin
+            return Arguments (App.Function_Part) & App.Argument_Part;
+         end;
+      else
+         return [];
+      end if;
+   end Arguments;
+
+   -------------------
+   -- Head_Variable --
+   -------------------
+
+   function Head_Variable (This : not null Reference) return String is
+   begin
+      if This.all in Applications.Instance'Class then
+         return Head_Variable
+           (Applications.Instance'Class (This.all).Function_Part);
+      elsif This.all in Variables.Instance'Class then
+         return Variables.Instance'Class (This.all).Variable_Name;
+      else
+         return "";
+      end if;
+   end Head_Variable;
+
    function Application
      (Location    : Leander.Source.Source_Location;
       Left, Right : Reference)

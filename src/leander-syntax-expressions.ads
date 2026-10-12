@@ -65,6 +65,15 @@ package Leander.Syntax.Expressions is
       Expr        : Reference)
       return Reference;
 
+   function Head_Variable (This : not null Reference) return String;
+   --  The variable at the head of This, a chain of applications or none:
+   --  "f" for "f x y" and "<+>" for "a <+> b". Empty when the head is not
+   --  a variable.
+
+   function Arguments (This : not null Reference) return Reference_Array;
+   --  The arguments This applies its head to, in order: "x" and "y" for
+   --  "f x y". Empty when This is not an application.
+
 private
 
    type Instance is abstract new Parent with

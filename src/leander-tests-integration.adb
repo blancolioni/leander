@@ -1550,6 +1550,33 @@ package body Leander.Tests.Integration is
          "csClasses", "K",
          Handle);
 
+      --  An infix definition's operands are whole patterns (issue #132)
+
+      Test_Module
+        ("module: infix definition: a constructor as the left operand",
+         Test_Root & "test_41_infix_lhs.hs",
+         "ilLeft", "K",
+         Handle);
+      Test_Module
+        ("module: infix definition: a constructor as the right operand",
+         Test_Root & "test_41_infix_lhs.hs",
+         "ilRight", "K",
+         Handle);
+      Test_Module
+        ("module: infix definition: a constructor before a backticked name",
+         Test_Root & "test_41_infix_lhs.hs",
+         "ilBacktick", "K",
+         Handle);
+      Test_Module
+        ("module: infix definition: constructor patterns on both sides",
+         Test_Root & "test_41_infix_lhs.hs",
+         "ilBoth", "K",
+         Handle);
+      Test_Module
+        ("module: infix definition: a definition applied inside parentheses",
+         Test_Root & "test_41_infix_lhs.hs",
+         "ilParen", "K",
+         Handle);
       --  A type may be named before it is declared (issue #142)
 
       Test_Module

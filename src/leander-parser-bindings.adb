@@ -5,7 +5,9 @@ with Leander.Parser.Lexical;           use Leander.Parser.Lexical;
 
 with Leander.Parser.Expressions;
 with Leander.Parser.Types;
+with Leander.Source;
 
+with Leander.Syntax.Expressions;
 with Leander.Syntax.Patterns;
 with Leander.Syntax.Qualified_Types;
 
@@ -147,30 +149,115 @@ package body Leander.Parser.Bindings is
      (Context : Parse_Context'Class)
       return Leander.Syntax.Bindings.Binding_LHS
    is
-      Pat : constant Syntax.Patterns.Reference :=
-        Parser.Expressions.Parse_Atomic_Pattern (Context);
+      function Parse_Operand
+        (First : Syntax.Patterns.Reference;
+         Loc   : Leander.Source.Source_Location)
+         return Syntax.Patterns.Reference;
+      --  An operand of an infix definition is a whole pattern, not an
+      --  atomic one: a bare constructor takes the atomic patterns that
+      --  follow it as its arguments, as in "Just x <|> _" (Haskell 2010,
+      --  section 4.4.3; #132). First is the atomic pattern already read.
+
+      -------------------
+      -- Parse_Operand --
+      -------------------
+
+      function Parse_Operand
+        (First : Syntax.Patterns.Reference;
+         Loc   : Leander.Source.Source_Location)
+         return Syntax.Patterns.Reference
+      is
+      begin
+         if First.Is_Constructor and then First.Constructor_Args'Length = 0
+         then
+            declare
+               Args : constant Leander.Syntax.Patterns.Reference_Array :=
+                        Expressions.Parse_Patterns (Context);
+            begin
+               if Args'Length > 0 then
+                  return Syntax.Patterns.Constructor
+                    (Loc, First.Constructor_Name, Args);
+               end if;
+            end;
+         end if;
+         return First;
+      end Parse_Operand;
+
+      function Infix_LHS
+        (Pat : Syntax.Patterns.Reference;
+         Loc : Leander.Source.Source_Location)
+         return Leander.Syntax.Bindings.Binding_LHS;
+      --  "pat varop pat", with Pat the start of the left operand.
+
+      ---------------
+      -- Infix_LHS --
+      ---------------
+
+      function Infix_LHS
+        (Pat : Syntax.Patterns.Reference;
+         Loc : Leander.Source.Source_Location)
+         return Leander.Syntax.Bindings.Binding_LHS
+      is
+         Left : constant Syntax.Patterns.Reference := Parse_Operand (Pat, Loc);
+      begin
+         if not At_Operator then
+            Error ("syntax error");
+            raise Parse_Error;
+         end if;
+
+         declare
+            Name      : constant String := Scan_Identifier;
+            Right_Loc : constant Leander.Source.Source_Location :=
+                          Current_Source_Location;
+            Right     : constant Syntax.Patterns.Reference :=
+                          Parse_Operand
+                            (Parser.Expressions.Parse_Atomic_Pattern
+                               (Context),
+                             Right_Loc);
+         begin
+            return Syntax.Bindings.Create_Binding_LHS (Name, [Left, Right]);
+         end;
+      end Infix_LHS;
+
+      Loc   : constant Leander.Source.Source_Location :=
+                Current_Source_Location;
+      Paren : constant Boolean := Tok = Tok_Left_Paren;
+      First : constant Syntax.Expressions.Reference :=
+                Parser.Expressions.Parse_Atomic_Expression (Context);
+      Head  : constant String :=
+                (if Paren then Syntax.Expressions.Head_Variable (First)
+                 else "");
+      Args  : constant Syntax.Expressions.Reference_Array :=
+                Syntax.Expressions.Arguments (First);
    begin
-      if At_Operator then
+      if Head /= "" and then Args'Length > 0 then
+         --  "( funlhs ) apat {apat}": a definition written applied
+         --  inside parentheses, as in "(f <+> g) x" or "(f x) y". Its
+         --  head is a variable, where a parenthesised pattern's is a
+         --  constructor (#132).
          declare
             use type Leander.Syntax.Patterns.Reference_Array;
-            Name : constant String := Scan_Identifier;
-            Pats : constant Leander.Syntax.Patterns.Reference_Array :=
-              Expressions.Parse_Patterns (Context);
+            Inner : constant Leander.Syntax.Patterns.Reference_Array :=
+                      [for A of Args => A.To_Pattern];
          begin
-            return Syntax.Bindings.Create_Binding_LHS (Name, Pat & Pats);
-         end;
-      elsif not Pat.Is_Variable then
-         Error ("syntax error");
-         raise Parse_Error;
-      else
-         declare
-            Name : constant String := Pat.Variable_Name;
-            Pats : constant Leander.Syntax.Patterns.Reference_Array :=
-              Expressions.Parse_Patterns (Context);
-         begin
-            return Syntax.Bindings.Create_Binding_LHS (Name, Pats);
+            return Syntax.Bindings.Create_Binding_LHS
+              (Head, Inner & Expressions.Parse_Patterns (Context));
          end;
       end if;
+
+      declare
+         Pat : constant Syntax.Patterns.Reference := First.To_Pattern;
+      begin
+         if At_Operator or else Pat.Is_Constructor then
+            return Infix_LHS (Pat, Loc);
+         elsif not Pat.Is_Variable then
+            Error ("syntax error");
+            raise Parse_Error;
+         else
+            return Syntax.Bindings.Create_Binding_LHS
+              (Pat.Variable_Name, Expressions.Parse_Patterns (Context));
+         end if;
+      end;
    end Parse_LHS;
 
 end Leander.Parser.Bindings;

@@ -12,6 +12,9 @@ private package Leander.Syntax.Expressions.Applications is
      (This : Instance)
       return Leander.Core.Expressions.Reference;
 
+   function Function_Part (This : Instance) return Reference;
+   function Argument_Part (This : Instance) return Reference;
+
 private
 
    type Instance is new Parent with
@@ -34,5 +37,11 @@ private
       Left, Right : Reference)
       return Reference
    is (new Instance'(Location, Left, Right));
+
+   function Function_Part (This : Instance) return Reference
+   is (This.Left);
+
+   function Argument_Part (This : Instance) return Reference
+   is (This.Right);
 
 end Leander.Syntax.Expressions.Applications;
