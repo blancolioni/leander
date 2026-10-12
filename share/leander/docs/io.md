@@ -12,13 +12,19 @@ primitives.
 IO is defined in the Prelude as a regular data type:
 
 ```haskell
-data IO a = IO (Int -> (a, Int))
+data IO a = IO (Int -> IOResult a)
+
+data IOResult a = IOSuccess a Int | IOFailure IOError Int
 ```
 
 An `IO a` value wraps a function from a world token (an `Int`) to a
-pair of a result value and a new world token. The world token is
-threaded through IO actions to impose sequencing — each action
-receives the token produced by the previous action.
+result: either success, with a value, or failure, with an `IOError`.
+Both carry a new world token. The world token is threaded through IO
+actions to impose sequencing — each action receives the token produced
+by the previous action. A failure hands its token on too, so the
+effects that ran before it stay in order with whatever handles it.
+
+`unIO (IO f) = f` unwraps an action.
 
 ### Scott encoding
 
@@ -37,33 +43,28 @@ function.
 ### return
 
 ```haskell
-returnIO x = IO (\w -> (x, w))
+returnIO x = IO (\w -> IOSuccess x w)
 ```
 
 Wraps a pure value in IO. The world token is passed through
-unchanged, and the result is paired with it using the `(,)`
-constructor.
+unchanged.
 
 ### bind (>>=)
 
 ```haskell
-bindIO (IO f) g = IO (\w -> let xw' = f w
-                                 ioh = g (fst xw')
-                                 geth (IO h) = h
-                             in geth ioh (snd xw'))
+bindIO a g = IO (\w -> case unIO a w of
+                         IOSuccess x w' -> unIO (g x) w'
+                         IOFailure e w' -> IOFailure e w')
 ```
 
 Sequences two IO actions:
 
-1. Runs `f` with the current world token `w`, producing a pair
-   `xw'` of `(result, new_world)`
-2. Applies the continuation `g` to the result (`fst xw'`),
-   producing a new `IO` action `ioh`
-3. Extracts the wrapped function from `ioh` via pattern match
-   (`geth`)
-4. Applies it to the new world token (`snd xw'`)
+1. Runs `a` with the current world token `w`
+2. If it succeeded, applies the continuation `g` to its result `x`,
+   and runs the action that produces with the new world token `w'`
+3. If it failed, the failure is the result, and `g` never runs
 
-The world token threading ensures that `f` runs before `g` — the
+The world token threading ensures that `a` runs before `g` — the
 second action cannot proceed without the world token produced by the
 first.
 
@@ -75,6 +76,30 @@ first.
 
 Sequences two actions, discarding the result of the first.
 
+## Errors
+
+An `IOError` is abstract, as in the Report: `userError` makes one, and
+`show` describes it.
+
+```haskell
+ioError :: IOError -> IO a
+ioError e = IO (\w -> IOFailure e w)
+
+catch :: IO a -> (IOError -> IO a) -> IO a
+catch a h = IO (\w -> case unIO a w of
+                         IOFailure e w' -> unIO (h e) w'
+                         r              -> r)
+```
+
+`catch` is the Haskell 98 Prelude's. It handles the `IOError`s an
+action raises, and nothing else: `error` and a failed pattern match are
+bottom, and still end the program. The handler runs with the world
+token the failure carried, after every effect that came before it.
+
+The only kind of `IOError` so far is a user error. A primitive that
+can fail, such as a future `getChar` at end of file, will return a
+sentinel, and its Haskell wrapper will turn that into an `IOFailure`.
+
 ## Running IO
 
 The driver (`leander-driver.adb`) executes an IO program by
@@ -82,18 +107,18 @@ evaluating `runIO main`:
 
 ```haskell
 runIO :: IO a -> a
-runIO a = let getf (IO f) = f
-              xw' = getf a 1
-          in seq (snd xw') (fst xw')
+runIO a = case unIO a 1 of
+            IOSuccess x w -> seq w x
+            IOFailure e w -> seq w (error (show e))
 ```
 
 This:
 
-1. Extracts the wrapped function from the IO action via `getf`
-2. Applies it to `1` as the initial world token
-3. Forces evaluation of the final world token (`snd xw'`) using `seq`
+1. Applies the action's function to `1` as the initial world token
+2. Forces evaluation of the final world token `w` using `seq`
    — this is critical, as it ensures all side effects actually execute
-4. Returns the result value (`fst xw'`)
+3. Returns the result value `x`, or, for an `IOError` nothing caught,
+   raises it as a runtime error after the effects before it
 
 The initial world token is `1`. Each `#primPutChar` call increments
 it, producing a chain of distinct tokens that forces sequential
@@ -105,7 +130,7 @@ The only primitive IO operation is character output:
 
 ```haskell
 putChar :: Char -> IO ()
-putChar ch = IO (\w -> ((), #primPutChar w 1 ch))
+putChar ch = IO (\w -> IOSuccess () (#primPutChar w 1 ch))
 ```
 
 This constructs an IO action whose wrapped function:
@@ -113,8 +138,7 @@ This constructs an IO action whose wrapped function:
 1. Receives the current world token `w`
 2. Calls the foreign primitive `#primPutChar w 1 ch`, which
    performs the actual output and returns `w + 1`
-3. Returns `((), new_world)` — unit result paired with the
-   incremented world token
+3. Succeeds with `()`, and the incremented world token
 
 ### The #primPutChar primitive
 
@@ -175,11 +199,11 @@ The `seq` primitive (foreign import `#seq`) is essential for IO
 correctness. In `runIO`:
 
 ```haskell
-seq (snd xw') (fst xw')
+seq w x
 ```
 
-Without `seq`, lazy evaluation could return `fst xw'` without ever
-evaluating `snd xw'` — and since the world token threading is what
+Without `seq`, lazy evaluation could return `x` without ever
+evaluating `w` — and since the world token threading is what
 drives side effects, the program's output would never happen. `seq`
 forces evaluation of the final world token, which transitively forces
 all the intermediate world tokens and their associated effects.
@@ -217,7 +241,7 @@ forces world `4` via `seq`, ensuring all three characters are output.
 - **Output only** — the current implementation has `#primPutChar` as
   the sole IO primitive. There is no input (`getChar`, `getLine`,
   `readFile`, etc.).
-- **No IO exceptions** — there is no mechanism for IO errors or
-  exception handling.
+- **IO errors only** — `catch` handles `IOError`s, not `error` or a
+  failed match, which would need exceptions in the Skit machine.
 - **Single stream** — the stream index argument to `#primPutChar` is
   always `1`; multiple output streams are not yet used.

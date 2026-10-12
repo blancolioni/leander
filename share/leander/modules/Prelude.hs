@@ -1,15 +1,16 @@
 module Prelude
-  ( Bool(..), Either(..), IO(..), Maybe(..), Ordering(..),
+  ( Bool(..), Either(..), IO(..), IOError, Maybe(..), Ordering(..),
     Applicative(..), Bounded(..), Enum(..), Eq(..), Functor(..),
     Monad(..), Num(..), Ord(..), Show(..), all, and, any, break, concat,
-    const, curry, cycle, div, drop, dropWhile, elem, error, filter,
-    flip, foldl, foldl', foldl1, foldr, fst, head, id, init, iterate,
+    catch, const, curry, cycle, div, drop, dropWhile, elem, error, filter,
+    flip, foldl, foldl', foldl1, foldr, fst, head, id, init, ioError,
+    iterate,
     last, length, lookup, map, mapM, mapM_, maximum, minimum, mod, not,
     notElem, null, or, otherwise, print, product, putChar, putStr,
     putStrLn, repeat, replicate, reverse, runIO, seq, sequence,
     sequence_, showChar, showParen, showString, shows, snd, span,
     subtract, sum, tail, take,
-    takeWhile, uncurry, unzip, unzip3, zip, zip3, zipWith, zipWith3,
+    takeWhile, uncurry, unzip, userError, unzip3, zip, zip3, zipWith, zipWith3,
     (!!), ($), ($!), (&&), (++), (.),
     (||)
   ) where
@@ -665,7 +666,44 @@ mod, div :: Int -> Int -> Int
 mod = #primIntMod
 div = #primIntDiv
 
-data IO a = IO (Int -> (a,Int))
+--  An IO action takes the world token and either succeeds, with its
+--  result, or fails with an IOError.  Either way it hands on the world
+--  token, so the effects that ran before a failure stay in order with
+--  whatever handles it (#88).
+data IO a = IO (Int -> IOResult a)
+
+data IOResult a = IOSuccess a Int | IOFailure IOError Int
+
+unIO :: IO a -> Int -> IOResult a
+unIO (IO f) = f
+
+--  The Report leaves IOError abstract: userError makes one, and show
+--  describes it.  Its kinds grow as primitives that can fail arrive.
+data IOErrorKind = IOUserError
+
+data IOError = MkIOError IOErrorKind [Char]
+
+instance Eq IOErrorKind where
+    IOUserError == IOUserError = True
+
+instance Eq IOError where
+    (MkIOError k s) == (MkIOError k' s') = k == k' && s == s'
+
+instance Show IOError where
+    show (MkIOError IOUserError s) = "user error (" ++ s ++ ")"
+
+userError :: [Char] -> IOError
+userError s = MkIOError IOUserError s
+
+ioError :: IOError -> IO a
+ioError e = IO (\w -> IOFailure e w)
+
+--  The Haskell 98 Prelude's catch: it handles the IOErrors an action
+--  raises, not error or a failed match, which are bottom.
+catch :: IO a -> (IOError -> IO a) -> IO a
+catch a h = IO (\w -> case unIO a w of
+                         IOFailure e w' -> unIO (h e) w'
+                         r              -> r)
 
 instance Functor IO where
     fmap f a = do
@@ -685,11 +723,10 @@ instance Applicative IO where
 instance Monad IO where
     (>>=) = bindIO
 
-returnIO x = IO (\ w -> (x, w))
-bindIO (IO f) g = IO (\w -> let xw' = f w
-                                ioh = g (fst xw')
-                                geth (IO h) = h
-                            in geth ioh (snd xw'))
+returnIO x = IO (\w -> IOSuccess x w)
+bindIO a g = IO (\w -> case unIO a w of
+                         IOSuccess x w' -> unIO (g x) w'
+                         IOFailure e w' -> IOFailure e w')
 
 --  return = returnIO
 --  (>>=) = bindIO
@@ -711,7 +748,7 @@ mapM_ :: (Monad m) => (a -> m b) -> [a] -> m ()
 mapM_ f as = sequence_ (map f as)
 
 putChar :: Char -> IO ()
-putChar ch = IO (\w -> ((), #primPutChar w 1 ch))
+putChar ch = IO (\w -> IOSuccess () (#primPutChar w 1 ch))
 
 putStr :: [Char] -> IO ()
 putStr = mapM_ putChar
@@ -722,10 +759,12 @@ putStrLn str = putStr str >> putChar '\n'
 print :: Show a => a -> IO ()
 print x = putStrLn (show x)
 
+--  Runs an action, forcing the final world token so that every effect
+--  happens.  An IOError nothing caught is a runtime error, like error.
 runIO :: IO a -> a
-runIO a = let getf (IO f) = f
-              xw' = getf a 1
-          in seq (snd xw') (fst xw')
+runIO a = case unIO a 1 of
+            IOSuccess x w -> seq w x
+            IOFailure e w -> seq w (error (show e))
 
 -- Tuple instances.  The Report asks for them up to size 15 (section
 -- 6.1.4); they stop at 7 here because each one adds to the time it
