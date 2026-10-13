@@ -1396,4 +1396,16 @@ package body Leander.Handles is
          return False;
    end Try_Load_Image;
 
+   ------------
+   -- Set_IO --
+   ------------
+
+   procedure Set_IO
+     (This : in out Instance'Class;
+      IO   : not null Leander.IO.Reference)
+   is
+   begin
+      This.IO := IO;
+   end Set_IO;
+
 end Leander.Handles;

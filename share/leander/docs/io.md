@@ -53,7 +53,7 @@ unchanged.
 
 ```haskell
 bindIO a g = IO (\w -> case unIO a w of
-                         IOSuccess x w' -> unIO (g x) w'
+                         IOSuccess x w' -> seq w' (unIO (g x) w')
                          IOFailure e w' -> IOFailure e w')
 ```
 
@@ -67,6 +67,14 @@ Sequences two IO actions:
 The world token threading ensures that `a` runs before `g` — the
 second action cannot proceed without the world token produced by the
 first.
+
+`seq w'` makes `a`'s effects happen *now*, before `g` is even applied.
+Without it they would wait until `runIO` forced the last world token,
+after the whole program's actions had been worked out. Then a later
+action that failed while being worked out, like `print (head [])`,
+would stop the program before any earlier output appeared (#151).
+Forcing `w'` is cheap: the actions before `a` have already forced
+theirs, so it runs only `a`'s own effects.
 
 ### (>>)
 
@@ -87,7 +95,7 @@ ioError e = IO (\w -> IOFailure e w)
 
 catch :: IO a -> (IOError -> IO a) -> IO a
 catch a h = IO (\w -> case unIO a w of
-                         IOFailure e w' -> unIO (h e) w'
+                         IOFailure e w' -> seq w' (unIO (h e) w')
                          r              -> r)
 ```
 
@@ -205,8 +213,9 @@ seq w x
 Without `seq`, lazy evaluation could return `x` without ever
 evaluating `w` — and since the world token threading is what
 drives side effects, the program's output would never happen. `seq`
-forces evaluation of the final world token, which transitively forces
-all the intermediate world tokens and their associated effects.
+forces evaluation of the final world token. Each `bindIO` has already
+forced the tokens before it, as its action ran, so by now this only
+runs the last action's own effects.
 
 In the SKI machine, `#seq` is implemented as the `Sequence`
 primitive. It evaluates its first argument to weak head normal form,

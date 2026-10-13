@@ -61,6 +61,12 @@ package Leander.Handles is
      (This : Instance'Class)
       return Leander.IO.Reference;
 
+   procedure Set_IO
+     (This : in out Instance'Class;
+      IO   : not null Leander.IO.Reference);
+   --  Send the program's output to IO rather than the terminal: a test
+   --  records it, to see what was written and in what order.
+
    procedure Report
      (This : in out Instance'Class);
 
