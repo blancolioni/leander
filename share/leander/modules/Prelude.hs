@@ -697,7 +697,7 @@ ioError e = IO (\w -> IOFailure e w)
 --  raises, not error or a failed match, which are bottom.
 catch :: IO a -> (IOError -> IO a) -> IO a
 catch a h = IO (\w -> case unIO a w of
-                         IOFailure e w' -> unIO (h e) w'
+                         IOFailure e w' -> seq w' (unIO (h e) w')
                          r              -> r)
 
 instance Functor IO where
@@ -719,8 +719,12 @@ instance Monad IO where
     (>>=) = bindIO
 
 returnIO x = IO (\w -> IOSuccess x w)
+--  Forcing w' before going on is what makes an action's effects happen
+--  when it runs, rather than when runIO forces the last world token at
+--  the end: by then, working out a later action may already have failed,
+--  and the output before it would be lost (#151).
 bindIO a g = IO (\w -> case unIO a w of
-                         IOSuccess x w' -> unIO (g x) w'
+                         IOSuccess x w' -> seq w' (unIO (g x) w')
                          IOFailure e w' -> IOFailure e w')
 
 --  return = returnIO

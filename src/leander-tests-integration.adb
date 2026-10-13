@@ -2,6 +2,7 @@ with Ada.Exceptions;
 with Ada.Strings.Unbounded;
 with Leander.Errors;
 with Leander.Handles;
+with Leander.IO;
 with Leander.Parser;
 with Leander.Syntax;
 with Skit;
@@ -31,6 +32,15 @@ package body Leander.Tests.Integration is
       Expression  : String;
       Expected    : String;
       Module_Path : String := "");
+
+   procedure Test_Output
+     (Label       : String;
+      Module_Path : String;
+      Expected    : String);
+   --  Run the module's main with its output recorded, and compare what it
+   --  wrote with Expected. A runtime error is allowed: what matters is the
+   --  output that came before it. The integration suite cannot otherwise
+   --  see what a program prints.
    --  Evaluating Expression, in Module_Path if given, must raise
    --  Runtime_Error with a message that contains Expected.  Each case
    --  gets a handle of its own: an error raised inside a primitive leaves
@@ -101,6 +111,74 @@ package body Leander.Tests.Integration is
       when E : others =>
          Error (Label, Ada.Exceptions.Exception_Message (E));
    end Test_Rejected;
+
+   ------------------------
+   -- Test_Runtime_Error --
+   ------------------------
+
+   --  Recording_IO keeps what a program writes, in Recorded.
+
+   type Recording_IO is new Leander.IO.Abstraction with null record;
+
+   overriding procedure Put
+     (This       : Recording_IO;
+      File_Index : Natural;
+      Value      : Wide_Wide_Character);
+
+   Recorded : Ada.Strings.Unbounded.Unbounded_String;
+   Recorder : aliased Recording_IO;
+
+   ---------
+   -- Put --
+   ---------
+
+   overriding procedure Put
+     (This       : Recording_IO;
+      File_Index : Natural;
+      Value      : Wide_Wide_Character)
+   is
+      pragma Unreferenced (This, File_Index);
+   begin
+      Ada.Strings.Unbounded.Append
+        (Recorded, Character'Val (Wide_Wide_Character'Pos (Value) mod 256));
+   end Put;
+
+   -----------------
+   -- Test_Output --
+   -----------------
+
+   procedure Test_Output
+     (Label       : String;
+      Module_Path : String;
+      Expected    : String)
+   is
+      Handle : Leander.Handle := Leander.Create (256 * 1024);
+   begin
+      Recorded := Ada.Strings.Unbounded.Null_Unbounded_String;
+      Handle.H.Set_IO (Recorder'Access);
+      Handle.Load_Module (Module_Path);
+      begin
+         Handle.Execute ("main");
+      exception
+         when Leander.Runtime_Error =>
+            null;
+      end;
+
+      declare
+         Written : constant String :=
+                     Ada.Strings.Unbounded.To_String (Recorded);
+      begin
+         if Written = Expected then
+            Test (Label, Pass => True);
+         else
+            Fail (Label, Expected, Written);
+         end if;
+      end;
+      Handle.Close;
+   exception
+      when E : others =>
+         Error (Label, Ada.Exceptions.Exception_Message (E));
+   end Test_Output;
 
    ------------------------
    -- Test_Runtime_Error --
@@ -535,6 +613,17 @@ package body Leander.Tests.Integration is
         ("runtime error: error reports a computed message",
          "error (""a"" ++ show 12)",
          "a12");
+      --  An action's effects happen when it runs, so what a program
+      --  wrote before failing is not lost (issue #151).
+      Test_Output
+        ("output: what was written before a runtime error",
+         Test_Root & "test_43_io_order.hs",
+         "before" & ASCII.LF);
+      Test_Output
+        ("output: in order around a caught IOError",
+         Test_Root & "test_43_io_catch_order.hs",
+         "abcd" & ASCII.LF);
+
       Test_Runtime_Error
         ("runtime error: an IOError nothing catches",
          "runIO (ioError (userError ""uncaught""))",
