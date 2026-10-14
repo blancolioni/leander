@@ -134,17 +134,20 @@ evaluation.
 
 ## Side effects: putChar
 
-The only primitive IO operation is character output:
+Character output writes to a stream by number (see *Input and files*
+below); `putChar` writes to standard output, `1`:
 
 ```haskell
 putChar :: Char -> IO ()
-putChar ch = IO (\w -> IOSuccess () (#primPutChar w 1 ch))
+putChar ch = hPutChar 1 ch
+
+hPutChar h ch = IO (\w -> IOSuccess () (#primPutChar w h ch))
 ```
 
 This constructs an IO action whose wrapped function:
 
 1. Receives the current world token `w`
-2. Calls the foreign primitive `#primPutChar w 1 ch`, which
+2. Calls the foreign primitive `#primPutChar w h ch`, which
    performs the actual output and returns `w + 1`
 3. Succeeds with `()`, and the incremented world token
 
@@ -162,11 +165,11 @@ In the SKI machine, this is implemented by `Put_Char_Instance`
 
 1. Pops three arguments from the stack: world, stream, character
 2. Retrieves the IO interface object from the skit environment
-3. Calls `Ada.Wide_Wide_Text_IO.Put` with the character
+3. Writes the character to that stream through the handle's
+   `Leander.IO`: standard output, standard error, or an open file. A
+   line feed is written with `New_Line`, so that Text_IO counts the line
+   as ended and does not end it again when the stream is closed.
 4. Pushes `world + 1` as the result — the incremented world token
-
-The stream index (always `1` in current code) is available for future
-use (e.g., stderr).
 
 ## Higher-level IO operations
 
@@ -245,12 +248,72 @@ world `2`, which flows into `putChar 'i'`, producing world `3`, which
 flows into `putChar '\n'`, producing world `4`. Finally `runIO`
 forces world `4` via `seq`, ensuring all three characters are output.
 
+## Input and files
+
+Every IO primitive takes the world token first, strictly, so that it
+happens after the effects before it, and names a stream by number: `0`
+is standard input, `1` standard output, `2` standard error, and an opened
+file has a number from `3` up. On the Ada side the numbers are
+`Leander.IO`'s; a test can supply its own implementation, to stand in for
+the terminal (`Handles.Set_IO`).
+
+| Primitive | Does |
+|---|---|
+| `#putChar w h c` | write `c` to `h`; `w + 1` |
+| `#getChar w h` | the next character's code from `h`, or `-1` at its end |
+| `#pathChar c n` | add `c` to the path for the next open, a new one when `n` is `0`; `n + 1` |
+| `#openFile w mode` | open that path for reading (`0`), writing (`1`) or appending (`2`): the handle, or `-1` for no such file, `-2` for no permission |
+| `#closeFile w h` | close `h`; `w + 1` |
+
+A path reaches the machine a character at a time, as `error`'s message
+does, because a Haskell string handed to Ada whole would not be forced.
+
+```haskell
+hGetCharMaybe h = IO (\w -> let c = #primGetChar w h
+                            in seq c (IOSuccess (if c < 0 then Nothing
+                                                 else Just (toEnum c))
+                                                (w + 1)))
+```
+
+The result is only built once the character is read, and `bindIO` looks
+at the result straight away, so the read happens before anything that
+follows. `getChar`, `getLine`, `readLn` and the rest are built from it.
+`getChar` at the end of input fails with an `IOError`
+(`Prelude.getChar: end of file`). A carriage return is dropped as it is
+read, so that a line ends with `\n` whatever wrote it.
+
+### Lazy input
+
+`getContents`, `interact` and `readFile` read their input as it is used.
+That needs one action whose effects are out of sequence with the rest:
+
+```haskell
+unsafeInterleaveIO a = IO (\w -> IOSuccess (case unIO a w of
+                                               IOSuccess x _ -> x
+                                               IOFailure e _ -> error (show e))
+                                           w)
+
+lazyRead h = unsafeInterleaveIO
+               (hGetCharMaybe h >>= \m -> case m of
+                  Nothing -> (if h == 0 then return () else hClose h)
+                               >> return []
+                  Just c  -> lazyRead h >>= \cs -> return (c : cs))
+```
+
+Each cell of the string is an action run only when the cell is wanted,
+and the machine overwrites a primitive's application with its result, so
+each character is read once however often it is used. A file is closed
+when its end is reached. `interact f` writes each character of `f`'s
+result as soon as the input it depends on has been read, which needs each
+action's effects to happen as it runs (see *bind* above).
+
+The usual surprises of lazy input apply: `readFile f >>= writeFile f`
+empties `f` before reading it.
+
 ## Limitations
 
-- **Output only** — the current implementation has `#primPutChar` as
-  the sole IO primitive. There is no input (`getChar`, `getLine`,
-  `readFile`, etc.).
 - **IO errors only** — `catch` handles `IOError`s, not `error` or a
   failed match, which would need exceptions in the Skit machine.
-- **Single stream** — the stream index argument to `#primPutChar` is
-  always `1`; multiple output streams are not yet used.
+- **No `System.IO`** — handles are plain numbers inside the Prelude;
+  `Handle`, `hGetLine`, `hClose`, `isEOF`, `stdin` and the rest are not
+  exported.

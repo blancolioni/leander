@@ -270,6 +270,10 @@ package body Leander.Tests.Modules is
                    & "|bindIO|returnIO"  --  IO's Monad methods
                    & "|IOResult|IOSuccess|IOFailure|unIO"  --  IO's result
                    & "|IOErrorKind|IOUserError|MkIOError"  --  abstract IOError
+                   & "|IOEOFError|IONoSuchThing|IOPermission"
+                   --  Handles, which System.IO has in the Report
+                   & "|hPutChar|hGetCharMaybe|hClose|openFileMode"
+                   & "|unsafeInterleaveIO|lazyRead"
                    & "|thenCmp"          --  tuple Ord helper
                    --  Read's lexer and readers; Data.Char's in the Report
                    & "|lexFracExp|lexExp|lexString|lexStringItem"

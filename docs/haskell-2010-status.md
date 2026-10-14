@@ -144,7 +144,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | `>>=` / `>>` / `return` | ✅ | |
 | `putChar`/`putStr`/`putStrLn`/`print` | ✅ | |
 | `mapM`/`mapM_`/`sequence`/`sequence_` | ✅ | Monad-generic. |
-| Input (`getLine`/`getChar`/`readFile`) | ❌ | **Output only** — single `#putChar` primitive. |
+| Input and files | ✅ | `getChar`, `getLine`, `getContents`, `interact`, `readFile`, `writeFile`, `appendFile`, `readIO`, `readLn` (#89). `getContents`, `interact` and `readFile` are lazy: input is read as it is used. End of input and a missing or forbidden file are `IOError`s. No `System.IO` handles yet. |
 | `main :: IO ()` entry | ✅ | Driver runs `runIO main`. |
 | `IOError`/`ioError`/`userError`/`catch` | 🟡 | Haskell 98 Prelude style (#88): `catch` handles `IOError`s, not `error` or a failed match. An uncaught one is a runtime error. Only user errors exist until input primitives can fail. No `System.IO.Error` (`catchIOError`, `isUserError`, `ioeGetErrorString`). |
 | `foreign import` | 🟡 | `skit` backend only (internal primitives); not H2010 FFI (`ccall`, `foreign export`). |
@@ -217,6 +217,6 @@ These are wrong answers or crashes in forms that are otherwise supported.
 ### Tier 4 — breadth when needed
 
 9. ~~**Module imports/exports** (multi-file programs).~~ Landed — see `share/leander/docs/modules.md`. What is left is separate compilation: reading a module's `.skix` back rather than only the Prelude's.
-10. **Input IO** (`getLine`/`getChar`).
+10. ~~**Input IO** (`getLine`/`getChar`).~~ Landed with lazy `getContents`/`interact` and file IO in #89.
 11. **Real layout algorithm** (replace ad-hoc indent checks) — foundational but higher risk; do when the ad-hoc rules start failing real code.
 12. **Char/String literal patterns**, **left sections**, **`where` on case alternatives**, **instances with no `where`** — small polish items.

@@ -1,5 +1,6 @@
 with Ada.Text_IO;
 with Leander.Handles;
+with Leander.IO;
 with Skit.Combinators;
 with Skit.Compiler;
 with Skit.Parser;
@@ -86,6 +87,32 @@ package body Leander.Primitives is
      (Handle : Leander.Handles.Reference;
       Arguments : Object_Array) return Object;
 
+   --  Input and files (#89).  Each takes the world token first, strictly,
+   --  so that it happens after the effects before it.
+
+   function Evaluate_Getchar
+     (Handle : Leander.Handles.Reference;
+      Arguments : Object_Array) return Object;
+   --  #getChar world handle: the next character's code, or -1.
+
+   function Evaluate_Path_Char
+     (Handle : Leander.Handles.Reference;
+      Arguments : Object_Array) return Object;
+   --  #pathChar ch count: add ch to the path the next #openFile uses,
+   --  starting a new one when count is 0; count + 1.
+
+   function Evaluate_Open
+     (Handle : Leander.Handles.Reference;
+      Arguments : Object_Array) return Object;
+   --  #openFile world mode: open the path collected so far for reading
+   --  (0), writing (1) or appending (2); the file's handle, or -1 if there
+   --  is no such file and -2 if it may not be opened.
+
+   function Evaluate_Close
+     (Handle : Leander.Handles.Reference;
+      Arguments : Object_Array) return Object;
+   --  #closeFile world handle: world + 1.
+
    function Evaluate_Trace
      (Handle : Leander.Handles.Reference;
       Arguments : Object_Array) return Object;
@@ -146,6 +173,67 @@ package body Leander.Primitives is
       Handle.IO.Put (File, Wide_Wide_Character'Val (Code));
       return To_Object (To_Integer (Arguments (1)) + 1);
    end Evaluate_Putchar;
+
+   --------------------
+   -- Evaluate_Close --
+   --------------------
+
+   function Evaluate_Close
+     (Handle : Leander.Handles.Reference;
+      Arguments : Object_Array)
+      return Object
+   is
+   begin
+      Handle.IO.Close (To_Integer (Arguments (2)));
+      return To_Object (To_Integer (Arguments (1)) + 1);
+   end Evaluate_Close;
+
+   ----------------------
+   -- Evaluate_Getchar --
+   ----------------------
+
+   function Evaluate_Getchar
+     (Handle : Leander.Handles.Reference;
+      Arguments : Object_Array)
+      return Object
+   is
+   begin
+      return To_Object (Handle.IO.Get (To_Integer (Arguments (2))));
+   end Evaluate_Getchar;
+
+   -------------------
+   -- Evaluate_Open --
+   -------------------
+
+   function Evaluate_Open
+     (Handle : Leander.Handles.Reference;
+      Arguments : Object_Array)
+      return Object
+   is
+      Mode : constant Integer := To_Integer (Arguments (2));
+   begin
+      if Mode not in 0 .. 2 then
+         return To_Object (Leander.IO.No_Such_File);
+      end if;
+      return To_Object
+        (Handle.IO.Open (Leander.IO.Open_Mode'Val (Mode)));
+   end Evaluate_Open;
+
+   ------------------------
+   -- Evaluate_Path_Char --
+   ------------------------
+
+   function Evaluate_Path_Char
+     (Handle : Leander.Handles.Reference;
+      Arguments : Object_Array)
+      return Object
+   is
+      Count : constant Integer := To_Integer (Arguments (2));
+   begin
+      Handle.IO.Add_Path_Character
+        (To_Integer (Arguments (1)), Fresh => Count = 0);
+      return To_Object (Count + 1);
+   end Evaluate_Path_Char;
 
    --------------------
    -- Evaluate_Trace --
@@ -268,6 +356,30 @@ package body Leander.Primitives is
                      (Evaluator'
                         (3, [Strict, Strict, Strict],
                          Evaluate_Putchar'Access)));
+
+      Handle.Bind ("#getChar",
+                   Handle.Primitive
+                     (Evaluator'
+                        (2, [Strict, Strict],
+                         Evaluate_Getchar'Access)));
+
+      Handle.Bind ("#pathChar",
+                   Handle.Primitive
+                     (Evaluator'
+                        (2, [Strict, Strict],
+                         Evaluate_Path_Char'Access)));
+
+      Handle.Bind ("#openFile",
+                   Handle.Primitive
+                     (Evaluator'
+                        (2, [Strict, Strict],
+                         Evaluate_Open'Access)));
+
+      Handle.Bind ("#closeFile",
+                   Handle.Primitive
+                     (Evaluator'
+                        (2, [Strict, Strict],
+                         Evaluate_Close'Access)));
 
       Handle.Bind ("#trace",
                    Handle.Primitive

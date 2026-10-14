@@ -1,3 +1,4 @@
+with Ada.Directories;
 with Ada.Exceptions;
 with Ada.Strings.Unbounded;
 with Leander.Errors;
@@ -36,11 +37,17 @@ package body Leander.Tests.Integration is
    procedure Test_Output
      (Label       : String;
       Module_Path : String;
-      Expected    : String);
-   --  Run the module's main with its output recorded, and compare what it
-   --  wrote with Expected. A runtime error is allowed: what matters is the
-   --  output that came before it. The integration suite cannot otherwise
-   --  see what a program prints.
+      Expected    : String;
+      Input       : String := "";
+      Trace       : Boolean := False);
+   --  Run the module's main with Input as its standard input and its
+   --  output recorded, and compare what it wrote with Expected. A runtime
+   --  error is allowed: what matters is the output that came before it.
+   --  The integration suite cannot otherwise see what a program prints.
+   --  With Trace, Expected is the reads and the writes interleaved: each
+   --  character read appears as <c>, and the end of input as <>, among
+   --  the characters written -- which shows whether output came as the
+   --  input was read, or only after all of it.
    --  Evaluating Expression, in Module_Path if given, must raise
    --  Runtime_Error with a message that contains Expected.  Each case
    --  gets a handle of its own: an error raised inside a primitive leaves
@@ -116,31 +123,75 @@ package body Leander.Tests.Integration is
    -- Test_Runtime_Error --
    ------------------------
 
-   --  Recording_IO keeps what a program writes, in Recorded.
+   --  Recording_IO stands in for the terminal: what a program writes to
+   --  standard output or error goes to Recorded, and what it reads comes
+   --  from Pending.  Traced has both, in the order they happened.  Files
+   --  are real, through Local_IO_Type.
 
-   type Recording_IO is new Leander.IO.Abstraction with null record;
+   type Recording_IO is new Leander.IO.Local_IO_Type with null record;
 
    overriding procedure Put
-     (This       : Recording_IO;
+     (This       : in out Recording_IO;
       File_Index : Natural;
       Value      : Wide_Wide_Character);
 
+   overriding function Get
+     (This       : in out Recording_IO;
+      File_Index : Natural)
+      return Integer;
+
    Recorded : Ada.Strings.Unbounded.Unbounded_String;
+   Traced   : Ada.Strings.Unbounded.Unbounded_String;
+   Pending  : Ada.Strings.Unbounded.Unbounded_String;
    Recorder : aliased Recording_IO;
+
+   ---------
+   -- Get --
+   ---------
+
+   overriding function Get
+     (This       : in out Recording_IO;
+      File_Index : Natural)
+      return Integer
+   is
+      use Ada.Strings.Unbounded;
+   begin
+      if File_Index /= Leander.IO.Standard_Input then
+         return Leander.IO.Local_IO_Type (This).Get (File_Index);
+      elsif Length (Pending) = 0 then
+         Append (Traced, "<>");
+         return Leander.IO.End_Of_Input;
+      else
+         declare
+            Ch : constant Character := Element (Pending, 1);
+         begin
+            Delete (Pending, 1, 1);
+            Append (Traced, "<" & Ch & ">");
+            return Character'Pos (Ch);
+         end;
+      end if;
+   end Get;
 
    ---------
    -- Put --
    ---------
 
    overriding procedure Put
-     (This       : Recording_IO;
+     (This       : in out Recording_IO;
       File_Index : Natural;
       Value      : Wide_Wide_Character)
    is
-      pragma Unreferenced (This, File_Index);
+      Ch : constant Character :=
+             Character'Val (Wide_Wide_Character'Pos (Value) mod 256);
    begin
-      Ada.Strings.Unbounded.Append
-        (Recorded, Character'Val (Wide_Wide_Character'Pos (Value) mod 256));
+      if File_Index in Leander.IO.Standard_Output
+                     | Leander.IO.Standard_Error
+      then
+         Ada.Strings.Unbounded.Append (Recorded, Ch);
+         Ada.Strings.Unbounded.Append (Traced, Ch);
+      else
+         Leander.IO.Local_IO_Type (This).Put (File_Index, Value);
+      end if;
    end Put;
 
    -----------------
@@ -150,11 +201,15 @@ package body Leander.Tests.Integration is
    procedure Test_Output
      (Label       : String;
       Module_Path : String;
-      Expected    : String)
+      Expected    : String;
+      Input       : String := "";
+      Trace       : Boolean := False)
    is
       Handle : Leander.Handle := Leander.Create (256 * 1024);
    begin
       Recorded := Ada.Strings.Unbounded.Null_Unbounded_String;
+      Traced := Ada.Strings.Unbounded.Null_Unbounded_String;
+      Pending := Ada.Strings.Unbounded.To_Unbounded_String (Input);
       Handle.H.Set_IO (Recorder'Access);
       Handle.Load_Module (Module_Path);
       begin
@@ -166,7 +221,8 @@ package body Leander.Tests.Integration is
 
       declare
          Written : constant String :=
-                     Ada.Strings.Unbounded.To_String (Recorded);
+                     Ada.Strings.Unbounded.To_String
+                       (if Trace then Traced else Recorded);
       begin
          if Written = Expected then
             Test (Label, Pass => True);
@@ -636,6 +692,31 @@ package body Leander.Tests.Integration is
          & "(19,19)" & ASCII.LF
          & "(2,(1,'a'))" & ASCII.LF
          & "(Right 30,Left ""divide by zero"",Left ""no"")" & ASCII.LF);
+
+      --  Input and files (issue #89).  interact reads as its function
+      --  needs: in the trace, each character read (<c>) is followed by
+      --  the one it makes, rather than all the reads coming first.
+      Test_Output
+        ("output: interact reads its input lazily",
+         Test_Root & "test_50_interact.hs",
+         "<a>b<b>c<" & ASCII.LF & ">" & ASCII.LF & "<>",
+         Input => "ab" & ASCII.LF,
+         Trace => True);
+      Test_Output
+        ("output: getLine, readLn, and getChar at the end of input",
+         Test_Root & "test_50_input.hs",
+         "olleh" & ASCII.LF & "12" & ASCII.LF
+         & "Prelude.getChar: end of file" & ASCII.LF
+         & "'!'" & ASCII.LF,
+         Input => "hello" & ASCII.LF & "7" & ASCII.LF);
+      Test_Output
+        ("output: writeFile, appendFile and readFile",
+         Test_Root & "test_50_files.hs",
+         "one" & ASCII.LF & "two" & ASCII.LF & "2" & ASCII.LF
+         & "no/such/leander_file.txt: does not exist" & ASCII.LF);
+      if Ada.Directories.Exists ("leander_test_50_files.txt") then
+         Ada.Directories.Delete_File ("leander_test_50_files.txt");
+      end if;
 
       Test_Runtime_Error
         ("runtime error: an IOError nothing catches",
