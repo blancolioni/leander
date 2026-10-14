@@ -2,16 +2,19 @@ module Prelude
   ( Bool(..), Either(..), IO(..), IOError, Maybe(..), Ordering(..),
     Applicative(..), Bounded(..), Enum(..), Eq(..), Functor(..),
     Monad(..), Num(..), Ord(..), Read(..), Show(..), all, and, any,
-    break, catch, concat, const, curry, cycle, div, drop, dropWhile,
-    either, elem, error, filter, flip, foldl, foldl', foldl1, foldr,
-    fst, head, id, init, ioError, iterate, last, length, lex, lookup,
+    asTypeOf, break, catch, concat, concatMap, const, curry, cycle, div,
+    divMod, drop, dropWhile, either, elem, error, even, filter, flip,
+    foldl, foldl', foldl1, foldr, foldr1, fromIntegral, fst, gcd, head,
+    id, init, ioError, iterate, last, lcm, length, lex, lines, lookup,
     map, mapM, mapM_, maximum, maybe, minimum, mod, not, notElem, null,
-    or, otherwise, print, product, putChar, putStr, putStrLn, read,
-    readParen, reads, repeat, replicate, reverse, runIO, seq, sequence,
-    sequence_, showChar, showParen, showString, shows, snd, span,
-    subtract, sum, tail, take, takeWhile, uncurry, unzip, unzip3,
-    userError, zip, zip3, zipWith, zipWith3, (!!), ($), ($!), (&&),
-    (++), (.), (||)
+    odd, or, otherwise, print, product, putChar, putStr, putStrLn, quot,
+    quotRem, read, readParen, reads, rem, repeat, replicate, reverse,
+    runIO, scanl, scanl1, scanr, scanr1, seq, sequence, sequence_,
+    showChar, showParen, showString, shows, snd, span, splitAt,
+    subtract, sum, tail, take, takeWhile, uncurry, unlines, until,
+    unwords, unzip, unzip3, userError, words, zip, zip3, zipWith,
+    zipWith3, (!!), ($), ($!), (&&), (++), (.), (||), (^), (=<<), (<$>),
+    (<$), (*>), (<*)
   ) where
 
 type String = [Char]
@@ -22,6 +25,7 @@ foreign import skit "#eq" #primCharEq :: Char -> Char -> Bool
 foreign import skit "#id" #primIntToChar :: Int -> Char
 -- Until Integer is arbitrary precision (#86), an Integer is an Int.
 foreign import skit "#id" #primIntegerToInt :: Integer -> Int
+foreign import skit "#id" #primIntToInteger :: Int -> Integer
 foreign import skit "#id" #primCharToInt :: Char -> Int
 
 foreign import skit "#le" #primIntLeq :: Int -> Int -> Bool
@@ -55,7 +59,7 @@ infixl 6  +, -
 infixr 5  ++
 infix  4  ==, /=, <, <=, >=, >, `elem`, `notElem`
 -- Not a Haskell 2010 Prelude class, but base gives (<*>) this fixity.
-infixl 4  <*>
+infixl 4  <*>, <$>, <$, *>, <*
 infixr 3  &&
 infixr 2  ||
 infixl 1  >>, >>=
@@ -332,6 +336,15 @@ instance Functor ((,) a) where
 instance (Show a) => Show [a] where
     showsPrec _ = showList
 
+-- Lists compare element by element, and a prefix comes first.
+instance (Ord a) => Ord [a] where
+    compare [] []         = EQ
+    compare [] (_:_)      = LT
+    compare (_:_) []      = GT
+    compare (x:xs) (y:ys) = case compare x y of
+                              EQ -> compare xs ys
+                              o  -> o
+
 instance (Eq a) => Eq [a] where
     (==) [] = \ys -> case ys of
                     [] -> True
@@ -469,7 +482,7 @@ span p []            = ([],[])
 span p (x:xs) = if p x
                 then let ys = span p xs
                      in (x:fst ys,snd ys)
-                else ([],xs)
+                else ([],x:xs)
 
 break p                 =  span (not . p)
 
@@ -527,11 +540,65 @@ unzip3 []            =  ([], [], [])
 unzip3 ((a,b,c):ts)  =  (a:as, b:bs, c:cs)
                         where (as, bs, cs) = unzip3 ts
 
+concatMap :: (a -> [b]) -> [a] -> [b]
+concatMap f = concat . map f
+
+-- scanl is foldl keeping every intermediate value, scanr foldr's.
+scanl :: (a -> b -> a) -> a -> [b] -> [a]
+scanl f q ls = q : (case ls of
+                      []   -> []
+                      x:xs -> scanl f (f q x) xs)
+
+scanl1 :: (a -> a -> a) -> [a] -> [a]
+scanl1 f (x:xs) = scanl f x xs
+scanl1 _ []     = []
+
+scanr :: (a -> b -> b) -> b -> [a] -> [b]
+scanr _ q0 []     = [q0]
+scanr f q0 (x:xs) = f x (head qs) : qs
+    where qs = scanr f q0 xs
+
+scanr1 :: (a -> a -> a) -> [a] -> [a]
+scanr1 _ []     = []
+scanr1 _ [x]    = [x]
+scanr1 f (x:xs) = f x (head qs) : qs
+    where qs = scanr1 f xs
+
+foldr1 :: (a -> a -> a) -> [a] -> a
+foldr1 _ [x]    = x
+foldr1 f (x:xs) = f x (foldr1 f xs)
+foldr1 _ []     = error "Prelude.foldr1: empty list"
+
+splitAt :: Int -> [a] -> ([a], [a])
+splitAt n xs = (take n xs, drop n xs)
+
+-- lines and words break a string at newlines and at white space;
+-- unlines and unwords put them back.
+lines :: String -> [String]
+lines [] = []
+lines s  = let (l, rest) = break (== '\n') s
+           in l : (case rest of
+                     []    -> []
+                     _:s'' -> lines s'')
+
+words :: String -> [String]
+words s = case dropWhile isSpace s of
+            []  -> []
+            s'  -> let (w, s'') = break isSpace s'
+                   in w : words s''
+
+unlines :: [String] -> String
+unlines = concatMap (++ "\n")
+
+unwords :: [String] -> String
+unwords [] = []
+unwords ws = foldr1 (\w s -> w ++ ' ' : s) ws
+
 filter :: (a -> Bool) -> [a] -> [a]
 filter p [] = []
 filter p (x:xs) = if p x then x : filter p xs else filter p xs
 
-sum, product :: [Int] -> Int
+sum, product :: Num a => [a] -> a
 sum = foldl' (+) 0
 product = foldl' (*) 1
 
@@ -584,7 +651,7 @@ small 2 = True
 small 3 = True
 small x = False
 
-subtract :: Int -> Int -> Int
+subtract :: Num a => a -> a -> a
 subtract x y = y - x
 
 -- component projections for pairs:
@@ -660,7 +727,7 @@ foldl' f z (x:xs) = let z' = f z x
                        
 -- Maybe type
 
-data  Maybe a  =  Nothing | Just a deriving Eq
+data  Maybe a  =  Nothing | Just a deriving (Eq, Ord)
 
 maybe :: b -> (a -> b) -> Maybe a -> b
 maybe n f Nothing  =  n
@@ -685,7 +752,7 @@ instance Monad Maybe where
 
  -- Either type  
  
-data  Either a b  =  Left a | Right b   deriving (Eq)
+data  Either a b  =  Left a | Right b   deriving (Eq, Ord)
 
 instance (Show a, Show b) => Show (Either a b) where
     showsPrec d (Left x)  = showParen (d > 10) (showString "Left " . showsPrec 11 x)
@@ -728,9 +795,46 @@ instance Num Int where
     signum x = if x < 0 then 0 - 1 else if x == 0 then 0 else 1
     fromInteger = #primIntegerToInt
 
-mod, div :: Int -> Int -> Int
+-- Integral operations, on Int until there is an Integral class (#87).
+-- The #div primitive truncates towards zero, which makes it quot; #mod
+-- takes the divisor's sign, which makes it mod.  div rounds down, so it
+-- is what is left once mod is taken away, divided exactly.
+quot, rem, div, mod :: Int -> Int -> Int
+quot = #primIntDiv
+rem x y = x - y * quot x y
 mod = #primIntMod
-div = #primIntDiv
+div x y = quot (x - mod x y) y
+
+quotRem, divMod :: Int -> Int -> (Int, Int)
+quotRem x y = (quot x y, rem x y)
+divMod x y = (div x y, mod x y)
+
+even, odd :: Int -> Bool
+even n = rem n 2 == 0
+odd n = not (even n)
+
+gcd :: Int -> Int -> Int
+gcd x y = gcd' (abs x) (abs y)
+    where gcd' a 0 = a
+          gcd' a b = gcd' b (rem a b)
+
+lcm :: Int -> Int -> Int
+lcm _ 0 = 0
+lcm 0 _ = 0
+lcm x y = abs (quot x (gcd x y) * y)
+
+-- x ^ n by repeated squaring.
+(^) :: Num a => a -> Int -> a
+x ^ n = if n < 0 then error "Prelude.^: negative exponent"
+        else if n == 0 then 1
+        else power x (n - 1) x
+    where power b e acc = if e == 0 then acc
+                          else if even e then power (b * b) (quot e 2) acc
+                          else power b (e - 1) (b * acc)
+
+-- Integer is an Int until #86, so this is fromInteger on the way in.
+fromIntegral :: Num b => Int -> b
+fromIntegral n = fromInteger (#primIntToInteger n)
 
 --  An IO action takes the world token and either succeeds, with its
 --  result, or fails with an IOError.  Either way it hands on the world
@@ -816,6 +920,29 @@ mapM f as  = sequence (map f as)
 
 mapM_ :: (Monad m) => (a -> m b) -> [a] -> m ()
 mapM_ f as = sequence_ (map f as)
+
+(=<<) :: Monad m => (a -> m b) -> m a -> m b
+f =<< x = x >>= f
+
+(<$>) :: Functor f => (a -> b) -> f a -> f b
+(<$>) = fmap
+
+(<$) :: Functor f => a -> f b -> f a
+(<$) = fmap . const
+
+-- Sequence two actions, keeping one result: in base these are
+-- Applicative's own methods.
+(*>) :: Applicative f => f a -> f b -> f b
+a *> b = fmap (const id) a <*> b
+
+(<*) :: Applicative f => f a -> f b -> f a
+a <* b = fmap const a <*> b
+
+until :: (a -> Bool) -> (a -> a) -> a -> a
+until p f x = if p x then x else until p f (f x)
+
+asTypeOf :: a -> a -> a
+asTypeOf = const
 
 putChar :: Char -> IO ()
 putChar ch = IO (\w -> IOSuccess () (#primPutChar w 1 ch))
