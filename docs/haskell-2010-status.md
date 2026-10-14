@@ -108,6 +108,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Superclasses | ✅ | Transitive closure. |
 | `instance` decls | ✅ | |
 | Instance contexts `instance C a => C [a]` | ✅ | |
+| Partly applied heads `Either e`, `((,) a)`, `((->) r)` | ✅ | `(,)`, `(,,)`, … and `(->)` can be written as prefix type constructors, in a head or a signature (#84). The Prelude uses them for `Functor`/`Applicative`/`Monad` on `Either e` and `((->) r)`, and `Functor` on `((,) a)`, as `base` does. |
 | Context propagation / constrained fns | ✅ | |
 | Context reduction / simplification | ✅ | HNF + superclass redundancy removal. |
 | Dictionary passing | ✅ | No class trace at runtime. |
@@ -119,7 +120,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 
 | Feature | Status | Note |
 |---|---|---|
-| `* -> *` constructors (`[]`, `(->)`, `(,)`) | ✅ | |
+| `* -> *` constructors (`[]`, `(->)`, `(,)`) | ✅ | Written alone as `[]`, `(->)` and `(,)`, as well as applied (#84). |
 | Higher-kinded tyvars (`Functor f`) | 🟡 | Work when a scheme supplies the kind; default var kind is `*`. |
 | Kind inference / checking | 🟡 | Arity-assigned, not unified; no kind mismatch rejection, no kind variables. |
 
@@ -172,7 +173,7 @@ Item-by-item status against the Report's Prelude export list is tracked in [#97]
 | List functions | 🟡 | Have: `map filter foldr foldl foldl' foldl1 (++) concat reverse length null head tail last init (!!) take drop takeWhile dropWhile span break iterate repeat replicate cycle zip zipWith and or any all elem notElem lookup sum product maximum minimum`. Also `zip3 zipWith3 unzip unzip3`. **Missing**: `concatMap`, `foldr1`, `splitAt`, `lines`/`words`/`unlines`/`unwords`, scans. `sum` and `product` are `[Int] -> Int`. |
 | Miscellaneous | 🟡 | Have `id const (.) flip ($) ($!) seq not (&&) (\|\|) otherwise fst snd curry uncurry subtract error`. Missing `undefined`, `until`, `asTypeOf`, `(=<<)` (fixity declared, never defined). `subtract` is `Int`-only. |
 | `Maybe` | 🟡 | Type, `maybe`, derived `Eq`, `Show`, Functor/Applicative/Monad. Missing `fromMaybe`, `isJust`, `catMaybes`, `mapMaybe`, … |
-| `Either` | 🟡 | Type, `either`, derived `Eq` and `Show`. No Functor/Monad instances. |
+| `Either` | 🟡 | Type, `either`, derived `Eq` and `Show`, `Read`, and Functor/Applicative/Monad (#84). No `Ord`. |
 | Tuples | 🟡 | `Eq`, `Ord`, `Show` and `Read` instances up to size 7 (the Report asks for 15, plus `Bounded`). |
 | `Eq`/`Ord`/`Enum`/`Bounded` | 🟡 | `Eq`: `Bool`, `Int`, `Char`, `()`, `[a]`, plus derived `Ordering`/`Maybe`/`Either`. `Ord`: `Bool`, `Int`, `Char`, `()` and tuples, plus derived `Ordering`, with `compare`/`max`/`min` defaults. `Enum`: `Bool`, `Int`, `Char`, `()`, and derived `Ordering`. `Bounded`: `Bool`, `Int`, `Char`, `()`, and derived `Ordering`. No `Ord` for lists, `Maybe` or `Either` yet. |
 | `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]`, `Maybe` and `IO`. As in `base` rather than the Report, `Applicative` is `Monad`'s superclass and `return` defaults to `pure`, so a user's monad also needs `Functor` and `Applicative` instances. A constraint provides its superclasses, so a `Monad m =>` function can use `pure` and `<*>`, and an `Ord a =>` one can use `==`. No `*>`/`<*`/`liftA2`/`fail`. |

@@ -156,6 +156,26 @@ package body Leander.Parser.Types is
          if Tok = Tok_Right_Paren then
             Scan;
             return Constructor (Loc, "()");
+         elsif Tok = Tok_Comma then
+            --  "(,)", "(,,)", ...: a tuple's constructor written alone, so
+            --  that it can be partly applied, as in "instance Functor
+            --  ((,) a)" (#84).
+            declare
+               Commas : Natural := 0;
+            begin
+               while Tok = Tok_Comma loop
+                  Commas := Commas + 1;
+                  Scan;
+               end loop;
+               Expect (Tok_Right_Paren, [Tok_Right_Arrow, Tok_Identifier]);
+               return Constructor (Loc, '(' & [1 .. Commas => ','] & ')');
+            end;
+         elsif Tok = Tok_Right_Arrow and then Next_Tok = Tok_Right_Paren then
+            --  "(->)": the function type's constructor written alone, as
+            --  in "instance Functor ((->) r)" (#84).
+            Scan;
+            Scan;
+            return Constructor (Loc, "(->)");
          else
             declare
                Inner : constant Reference := Parse_Type_Expression (Context);

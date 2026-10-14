@@ -624,6 +624,19 @@ package body Leander.Tests.Integration is
          Test_Root & "test_43_io_catch_order.hs",
          "abcd" & ASCII.LF);
 
+      --  Partly applied constructors in instance heads, (,) and (->)
+      --  among them, and the Prelude's instances written that way (issue
+      --  #84).  Its own handle, through Test_Output, so that the module's
+      --  own instance is not seen by later modules.
+      Test_Output
+        ("output: partly applied constructors in instance heads",
+         Test_Root & "test_47_partial_heads.hs",
+         "(Right 3,Left 'x')" & ASCII.LF
+         & "(('x',4),('a',True,-5))" & ASCII.LF
+         & "(19,19)" & ASCII.LF
+         & "(2,(1,'a'))" & ASCII.LF
+         & "(Right 30,Left ""divide by zero"",Left ""no"")" & ASCII.LF);
+
       Test_Runtime_Error
         ("runtime error: an IOError nothing catches",
          "runIO (ioError (userError ""uncaught""))",
