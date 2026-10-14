@@ -1,3 +1,7 @@
+with Ada.Exceptions;
+with Ada.Strings.Fixed;
+
+with Leander.Core.Alts;
 with Leander.Core.Type_Classes;
 with Leander.Core.Types.Unification;
 
@@ -196,8 +200,134 @@ package body Leander.Core.Inference.Defaulting is
 
    procedure Check_Instances
      (Context    : in out Inference_Context'Class;
-      Predicates : Leander.Core.Predicates.Predicate_Array)
+      Predicates : Leander.Core.Predicates.Predicate_Array;
+      Binding    : Leander.Core.Bindings.Reference := null)
    is
+      use type Leander.Core.Bindings.Reference;
+
+      procedure Report (Constraint : String);
+
+      ------------
+      -- Report --
+      ------------
+
+      procedure Report (Constraint : String) is
+
+         function Bracketed (S : String) return String;
+         --  "Show a -> b" as "Show (a -> b)": a compound type in
+         --  parentheses, unless they already enclose all of it.  Only for
+         --  the message; Predicate.Show also names dictionaries.
+
+         ---------------
+         -- Bracketed --
+         ---------------
+
+         function Bracketed (S : String) return String is
+            Space : constant Natural :=
+                      Ada.Strings.Fixed.Index (S, " ");
+         begin
+            if Space = 0 then
+               return S;
+            end if;
+
+            declare
+               T     : constant String := S (Space + 1 .. S'Last);
+               Depth : Integer := 0;
+               Whole : Boolean := T'Length > 0
+                                    and then T (T'First) in '(' | '[';
+            begin
+               if Ada.Strings.Fixed.Index (T, " ") = 0 then
+                  return S;
+               end if;
+
+               --  Already enclosed if the bracket opened first closes
+               --  only at the very end.
+               for I in T'Range loop
+                  if T (I) in '(' | '[' then
+                     Depth := Depth + 1;
+                  elsif T (I) in ')' | ']' then
+                     Depth := Depth - 1;
+                     if Depth = 0 and then I < T'Last then
+                        Whole := False;
+                     end if;
+                  end if;
+               end loop;
+
+               if Whole then
+                  return S;
+               else
+                  return S (S'First .. Space) & "(" & T & ")";
+               end if;
+            end;
+         end Bracketed;
+
+         Constraint_Image : constant String := Bracketed (Constraint);
+
+      begin
+         if Binding = null then
+            --  An expression on its own, as Compile has: fail the context,
+            --  which Compile reports, rather than noting an error against
+            --  the module state that a later load would see.
+            Context.Error ("no instance for " & Constraint_Image);
+            return;
+         else
+            declare
+               Alts : constant Leander.Core.Alts.Reference_Array :=
+                        Binding.Alts;
+            begin
+               Alts (Alts'First).Expression.Error
+                 ("no instance for " & Constraint_Image & ", needed by "
+                  & To_String (Binding.Name));
+            end;
+         end if;
+         Context.Reject;
+      end Report;
+
+      function Unsatisfiable
+        (Q : Leander.Core.Predicates.Instance)
+         return String;
+      --  Empty when Q can be reduced to head-normal form; otherwise the
+      --  constraint inside it that has no instance.  Type variables may be
+      --  left, but if a type's head is a constructor no instance matches,
+      --  nothing can ever satisfy it: Show (a -> b), from show map, or
+      --  Ord [t] with no Ord [a] (#76, #158).
+
+      -------------------
+      -- Unsatisfiable --
+      -------------------
+
+      function Unsatisfiable
+        (Q : Leander.Core.Predicates.Instance)
+         return String
+      is
+         Prefix : constant String := "No instance found for ";
+      begin
+         declare
+            Reduced : constant Leander.Core.Predicates.Predicate_Array :=
+                        Context.Class_Environment.To_Head_Normal_Form (Q)
+              with Unreferenced;
+         begin
+            return "";
+         end;
+      exception
+         when E : Constraint_Error =>
+            declare
+               Message : constant String :=
+                           Ada.Exceptions.Exception_Message (E);
+            begin
+               if Message'Length > Prefix'Length
+                 and then Message (Message'First
+                                   .. Message'First + Prefix'Length - 1)
+                            = Prefix
+               then
+                  return Message (Message'First + Prefix'Length
+                                  .. Message'Last);
+               else
+                  return Q.Show;
+               end if;
+            end;
+      end Unsatisfiable;
+
    begin
       if Context.Class_Environment = null then
          return;
@@ -211,11 +341,20 @@ package body Leander.Core.Inference.Defaulting is
                      Leander.Core.Types.Reference
                        (P.Get_Type.Apply (Context.Current_Substitution)));
          begin
-            if Q.Get_Type.Get_Tyvars'Length = 0
-              and then not Context.Class_Environment.Entails ([], Q)
-            then
-               Context.Error ("no instance for " & Q.Show);
-               return;
+            if Q.Get_Type.Get_Tyvars'Length = 0 then
+               if not Context.Class_Environment.Entails ([], Q) then
+                  Report (Q.Show);
+                  return;
+               end if;
+            else
+               declare
+                  Missing : constant String := Unsatisfiable (Q);
+               begin
+                  if Missing /= "" then
+                     Report (Missing);
+                     return;
+                  end if;
+               end;
             end if;
          end;
       end loop;

@@ -1,3 +1,4 @@
+with Leander.Core.Bindings;
 with Leander.Core.Predicates;
 with Leander.Core.Tyvars;
 
@@ -19,10 +20,15 @@ package Leander.Core.Inference.Defaulting is
 
    procedure Check_Instances
      (Context    : in out Inference_Context'Class;
-      Predicates : Leander.Core.Predicates.Predicate_Array);
-   --  Report, as an error in Context, each of Predicates that has no type
-   --  variable left and no instance: Num Bool, from 1 + True.  Nothing
-   --  can resolve it later.  Without the classes to ask, nothing is
-   --  checked.
+      Predicates : Leander.Core.Predicates.Predicate_Array;
+      Binding    : Leander.Core.Bindings.Reference := null);
+   --  Report the first of Predicates that nothing can ever satisfy: one
+   --  with no type variable left and no instance, such as Num Bool from
+   --  1 + True, or one whose type's head is a constructor no instance
+   --  matches, such as Show (a -> b) from show map (#76).  It is reported
+   --  against Binding, the binding whose inference raised it, when there
+   --  is one, and Context rejects the program: inference itself is still
+   --  sound, so later bindings are not blamed for it (#157).  Without the
+   --  classes to ask, nothing is checked.
 
 end Leander.Core.Inference.Defaulting;

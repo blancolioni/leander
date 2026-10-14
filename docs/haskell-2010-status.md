@@ -96,7 +96,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Polymorphic recursion | 🟡 | Only for signature-annotated bindings. |
 | Monomorphism restriction | ❌ | Implicit bindings always generalized. |
 | Type defaulting (numeric) | 🟡 | The Report's rules (section 4.3.4), with `Int` as the only default type until there are others (#86, #85). No `default` declaration yet. |
-| Ambiguity detection | ❌ | Unresolvable predicates silently kept. |
+| Ambiguity detection | 🟡 | A constraint nothing can satisfy is reported against the binding that needs it, whether or not type variables are left: `Show (a -> b)` from `show map`, `Num Bool` from `1 + True` (#76). An ambiguous type variable whose constraints could be satisfied but are not defaulted (`Ord a` alone, as in `compare (Right 2) (Right 1)`) is still not reported, and fails at link time (#158). |
 | Higher-rank types | ❌ | (Correctly — not H2010.) |
 
 ## Type classes

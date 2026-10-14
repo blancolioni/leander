@@ -103,7 +103,8 @@ package body Leander.Core.Binding_Groups.Inference is
                  (T.Apply (Now).Get_Tyvars,
                   Start_Env.Apply (Now).all.Get_Tyvars));
             Core.Inference.Defaulting.Check_Instances
-              (Context, Raised (Base + 1 .. Raised'Last));
+              (Context, Raised (Base + 1 .. Raised'Last),
+               Binding => Explicit);
          end;
 
          declare
@@ -314,7 +315,8 @@ package body Leander.Core.Binding_Groups.Inference is
                      Keep => Core.Tyvars.Union (New_Tyvars (Ts'First), Fs));
                   Core.Inference.Defaulting.Check_Instances
                     (Context,
-                     Raised (Base (Bs'First) + 1 .. Base (Bs'Last + 1)));
+                     Raised (Base (Bs'First) + 1 .. Base (Bs'Last + 1)),
+                     Binding => Bs (Bs'First));
                end if;
                return Context.Current_Predicates;
             end Defaulted;

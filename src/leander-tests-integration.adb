@@ -668,6 +668,10 @@ package body Leander.Tests.Integration is
 
       Leander.Clear_Errors;
       Test_Rejected ("1 + True", Handle);
+      --  No instance can match a function type: a type error, not a crash
+      --  when the program is linked (issue #76).
+      Test_Rejected ("show map", Handle);
+      Test_Rejected ("length (show [id])", Handle);
       Test_Rejected ("let { g :: a -> a; g x = True } in 1", Handle);
       Leander.Clear_Errors;
 
@@ -2299,6 +2303,14 @@ package body Leander.Tests.Integration is
       Test_Module_Reports
         ("module: deriving Bounded for a type it cannot bound is reported",
          Test_Root & "test_45_bad_bounded.hs");
+
+      Test_Module_Reports
+        ("module: showing a function is reported",
+         Test_Root & "test_49_show_function.hs");
+
+      Test_Module_Reports
+        ("module: a missing instance is reported against its binding",
+         Test_Root & "test_49_missing_instance.hs");
 
       Test_Module_Reports
         ("module: an unknown escape is reported",
