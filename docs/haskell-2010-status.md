@@ -160,9 +160,9 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | `Float` / `Double` | ❌ | The type constructors exist and float literals are typed `Double`, but the value **rounds to an integer** and there are no instances, so no float arithmetic. |
 | `Rational` / `Word` | ❌ | Absent. |
 | Overloaded numeric literals + defaulting | 🟡 | Integer literals are overloaded and default to `Int` (#82). Floating literals still wait for #85. |
-| `div`/`mod` | ✅ | `Int -> Int -> Int`, not class methods. |
+| `div`/`mod`/`quot`/`rem`/`divMod`/`quotRem` | ✅ | On `Int`, not class methods until there is an `Integral` class (#87). `div` and `mod` round down, `quot` and `rem` towards zero (#79). |
 | `quot`/`rem`/`divMod`/`quotRem`, `^`/`^^`/`**` | ❌ | Fixities declared, functions never defined. |
-| `even`/`odd`/`gcd`/`lcm`/`fromIntegral` | ❌ | Absent. |
+| `even`/`odd`/`gcd`/`lcm`/`(^)`/`fromIntegral` | ✅ | On `Int` (#79); `(^)` raises any `Num` to an `Int` power, and `fromIntegral` turns an `Int` into any `Num`. |
 
 ## Prelude coverage
 
@@ -170,13 +170,13 @@ Item-by-item status against the Report's Prelude export list is tracked in [#97]
 
 | Area | Status | Note |
 |---|---|---|
-| List functions | 🟡 | Have: `map filter foldr foldl foldl' foldl1 (++) concat reverse length null head tail last init (!!) take drop takeWhile dropWhile span break iterate repeat replicate cycle zip zipWith and or any all elem notElem lookup sum product maximum minimum`. Also `zip3 zipWith3 unzip unzip3`. **Missing**: `concatMap`, `foldr1`, `splitAt`, `lines`/`words`/`unlines`/`unwords`, scans. `sum` and `product` are `[Int] -> Int`. |
-| Miscellaneous | 🟡 | Have `id const (.) flip ($) ($!) seq not (&&) (\|\|) otherwise fst snd curry uncurry subtract error`. Missing `undefined`, `until`, `asTypeOf`, `(=<<)` (fixity declared, never defined). `subtract` is `Int`-only. |
+| List functions | 🟡 | Have: `map filter foldr foldl foldl' foldl1 (++) concat reverse length null head tail last init (!!) take drop takeWhile dropWhile span break iterate repeat replicate cycle zip zipWith and or any all elem notElem lookup sum product maximum minimum`. Also `zip3 zipWith3 unzip unzip3`. Also `concatMap foldr1 splitAt lines words unlines unwords scanl scanl1 scanr scanr1` (#79). `sum` and `product` work at any `Num`. |
+| Miscellaneous | 🟡 | Have `id const (.) flip ($) ($!) seq not (&&) (\|\|) otherwise fst snd curry uncurry subtract error`. Also `until`, `asTypeOf` and `(=<<)` (#79), and `subtract` at any `Num`. Missing `undefined`. |
 | `Maybe` | 🟡 | Type, `maybe`, derived `Eq`, `Show`, Functor/Applicative/Monad. Missing `fromMaybe`, `isJust`, `catMaybes`, `mapMaybe`, … |
-| `Either` | 🟡 | Type, `either`, derived `Eq` and `Show`, `Read`, and Functor/Applicative/Monad (#84). No `Ord`. |
+| `Either` | 🟡 | Type, `either`, derived `Eq`, `Ord` and `Show`, `Read`, and Functor/Applicative/Monad (#84). |
 | Tuples | 🟡 | `Eq`, `Ord`, `Show` and `Read` instances up to size 7 (the Report asks for 15, plus `Bounded`). |
-| `Eq`/`Ord`/`Enum`/`Bounded` | 🟡 | `Eq`: `Bool`, `Int`, `Char`, `()`, `[a]`, plus derived `Ordering`/`Maybe`/`Either`. `Ord`: `Bool`, `Int`, `Char`, `()` and tuples, plus derived `Ordering`, with `compare`/`max`/`min` defaults. `Enum`: `Bool`, `Int`, `Char`, `()`, and derived `Ordering`. `Bounded`: `Bool`, `Int`, `Char`, `()`, and derived `Ordering`. No `Ord` for lists, `Maybe` or `Either` yet. |
-| `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]`, `Maybe` and `IO`. As in `base` rather than the Report, `Applicative` is `Monad`'s superclass and `return` defaults to `pure`, so a user's monad also needs `Functor` and `Applicative` instances. A constraint provides its superclasses, so a `Monad m =>` function can use `pure` and `<*>`, and an `Ord a =>` one can use `==`. No `*>`/`<*`/`liftA2`/`fail`. |
+| `Eq`/`Ord`/`Enum`/`Bounded` | 🟡 | `Eq`: `Bool`, `Int`, `Char`, `()`, `[a]`, plus derived `Ordering`/`Maybe`/`Either`. `Ord`: `Bool`, `Int`, `Char`, `()`, tuples and `[a]`, plus derived `Ordering`, `Maybe` and `Either`, with `compare`/`max`/`min` defaults. `Enum`: `Bool`, `Int`, `Char`, `()`, and derived `Ordering`. `Bounded`: `Bool`, `Int`, `Char`, `()`, and derived `Ordering`. |
+| `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]`, `Maybe` and `IO`. As in `base` rather than the Report, `Applicative` is `Monad`'s superclass and `return` defaults to `pure`, so a user's monad also needs `Functor` and `Applicative` instances. A constraint provides its superclasses, so a `Monad m =>` function can use `pure` and `<*>`, and an `Ord a =>` one can use `==`. `(<$>)`, `(<$)`, `(*>)` and `(<*)` are functions rather than class methods (#79). No `liftA2`/`fail`. |
 | `Show` | ✅ | As in the Report: `showsPrec`, `show` and `showList`, with `ShowS`, `shows`, `showChar`, `showString` and `showParen`. Instances for `Bool`, `Int`, `Char` (with the Report's escapes, and strings through `showList`), `[a]`, `()`, `Ordering`, `Maybe`, `Either` and tuples up to size 7, and `deriving Show` (#54). |
 | `Read` | 🟡 | As in the Report: `readsPrec` and `readList`, with `ReadS`, `reads`, `read`, `lex` and `readParen` (#90). Instances for `Int`, `Char` (with the Report's escapes, and strings through `readList`), `Bool`, `Ordering`, `()`, `[a]`, `Maybe`, `Either` and tuples up to size 7. `deriving Read` too (#154). No `Integer` or floating-point instances. |
 | `Monoid`/`Foldable`/`Traversable` | ❌ | Absent. |

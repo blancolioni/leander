@@ -1818,6 +1818,49 @@ package body Leander.Tests.Integration is
          "drNoParse", "K",
          Handle);
 
+      --  The rest of the Prelude functions and instances (issue #79)
+
+      Test_Module
+        ("module: prelude: Ord for lists, Maybe and Either",
+         Test_Root & "test_48_prelude_functions.hs",
+         "pfOrd", "K",
+         Handle);
+      Test_Module
+        ("module: prelude: list functions",
+         Test_Root & "test_48_prelude_functions.hs",
+         "pfLists", "K",
+         Handle);
+      Test_Module
+        ("module: prelude: lines, words, and span",
+         Test_Root & "test_48_prelude_functions.hs",
+         "pfText", "K",
+         Handle);
+      Test_Module
+        ("module: prelude: div, mod, quot and rem",
+         Test_Root & "test_48_prelude_functions.hs",
+         "pfDivision", "K",
+         Handle);
+      Test_Module
+        ("module: prelude: number functions",
+         Test_Root & "test_48_prelude_functions.hs",
+         "pfNumbers", "K",
+         Handle);
+      Test_Module
+        ("module: prelude: sum and product at any Num",
+         Test_Root & "test_48_prelude_functions.hs",
+         "pfGeneric", "K",
+         Handle);
+      Test_Module
+        ("module: prelude: until, asTypeOf and the operators",
+         Test_Root & "test_48_prelude_functions.hs",
+         "pfOther", "K",
+         Handle);
+      Test_Module
+        ("module: prelude: seq on values with fields",
+         Test_Root & "test_48_prelude_functions.hs",
+         "pfStrict", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module

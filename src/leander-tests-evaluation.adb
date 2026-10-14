@@ -34,14 +34,14 @@ package body Leander.Tests.Evaluation is
       Test ("2 + 3 * 4", "Num a => a", "14", Handle);
       Test ("2 - 3 * 4", "Num a => a", "-10", Handle);
       Test ("seq (#trace 42) 4", "Num a => a", "4", Handle);
-      Test ("sum [1,2,3,4]", "Int", "10", Handle);
-      Test ("sum (map (+1) [1,2,3])", "Int", "9", Handle);
+      Test ("sum [1,2,3,4]", "Num a => a", "10", Handle);
+      Test ("sum (map (+1) [1,2,3])", "Num a => a", "9", Handle);
       Test ("length (take 10 [1,2,3])", "Int", "3", Handle);
       Test ("length (take 2 [1,2,3])", "Int", "2", Handle);
       --  Test ("sum (do { x <- [42]; return x })", "Int", "42", Env, Prelude);
       --  Test ("sum (do { let x = 42; return x })", "Int", "42", Env, Prelude);
       Test ("maybe 42 id Nothing", "Num a => a", "42", Handle);
-      Test ("maybe 0 sum (Just [1,2,3])", "Int", "6", Handle);
+      Test ("maybe 0 sum (Just [1,2,3])", "Num a => a", "6", Handle);
       Test ("fst (123,456)", "Num a => a", "123", Handle);
       Test ("snd (123,456)", "Num a => a", "456", Handle);
       Test ("(*2) 3", "Num a => a", "6", Handle);
