@@ -2,19 +2,20 @@ module Prelude
   ( Bool(..), Either(..), IO(..), IOError, Maybe(..), Ordering(..),
     Applicative(..), Bounded(..), Enum(..), Eq(..), Functor(..),
     Monad(..), Num(..), Ord(..), Read(..), Show(..), all, and, any,
-    asTypeOf, break, catch, concat, concatMap, const, curry, cycle, div,
-    divMod, drop, dropWhile, either, elem, error, even, filter, flip,
-    foldl, foldl', foldl1, foldr, foldr1, fromIntegral, fst, gcd, head,
-    id, init, ioError, iterate, last, lcm, length, lex, lines, lookup,
-    map, mapM, mapM_, maximum, maybe, minimum, mod, not, notElem, null,
-    odd, or, otherwise, print, product, putChar, putStr, putStrLn, quot,
-    quotRem, read, readParen, reads, rem, repeat, replicate, reverse,
-    runIO, scanl, scanl1, scanr, scanr1, seq, sequence, sequence_,
-    showChar, showParen, showString, shows, snd, span, splitAt,
-    subtract, sum, tail, take, takeWhile, uncurry, unlines, until,
-    unwords, unzip, unzip3, userError, words, zip, zip3, zipWith,
-    zipWith3, (!!), ($), ($!), (&&), (++), (.), (||), (^), (=<<), (<$>),
-    (<$), (*>), (<*)
+    appendFile, asTypeOf, break, catch, concat, concatMap, const, curry,
+    cycle, div, divMod, drop, dropWhile, either, elem, error, even,
+    filter, flip, foldl, foldl', foldl1, foldr, foldr1, fromIntegral,
+    fst, gcd, getChar, getContents, getLine, head, id, init, interact,
+    ioError, iterate, last, lcm, length, lex, lines, lookup, map, mapM,
+    mapM_, maximum, maybe, minimum, mod, not, notElem, null, odd, or,
+    otherwise, print, product, putChar, putStr, putStrLn, quot, quotRem,
+    read, readFile, readIO, readLn, readParen, reads, rem, repeat,
+    replicate, reverse, runIO, scanl, scanl1, scanr, scanr1, seq,
+    sequence, sequence_, showChar, showParen, showString, shows, snd,
+    span, splitAt, subtract, sum, tail, take, takeWhile, uncurry,
+    unlines, until, unwords, unzip, unzip3, userError, words, writeFile,
+    zip, zip3, zipWith, zipWith3, (!!), ($), ($!), (&&), (++), (.),
+    (||), (^), (=<<), (<$>), (<$), (*>), (<*)
   ) where
 
 type String = [Char]
@@ -42,6 +43,10 @@ foreign import skit "#errorChar" #errorChar :: Char -> Int -> Int
 foreign import skit "#errorRaise" #errorRaise :: Int -> a
 
 foreign import skit "#putChar" #primPutChar :: Int -> Int -> Char -> Int
+foreign import skit "#getChar" #primGetChar :: Int -> Int -> Int
+foreign import skit "#pathChar" #primPathChar :: Char -> Int -> Int
+foreign import skit "#openFile" #primOpenFile :: Int -> Int -> Int
+foreign import skit "#closeFile" #primCloseFile :: Int -> Int -> Int
 
 foreign import skit "#minInt" #minInt :: Int
 foreign import skit "#maxInt" #maxInt :: Int
@@ -849,18 +854,19 @@ unIO (IO f) = f
 
 --  The Report leaves IOError abstract: userError makes one, and show
 --  describes it.  Its kinds grow as primitives that can fail arrive.
-data IOErrorKind = IOUserError
+data IOErrorKind = IOUserError | IOEOFError | IONoSuchThing | IOPermission
+  deriving (Eq)
 
 data IOError = MkIOError IOErrorKind [Char]
-
-instance Eq IOErrorKind where
-    IOUserError == IOUserError = True
 
 instance Eq IOError where
     (MkIOError k s) == (MkIOError k' s') = k == k' && s == s'
 
 instance Show IOError where
-    show (MkIOError IOUserError s) = "user error (" ++ s ++ ")"
+    show (MkIOError IOUserError s)   = "user error (" ++ s ++ ")"
+    show (MkIOError IOEOFError s)    = s ++ ": end of file"
+    show (MkIOError IONoSuchThing s) = s ++ ": does not exist"
+    show (MkIOError IOPermission s)  = s ++ ": permission denied"
 
 userError :: [Char] -> IOError
 userError s = MkIOError IOUserError s
@@ -945,7 +951,7 @@ asTypeOf :: a -> a -> a
 asTypeOf = const
 
 putChar :: Char -> IO ()
-putChar ch = IO (\w -> IOSuccess () (#primPutChar w 1 ch))
+putChar ch = hPutChar 1 ch
 
 putStr :: [Char] -> IO ()
 putStr = mapM_ putChar
@@ -955,6 +961,88 @@ putStrLn str = putStr str >> putChar '\n'
 
 print :: Show a => a -> IO ()
 print x = putStrLn (show x)
+
+-- Input and files (#89).  A handle is the number the primitives use: 0
+-- for standard input, 1 for standard output, and an opened file's own.
+
+type FilePath = String
+
+hPutChar :: Int -> Char -> IO ()
+hPutChar h ch = IO (\w -> IOSuccess () (#primPutChar w h ch))
+
+--  The next character from handle h, or Nothing at its end.  The result
+--  is only built once the character is read, and bindIO wants the result
+--  straight away, so the read happens before whatever follows.
+hGetCharMaybe :: Int -> IO (Maybe Char)
+hGetCharMaybe h = IO (\w -> let c = #primGetChar w h
+                            in seq c (IOSuccess (if c < 0 then Nothing
+                                                 else Just (toEnum c))
+                                                (w + 1)))
+
+hClose :: Int -> IO ()
+hClose h = IO (\w -> IOSuccess () (#primCloseFile w h))
+
+--  Open path for reading (0), writing (1) or appending (2).  The path
+--  reaches the machine a character at a time, counted from w - w rather
+--  than 0, so that running the same action twice sends it twice.
+openFileMode :: FilePath -> Int -> IO Int
+openFileMode path mode =
+    IO (\w -> let sent = foldl' (\k c -> #primPathChar c k) (w - w) path
+                  h    = #primOpenFile (seq sent w) mode
+              in seq h (if h >= 0 then IOSuccess h (w + 1)
+                        else IOFailure (MkIOError (if h == negate 1
+                                                   then IONoSuchThing
+                                                   else IOPermission)
+                                                  path)
+                                       (w + 1)))
+
+--  Run an action only when its result is wanted, as lazy input needs.
+--  Its effects are out of sequence with everything else's.
+unsafeInterleaveIO :: IO a -> IO a
+unsafeInterleaveIO a = IO (\w -> IOSuccess (case unIO a w of
+                                               IOSuccess x _ -> x
+                                               IOFailure e _ -> error (show e))
+                                           w)
+
+--  What is left of handle h, read as it is used.  A file is closed once
+--  its end is reached.
+lazyRead :: Int -> IO String
+lazyRead h = unsafeInterleaveIO
+               (hGetCharMaybe h >>= \m -> case m of
+                  Nothing -> (if h == 0 then return () else hClose h)
+                               >> return []
+                  Just c  -> lazyRead h >>= \cs -> return (c : cs))
+
+getChar :: IO Char
+getChar = hGetCharMaybe 0 >>= \m -> case m of
+            Nothing -> ioError (MkIOError IOEOFError "Prelude.getChar")
+            Just c  -> return c
+
+--  A line without its newline.  The end of input ends a line too, but
+--  only once something has been read.
+getLine :: IO String
+getLine = getChar >>= \c -> if c == '\n' then return [] else rest c
+    where rest c = getLineRest >>= \cs -> return (c : cs)
+          getLineRest = hGetCharMaybe 0 >>= \m -> case m of
+                          Nothing -> return []
+                          Just c  -> if c == '\n' then return []
+                                     else rest c
+
+getContents :: IO String
+getContents = lazyRead 0
+
+interact :: (String -> String) -> IO ()
+interact f = getContents >>= \s -> putStr (f s)
+
+readFile :: FilePath -> IO String
+readFile path = openFileMode path 0 >>= lazyRead
+
+writeFile :: FilePath -> String -> IO ()
+writeFile path s = openFileMode path 1 >>= \h -> mapM_ (hPutChar h) s >> hClose h
+
+appendFile :: FilePath -> String -> IO ()
+appendFile path s = openFileMode path 2 >>= \h -> mapM_ (hPutChar h) s >> hClose h
+
 
 --  Runs an action, forcing the final world token so that every effect
 --  happens.  An IOError nothing caught is a runtime error, like error.
@@ -1380,3 +1468,17 @@ instance (Read a1, Read a2, Read a3, Read a4, Read a5, Read a6, Read a7) => Read
                               (x6, s6) <- readComponent "," s5
                               (x7, s7) <- readComponent ")" s6
                               return ((x1,x2,x3,x4,x5,x6,x7), s7))
+
+-- readIO and readLn read a value from the terminal (#89).  They are here,
+-- after class Read, because a signature's context can only name a class
+-- already declared.
+readIO :: Read a => String -> IO a
+readIO s = case (do (x, t) <- reads s
+                    (tok, rest) <- lex t
+                    if null tok && null rest then [x] else []) of
+             [x] -> return x
+             []  -> ioError (userError "Prelude.readIO: no parse")
+             _   -> ioError (userError "Prelude.readIO: ambiguous parse")
+
+readLn :: Read a => IO a
+readLn = getLine >>= readIO
