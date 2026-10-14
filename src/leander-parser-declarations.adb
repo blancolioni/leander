@@ -423,6 +423,9 @@ package body Leander.Parser.Declarations is
                elsif Class_Name = "Bounded" then
                   Leander.Syntax.Deriving.Derive_Bounded
                     (Context, Derived_Loc, Builder.Data_Type);
+               elsif Class_Name = "Read" then
+                  Leander.Syntax.Deriving.Derive_Read
+                    (Context, Derived_Loc, Builder.Data_Type);
                else
                   Error ("cannot derive " & Class_Name);
                end if;

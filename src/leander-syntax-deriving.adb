@@ -551,4 +551,117 @@ package body Leander.Syntax.Deriving is
       end if;
    end Derive_Bounded;
 
+   -----------------
+   -- Derive_Read --
+   -----------------
+
+   procedure Derive_Read
+     (Context : Leander.Parser.Parse_Context'Class;
+      Loc     : Leander.Source.Source_Location;
+      DT      : Leander.Data_Types.Reference)
+   is
+      Bindings : constant Leander.Syntax.Bindings.Reference :=
+                   Leander.Syntax.Bindings.Empty
+                     (Leander.Core.Instance_Context, []);
+      D_Name   : constant String := Fresh;
+      R_Name   : constant String := Fresh;
+
+      function Lambda
+        (Name : String;
+         Body_E : Expression)
+         return Expression
+      is (Leander.Syntax.Expressions.Lambda
+            (Loc, Pat_Var (Loc, Name), Body_E));
+
+      function Bind (M : Expression; Name : String; K : Expression)
+        return Expression
+      is (Op (Loc, ">>=", M, Lambda (Name, K)));
+      --  M >>= \Name -> K, in the list monad.
+
+      function Field
+        (Selector : String;
+         Name     : String)
+         return Expression
+      is (App (Loc, Var_Expr (Loc, Selector), Var_Expr (Loc, Name)));
+
+      function Alternative (I : Positive) return Expression;
+      --  readParen (d > 10) (\r' -> ...) r for the I'th constructor:
+      --
+      --    filter (\p -> fst p == "C") (lex r')
+      --      >>= \p  -> readsPrec 11 (snd p)
+      --      >>= \q1 -> ...
+      --      >>= \qn -> return (C (fst q1) .. (fst qn), snd qn)
+      --
+      --  Only names the Prelude exports, and lambdas over plain variables,
+      --  since the instance is compiled in the module that derives it: a
+      --  filter stands for a test, and fst and snd for a tuple pattern.
+
+      -----------------
+      -- Alternative --
+      -----------------
+
+      function Alternative (I : Positive) return Expression is
+         Name    : constant String := Con_Name (DT, I);
+         Arity   : constant Natural := DT.Constructor_Arity (I);
+         Inner_R : constant String := Fresh;
+         P_Name  : constant String := Fresh;
+         Q_Names : constant Name_List := Fresh_Names (Arity);
+         Value   : Expression := Con_Expr (Loc, Name);
+         Rest    : Expression;
+         Chain   : Expression;
+      begin
+         for K in 1 .. Arity loop
+            Value := App (Loc, Value, Field ("fst", Image (Q_Names (K))));
+         end loop;
+
+         Rest := Field ("snd", (if Arity = 0 then P_Name
+                                else Image (Q_Names (Arity))));
+         Chain :=
+           App (Loc, Var_Expr (Loc, "return"),
+                App (Loc, App (Loc, Con_Expr (Loc, "(,)"), Value), Rest));
+
+         for K in reverse 1 .. Arity loop
+            Chain :=
+              Bind (Op (Loc, "readsPrec", Int_Expr (Loc, 11),
+                        Field ("snd", (if K = 1 then P_Name
+                                       else Image (Q_Names (K - 1))))),
+                    Image (Q_Names (K)),
+                    Chain);
+         end loop;
+
+         Chain :=
+           Bind (Op (Loc, "filter",
+                     Lambda (P_Name,
+                             Op (Loc, "==", Field ("fst", P_Name),
+                                 String_Expr (Loc, Name))),
+                     App (Loc, Var_Expr (Loc, "lex"),
+                          Var_Expr (Loc, Inner_R))),
+                 P_Name,
+                 Chain);
+
+         return App
+           (Loc,
+            Op (Loc, "readParen",
+                (if Arity = 0
+                 then Con_Expr (Loc, "False")
+                 else Op (Loc, ">", Var_Expr (Loc, D_Name),
+                          Int_Expr (Loc, 10))),
+                Lambda (Inner_R, Chain)),
+            Var_Expr (Loc, R_Name));
+      end Alternative;
+
+      Alternatives : Expression := Alternative (DT.Constructor_Count);
+   begin
+      for I in reverse 1 .. DT.Constructor_Count - 1 loop
+         Alternatives := Op (Loc, "++", Alternative (I), Alternatives);
+      end loop;
+
+      Bindings.Add_Binding
+        (Loc, "readsPrec",
+         [Pat_Var (Loc, D_Name), Pat_Var (Loc, R_Name)],
+         Alternatives);
+
+      Add_Instance (Context, "Read", DT, Bindings, "Read");
+   end Derive_Read;
+
 end Leander.Syntax.Deriving;

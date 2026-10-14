@@ -1790,6 +1790,34 @@ package body Leander.Tests.Integration is
          "dvPrelude", "K",
          Handle);
 
+      --  Deriving Read (issue #154)
+
+      Test_Module
+        ("module: deriving Read: an enumeration",
+         Test_Root & "test_46_deriving_read.hs",
+         "drEnumeration", "K",
+         Handle);
+      Test_Module
+        ("module: deriving Read: constructors with fields",
+         Test_Root & "test_46_deriving_read.hs",
+         "drFields", "K",
+         Handle);
+      Test_Module
+        ("module: deriving Read: precedence",
+         Test_Root & "test_46_deriving_read.hs",
+         "drPrecedence", "K",
+         Handle);
+      Test_Module
+        ("module: deriving Read: read after show",
+         Test_Root & "test_46_deriving_read.hs",
+         "drRoundTrip", "K",
+         Handle);
+      Test_Module
+        ("module: deriving Read: a missing field",
+         Test_Root & "test_46_deriving_read.hs",
+         "drNoParse", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
