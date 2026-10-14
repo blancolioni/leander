@@ -43,4 +43,12 @@ package Leander.Syntax.Deriving is
    --  For an enumeration, its first and last constructors; for a type of
    --  one constructor, that constructor applied to its fields' bounds.
 
+   procedure Derive_Read
+     (Context : Leander.Parser.Parse_Context'Class;
+      Loc     : Leander.Source.Source_Location;
+      DT      : Leander.Data_Types.Reference);
+   --  Reads what a derived Show writes: a constructor alone, or applied to
+   --  its fields read at precedence 11, in parentheses that are optional
+   --  at precedence 10 or less and required above it.
+
 end Leander.Syntax.Deriving;

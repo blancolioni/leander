@@ -81,8 +81,8 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Feature | Status | Note |
 |---|---|---|
 | `deriving Eq` | ✅ | Nullary + parameterized; structural generator. |
-| `deriving (Ord, Show, Enum, Bounded)` | ✅ | As in Haskell 2010 chapter 11 (#54). `Ord` compares constructors in declaration order, then fields left to right. `Show` parenthesises a constructor with fields above precedence 10. `Enum` needs an enumeration, and `Bounded` an enumeration or a single constructor; anything else is reported. |
-| `deriving (Read, Ix)` | ❌ | Rejected with "cannot derive …". `Read` is #154. |
+| `deriving (Ord, Show, Enum, Bounded, Read)` | ✅ | As in Haskell 2010 chapter 11 (#54, #154). `Ord` compares constructors in declaration order, then fields left to right. `Show` parenthesises a constructor with fields above precedence 10. `Enum` needs an enumeration, and `Bounded` an enumeration or a single constructor; anything else is reported. `Read` reads what `Show` writes, with the parentheses optional at precedence 10 or less. |
+| `deriving Ix` | ❌ | Rejected with "cannot derive …". There is no `Ix` class. |
 
 ## Type system
 
@@ -177,7 +177,7 @@ Item-by-item status against the Report's Prelude export list is tracked in [#97]
 | `Eq`/`Ord`/`Enum`/`Bounded` | 🟡 | `Eq`: `Bool`, `Int`, `Char`, `()`, `[a]`, plus derived `Ordering`/`Maybe`/`Either`. `Ord`: `Bool`, `Int`, `Char`, `()` and tuples, plus derived `Ordering`, with `compare`/`max`/`min` defaults. `Enum`: `Bool`, `Int`, `Char`, `()`, and derived `Ordering`. `Bounded`: `Bool`, `Int`, `Char`, `()`, and derived `Ordering`. No `Ord` for lists, `Maybe` or `Either` yet. |
 | `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]`, `Maybe` and `IO`. As in `base` rather than the Report, `Applicative` is `Monad`'s superclass and `return` defaults to `pure`, so a user's monad also needs `Functor` and `Applicative` instances. A constraint provides its superclasses, so a `Monad m =>` function can use `pure` and `<*>`, and an `Ord a =>` one can use `==`. No `*>`/`<*`/`liftA2`/`fail`. |
 | `Show` | ✅ | As in the Report: `showsPrec`, `show` and `showList`, with `ShowS`, `shows`, `showChar`, `showString` and `showParen`. Instances for `Bool`, `Int`, `Char` (with the Report's escapes, and strings through `showList`), `[a]`, `()`, `Ordering`, `Maybe`, `Either` and tuples up to size 7, and `deriving Show` (#54). |
-| `Read` | 🟡 | As in the Report: `readsPrec` and `readList`, with `ReadS`, `reads`, `read`, `lex` and `readParen` (#90). Instances for `Int`, `Char` (with the Report's escapes, and strings through `readList`), `Bool`, `Ordering`, `()`, `[a]`, `Maybe`, `Either` and tuples up to size 7. No `deriving Read` yet, nor `Integer` or floating-point instances. |
+| `Read` | 🟡 | As in the Report: `readsPrec` and `readList`, with `ReadS`, `reads`, `read`, `lex` and `readParen` (#90). Instances for `Int`, `Char` (with the Report's escapes, and strings through `readList`), `Bool`, `Ordering`, `()`, `[a]`, `Maybe`, `Either` and tuples up to size 7. `deriving Read` too (#154). No `Integer` or floating-point instances. |
 | `Monoid`/`Foldable`/`Traversable` | ❌ | Absent. |
 
 ---
@@ -200,7 +200,7 @@ These are wrong answers or crashes in forms that are otherwise supported.
 
 1. ~~**Prelude breadth.**~~ Mostly landed: folds, zips, `drop`/`takeWhile`/`dropWhile`/`span`/`break`, `elem`/`lookup`/`(!!)`, `replicate`/`iterate`/`repeat`/`cycle`, `any`/`all`/`and`/`or`, `maximum`/`minimum`, `Either`+`either`. Still missing: `concatMap`, `lines`/`words`/`unlines`/`unwords`, scans, `fromMaybe` and friends, `even`/`odd`, `quot`/`rem`, `(^)`, `undefined`.
 2. ~~**Guards** (function equations + case alts).~~ Landed for boolean guards; pattern guards and `let` in guards remain.
-3. ~~**`deriving Show`** (then `Ord`).~~ Landed with `Enum` and `Bounded` in #54. `deriving Read` is #154.
+3. ~~**`deriving Show`** (then `Ord`).~~ Landed with `Enum` and `Bounded` in #54, and `deriving Read` in #154.
 
 ### Tier 2 — foundational
 
