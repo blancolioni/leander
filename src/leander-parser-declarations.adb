@@ -411,6 +411,18 @@ package body Leander.Parser.Declarations is
                if Class_Name = "Eq" then
                   Leander.Syntax.Deriving.Derive_Eq
                     (Context, Derived_Loc, Builder.Data_Type);
+               elsif Class_Name = "Ord" then
+                  Leander.Syntax.Deriving.Derive_Ord
+                    (Context, Derived_Loc, Builder.Data_Type);
+               elsif Class_Name = "Show" then
+                  Leander.Syntax.Deriving.Derive_Show
+                    (Context, Derived_Loc, Builder.Data_Type);
+               elsif Class_Name = "Enum" then
+                  Leander.Syntax.Deriving.Derive_Enum
+                    (Context, Derived_Loc, Builder.Data_Type);
+               elsif Class_Name = "Bounded" then
+                  Leander.Syntax.Deriving.Derive_Bounded
+                    (Context, Derived_Loc, Builder.Data_Type);
                else
                   Error ("cannot derive " & Class_Name);
                end if;

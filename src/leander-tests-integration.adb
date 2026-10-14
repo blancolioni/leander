@@ -1749,6 +1749,34 @@ package body Leander.Tests.Integration is
          "rdRound", "K",
          Handle);
 
+      --  Deriving Ord, Show, Enum and Bounded (issue #54)
+
+      Test_Module
+        ("module: deriving: Ord",
+         Test_Root & "test_45_deriving.hs",
+         "dvOrd", "K",
+         Handle);
+      Test_Module
+        ("module: deriving: Show",
+         Test_Root & "test_45_deriving.hs",
+         "dvShow", "K",
+         Handle);
+      Test_Module
+        ("module: deriving: Enum",
+         Test_Root & "test_45_deriving.hs",
+         "dvEnum", "K",
+         Handle);
+      Test_Module
+        ("module: deriving: Bounded",
+         Test_Root & "test_45_deriving.hs",
+         "dvBounded", "K",
+         Handle);
+      Test_Module
+        ("module: deriving: the Prelude's Ordering, and Int ranges",
+         Test_Root & "test_45_deriving.hs",
+         "dvPrelude", "K",
+         Handle);
+
       --  Tuples larger than pairs (issue #80)
 
       Test_Module
@@ -2179,6 +2207,14 @@ package body Leander.Tests.Integration is
       Test_Module_Fails
         ("module: an import after other declarations is rejected",
          Modules_Root & "bad/BadLateImport.hs");
+
+      Test_Module_Reports
+        ("module: deriving Enum for a type with fields is reported",
+         Test_Root & "test_45_bad_enum.hs");
+
+      Test_Module_Reports
+        ("module: deriving Bounded for a type it cannot bound is reported",
+         Test_Root & "test_45_bad_bounded.hs");
 
       Test_Module_Reports
         ("module: an unknown escape is reported",

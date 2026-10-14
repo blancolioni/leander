@@ -183,9 +183,31 @@ instance Show Bool where
     show True  = "True"
     show False = "False"
 
+-- Bool is built in rather than declared here, so it cannot derive these.
+instance Ord Bool where
+    False <= _ = True
+    True  <= b = b
+
+instance Enum Bool where
+    fromEnum False = 0
+    fromEnum True  = 1
+    toEnum 0 = False
+    toEnum 1 = True
+    toEnum _ = error "Prelude.Enum.Bool.toEnum: bad argument"
+    enumFrom x = enumFromTo x True
+    enumFromThen x y = enumFromThenTo x y (fromEnum y >= fromEnum x)
+
+instance Bounded Bool where
+    minBound = False
+    maxBound = True
+
 instance Bounded Int where
   minBound = #minInt
   maxBound = #maxInt
+
+instance Bounded Char where
+  minBound = toEnum 0
+  maxBound = toEnum 1114111
 
 instance Enum Int where
   succ = (+1)
@@ -193,11 +215,12 @@ instance Enum Int where
   toEnum = id
   fromEnum = id
   enumFrom x = x : enumFrom (x + 1)
-  enumFromThen x n = x : enumFromThen n (x + n)
+  -- Each step is the gap between the first two, which may be downwards.
+  enumFromThen n n' = n : enumFromThen n' (n' + n' - n)
   enumFromTo lo hi = if lo > hi
                      then []
                      else lo : enumFromTo (lo + 1) hi
-  enumFromThenTo n n' m = if n > m
+  enumFromThenTo n n' m = if (if n' >= n then n > m else n < m)
                           then []
                           else n : enumFromThenTo n' (n' + n' - n) m
 
@@ -301,7 +324,7 @@ instance (Eq a) => Eq [a] where
                     [] -> False
                     (y:ys') -> x == y && xs == ys'
 
-data Ordering = LT | EQ | GT deriving (Eq)
+data Ordering = LT | EQ | GT deriving (Eq, Ord, Enum, Bounded)
 
 instance Show Ordering where
     show LT = "LT"
@@ -316,6 +339,17 @@ instance Eq () where
 
 instance Ord () where
     _ <= _ = True
+
+instance Enum () where
+    fromEnum _ = 0
+    toEnum 0 = ()
+    toEnum _ = error "Prelude.Enum.().toEnum: bad argument"
+    enumFrom _ = [()]
+    enumFromThen _ _ = repeat ()
+
+instance Bounded () where
+    minBound = ()
+    maxBound = ()
 
 otherwise :: Bool
 otherwise = True
