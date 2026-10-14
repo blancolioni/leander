@@ -1,16 +1,17 @@
 module Prelude
   ( Bool(..), Either(..), IO(..), IOError, Maybe(..), Ordering(..),
     Applicative(..), Bounded(..), Enum(..), Eq(..), Functor(..),
-    Monad(..), Num(..), Ord(..), Show(..), all, and, any, break, catch,
-    concat, const, curry, cycle, div, drop, dropWhile, either, elem,
-    error, filter, flip, foldl, foldl', foldl1, foldr, fst, head, id,
-    init, ioError, iterate, last, length, lookup, map, mapM, mapM_,
-    maximum, maybe, minimum, mod, not, notElem, null, or, otherwise,
-    print, product, putChar, putStr, putStrLn, repeat, replicate,
-    reverse, runIO, seq, sequence, sequence_, showChar, showParen,
-    showString, shows, snd, span, subtract, sum, tail, take, takeWhile,
-    uncurry, unzip, unzip3, userError, zip, zip3, zipWith, zipWith3,
-    (!!), ($), ($!), (&&), (++), (.), (||)
+    Monad(..), Num(..), Ord(..), Read(..), Show(..), all, and, any,
+    break, catch, concat, const, curry, cycle, div, drop, dropWhile,
+    either, elem, error, filter, flip, foldl, foldl', foldl1, foldr,
+    fst, head, id, init, ioError, iterate, last, length, lex, lookup,
+    map, mapM, mapM_, maximum, maybe, minimum, mod, not, notElem, null,
+    or, otherwise, print, product, putChar, putStr, putStrLn, read,
+    readParen, reads, repeat, replicate, reverse, runIO, seq, sequence,
+    sequence_, showChar, showParen, showString, shows, snd, span,
+    subtract, sum, tail, take, takeWhile, uncurry, unzip, unzip3,
+    userError, zip, zip3, zipWith, zipWith3, (!!), ($), ($!), (&&),
+    (++), (.), (||)
   ) where
 
 type String = [Char]
@@ -309,6 +310,12 @@ instance Show Ordering where
 
 instance Show () where
     show _ = "()"
+
+instance Eq () where
+    _ == _ = True
+
+instance Ord () where
+    _ <= _ = True
 
 otherwise :: Bool
 otherwise = True
@@ -828,3 +835,357 @@ instance (Ord a1, Ord a2, Ord a3, Ord a4, Ord a5, Ord a6, Ord a7) => Ord (a1,a2,
 
 instance (Show a1, Show a2, Show a3, Show a4, Show a5, Show a6, Show a7) => Show (a1,a2,a3,a4,a5,a6,a7) where
     show (x1,x2,x3,x4,x5,x6,x7) = "(" ++ show x1 ++ "," ++ show x2 ++ "," ++ show x3 ++ "," ++ show x4 ++ "," ++ show x5 ++ "," ++ show x6 ++ "," ++ show x7 ++ ")"
+
+-- Read, as in the Haskell 2010 Report (section 6.3.3 and the PreludeText
+-- module of chapter 9).  The compiler takes neither list comprehensions
+-- nor character and string patterns yet, so a comprehension is written
+-- as a do block in the list monad, and a literal pattern as a test.
+
+type ReadS a = String -> [(a, String)]
+
+class Read a where
+    readsPrec :: Int -> ReadS a
+    readList  :: ReadS [a]
+
+        -- Minimal complete definition: readsPrec
+
+    -- Only class methods and exported names here, as for Show.
+    readList = readParen False (\r -> do (tok, s) <- lex r
+                                         if tok == "[" then readl s else [])
+        where readl s  = (do (tok, t) <- lex s
+                             if tok == "]" then [([], t)] else [])
+                         ++ (do (x, t) <- reads s
+                                (xs, u) <- readl' t
+                                return (x : xs, u))
+              readl' s = do (tok, t) <- lex s
+                            if tok == "]"
+                            then [([], t)]
+                            else if tok == ","
+                            then do (x, u) <- reads t
+                                    (xs, v) <- readl' u
+                                    return (x : xs, v)
+                            else []
+
+reads :: Read a => ReadS a
+reads = readsPrec 0
+
+read :: Read a => String -> a
+read s = case (do (x, t) <- reads s
+                  (tok, rest) <- lex t
+                  if null tok && null rest then [x] else []) of
+           [x] -> x
+           []  -> error "Prelude.read: no parse"
+           _   -> error "Prelude.read: ambiguous parse"
+
+readParen :: Bool -> ReadS a -> ReadS a
+readParen b g = if b then mandatory else optional
+    where optional r  = g r ++ mandatory r
+          mandatory r = do s <- readToken "(" r
+                           (x, t) <- optional s
+                           u <- readToken ")" t
+                           return (x, u)
+
+-- What follows tok, when the next lexeme of r is tok.
+readToken :: String -> String -> [String]
+readToken tok r = do (t, s) <- lex r
+                     if t == tok then [s] else []
+
+-- The next lexeme of a string, and the rest of it: Haskell's own lexical
+-- syntax, without nested comments.
+lex :: ReadS String
+lex [] = [([], [])]
+lex (c:s)
+  | isSpace c     = lex (dropWhile isSpace s)
+  | c == '\''     = do (ch, t) <- lexLitChar s
+                       if ch /= "'" && startsWith "'" t
+                       then [('\'' : ch ++ "'", drop 1 t)]
+                       else []
+  | c == '"'      = do (str, t) <- lexString s
+                       return ('"' : str, t)
+  | isSingle c    = [([c], s)]
+  | isSymbol c    = [(c : takeWhile isSymbol s, dropWhile isSymbol s)]
+  | isAlpha c     = [(c : takeWhile isIdChar s, dropWhile isIdChar s)]
+  | isDecDigit c  = do (fe, t) <- lexFracExp (dropWhile isDecDigit s)
+                       return (c : takeWhile isDecDigit s ++ fe, t)
+  | otherwise     = []
+    where isSingle x = x `elem` ",;()[]{}_`"
+          isSymbol x = x `elem` "!@#$%&*+./<=>?\\^|:-~"
+          isIdChar x = isAlphaNum x || x `elem` "_'"
+
+-- The fraction and exponent of a number, when it has them.
+lexFracExp :: ReadS String
+lexFracExp s = case s of
+                 (p:d:t) -> if p == '.' && isDecDigit d
+                            then do (e, u) <- lexExp (dropWhile isDecDigit t)
+                                    return ('.' : d : takeWhile isDecDigit t ++ e, u)
+                            else lexExp s
+                 _       -> lexExp s
+
+lexExp :: ReadS String
+lexExp s = case s of
+             (e:t) -> if e == 'e' || e == 'E'
+                      then case t of
+                             (sign:d:u) | (sign == '+' || sign == '-') && isDecDigit d ->
+                                 [(e : sign : d : takeWhile isDecDigit u, dropWhile isDecDigit u)]
+                             (d:u) | isDecDigit d ->
+                                 [(e : d : takeWhile isDecDigit u, dropWhile isDecDigit u)]
+                             _ -> [([], s)]
+                      else [([], s)]
+             _     -> [([], s)]
+
+-- The rest of a string literal after its opening quote, closing quote
+-- included.  A gap of white space between backslashes becomes \&.
+lexString :: ReadS String
+lexString [] = []
+lexString (c:s)
+  | c == '"'  = [("\"", s)]
+  | otherwise = do (ch, t) <- lexStringItem (c:s)
+                   (str, u) <- lexString t
+                   return (ch ++ str, u)
+
+lexStringItem :: ReadS String
+lexStringItem s = case s of
+                    (b:c:t) -> if b == '\\' && c == '&'
+                               then [("\\&", t)]
+                               else if b == '\\' && isSpace c
+                               then case dropWhile isSpace t of
+                                      (e:u) -> if e == '\\' then [("\\&", u)] else []
+                                      []    -> []
+                               else lexLitChar s
+                    _       -> lexLitChar s
+
+-- One character of a literal, as written: itself, or its escape.
+lexLitChar :: ReadS String
+lexLitChar [] = []
+lexLitChar (c:s)
+  | c == '\\' = do (esc, t) <- lexEscape s
+                   return ('\\' : esc, t)
+  | otherwise = [([c], s)]
+
+lexEscape :: ReadS String
+lexEscape [] = []
+lexEscape (c:s)
+  | c `elem` "abfnrtv\\\"'" = [([c], s)]
+  | c == '^'                = case s of
+                                (d:t) -> if d >= '@' && d <= '_' then [(['^', d], t)] else []
+                                []    -> []
+  | isDecDigit c            = [(c : takeWhile isDecDigit s, dropWhile isDecDigit s)]
+  | otherwise               = case asciiEscape (c:s) of
+                                Just (name, t) -> [(name, t)]
+                                Nothing        -> []
+
+-- One character of a literal, read: what it stands for.
+readLitChar :: ReadS Char
+readLitChar [] = []
+readLitChar (c:s)
+  | c == '\\' = readEscape s
+  | otherwise = [(c, s)]
+
+readEscape :: ReadS Char
+readEscape [] = []
+readEscape (c:s)
+  | c == 'a'     = [('\a', s)]
+  | c == 'b'     = [('\b', s)]
+  | c == 'f'     = [('\f', s)]
+  | c == 'n'     = [('\n', s)]
+  | c == 'r'     = [('\r', s)]
+  | c == 't'     = [('\t', s)]
+  | c == 'v'     = [('\v', s)]
+  | c == '\\'    = [('\\', s)]
+  | c == '"'     = [('"', s)]
+  | c == '\''    = [('\'', s)]
+  | c == '^'     = case s of
+                     (d:t) -> if d >= '@' && d <= '_'
+                              then [(toEnum (fromEnum d - 64), t)]
+                              else []
+                     []    -> []
+  | isDecDigit c = [(toEnum (readDecimal (c : takeWhile isDecDigit s)),
+                     dropWhile isDecDigit s)]
+  | otherwise    = case asciiEscape (c:s) of
+                     Just (name, t) -> [(toEnum (asciiCode name), t)]
+                     Nothing        -> []
+
+-- The name of a control character at the start of s, as \SOH or \DEL
+-- write it, and what follows it.  SOH comes before SO in asciiTab, so
+-- the longer name is tried first.
+asciiEscape :: String -> Maybe (String, String)
+asciiEscape s = case filter (\name -> startsWith name s) ("DEL" : asciiTab) of
+                  (name:_) -> Just (name, drop (length name) s)
+                  []       -> Nothing
+
+asciiCode :: String -> Int
+asciiCode name = if name == "DEL" then 127 else asciiIndex 0 asciiTab
+    where asciiIndex n (a:as) = if a == name then n else asciiIndex (n + 1) as
+          asciiIndex n []     = 0
+
+readDecimal :: String -> Int
+readDecimal = foldl (\n d -> n * 10 + fromEnum d - 48) 0
+
+startsWith :: String -> String -> Bool
+startsWith [] _          = True
+startsWith (p:ps) (c:cs) = p == c && startsWith ps cs
+startsWith _ []          = False
+
+isSpace :: Char -> Bool
+isSpace c = c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f'
+            || c == '\v' || c == '\xa0'
+
+isAlpha :: Char -> Bool
+isAlpha c = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+
+isAlphaNum :: Char -> Bool
+isAlphaNum c = isAlpha c || isDecDigit c
+
+-- A number with an optional minus sign in front, as reads finds it.
+readSigned :: ReadS Int -> ReadS Int
+readSigned readPos = readParen False read'
+    where read' r  = read'' r
+                     ++ (do s <- readToken "-" r
+                            (x, t) <- read'' s
+                            return (negate x, t))
+          read'' r = do (str, s) <- lex r
+                        (n, rest) <- readPos str
+                        if null rest then [(n, s)] else []
+
+readDec :: ReadS Int
+readDec s = if null ds then [] else [(readDecimal ds, dropWhile isDecDigit s)]
+    where ds = takeWhile isDecDigit s
+
+instance Read Int where
+    readsPrec _ = readSigned readDec
+
+instance Read Char where
+    readsPrec _ = readParen False
+                    (\r -> do (tok, t) <- lex r
+                              case tok of
+                                (q:s) -> if q == '\''
+                                         then do (c, rest) <- readLitChar s
+                                                 if rest == "'" then [(c, t)] else []
+                                         else []
+                                []    -> [])
+
+    readList = readParen False
+                 (\r -> do (tok, t) <- lex r
+                           case tok of
+                             (q:s) -> if q == '"'
+                                      then do (l, _) <- readString s
+                                              [(l, t)]
+                                      else []
+                             []    -> [])
+        where readString s = case s of
+                               (c:d:t) -> if c == '\\' && d == '&'
+                                          then readString t
+                                          else readStringChar s
+                               _       -> readStringChar s
+              readStringChar s = case s of
+                                   (c:t) -> if c == '"'
+                                            then [([], t)]
+                                            else do (ch, u) <- readLitChar s
+                                                    (cs, v) <- readString u
+                                                    return (ch : cs, v)
+                                   []    -> []
+
+instance (Read a) => Read [a] where
+    readsPrec _ = readList
+
+instance Read Bool where
+    readsPrec _ = readParen False
+                    (\r -> do (tok, t) <- lex r
+                              if tok == "True" then [(True, t)]
+                              else if tok == "False" then [(False, t)]
+                              else [])
+
+instance Read Ordering where
+    readsPrec _ = readParen False
+                    (\r -> do (tok, t) <- lex r
+                              if tok == "LT" then [(LT, t)]
+                              else if tok == "EQ" then [(EQ, t)]
+                              else if tok == "GT" then [(GT, t)]
+                              else [])
+
+instance Read () where
+    readsPrec _ = readParen False
+                    (\r -> do s <- readToken "(" r
+                              t <- readToken ")" s
+                              return ((), t))
+
+instance (Read a) => Read (Maybe a) where
+    readsPrec d r =
+        readParen False (\r -> do t <- readToken "Nothing" r
+                                  return (Nothing, t)) r
+        ++ readParen (d > 10) (\r -> do t <- readToken "Just" r
+                                        (x, u) <- readsPrec 11 t
+                                        return (Just x, u)) r
+
+instance (Read a, Read b) => Read (Either a b) where
+    readsPrec d r =
+        readParen (d > 10) (\r -> do t <- readToken "Left" r
+                                     (x, u) <- readsPrec 11 t
+                                     return (Left x, u)) r
+        ++ readParen (d > 10) (\r -> do t <- readToken "Right" r
+                                        (y, u) <- readsPrec 11 t
+                                        return (Right y, u)) r
+
+-- A tuple's components, after its opening parenthesis: each followed by
+-- a comma, the last by the closing parenthesis.
+readComponent :: Read a => String -> String -> [(a, String)]
+readComponent close s = do (x, t) <- reads s
+                           u <- readToken close t
+                           return (x, u)
+
+instance (Read a1, Read a2) => Read (a1,a2) where
+    readsPrec _ = readParen False
+                    (\r -> do s0 <- readToken "(" r
+                              (x1, s1) <- readComponent "," s0
+                              (x2, s2) <- readComponent ")" s1
+                              return ((x1,x2), s2))
+
+instance (Read a1, Read a2, Read a3) => Read (a1,a2,a3) where
+    readsPrec _ = readParen False
+                    (\r -> do s0 <- readToken "(" r
+                              (x1, s1) <- readComponent "," s0
+                              (x2, s2) <- readComponent "," s1
+                              (x3, s3) <- readComponent ")" s2
+                              return ((x1,x2,x3), s3))
+
+instance (Read a1, Read a2, Read a3, Read a4) => Read (a1,a2,a3,a4) where
+    readsPrec _ = readParen False
+                    (\r -> do s0 <- readToken "(" r
+                              (x1, s1) <- readComponent "," s0
+                              (x2, s2) <- readComponent "," s1
+                              (x3, s3) <- readComponent "," s2
+                              (x4, s4) <- readComponent ")" s3
+                              return ((x1,x2,x3,x4), s4))
+
+instance (Read a1, Read a2, Read a3, Read a4, Read a5) => Read (a1,a2,a3,a4,a5) where
+    readsPrec _ = readParen False
+                    (\r -> do s0 <- readToken "(" r
+                              (x1, s1) <- readComponent "," s0
+                              (x2, s2) <- readComponent "," s1
+                              (x3, s3) <- readComponent "," s2
+                              (x4, s4) <- readComponent "," s3
+                              (x5, s5) <- readComponent ")" s4
+                              return ((x1,x2,x3,x4,x5), s5))
+
+instance (Read a1, Read a2, Read a3, Read a4, Read a5, Read a6) => Read (a1,a2,a3,a4,a5,a6) where
+    readsPrec _ = readParen False
+                    (\r -> do s0 <- readToken "(" r
+                              (x1, s1) <- readComponent "," s0
+                              (x2, s2) <- readComponent "," s1
+                              (x3, s3) <- readComponent "," s2
+                              (x4, s4) <- readComponent "," s3
+                              (x5, s5) <- readComponent "," s4
+                              (x6, s6) <- readComponent ")" s5
+                              return ((x1,x2,x3,x4,x5,x6), s6))
+
+instance (Read a1, Read a2, Read a3, Read a4, Read a5, Read a6, Read a7) => Read (a1,a2,a3,a4,a5,a6,a7) where
+    readsPrec _ = readParen False
+                    (\r -> do s0 <- readToken "(" r
+                              (x1, s1) <- readComponent "," s0
+                              (x2, s2) <- readComponent "," s1
+                              (x3, s3) <- readComponent "," s2
+                              (x4, s4) <- readComponent "," s3
+                              (x5, s5) <- readComponent "," s4
+                              (x6, s6) <- readComponent "," s5
+                              (x7, s7) <- readComponent ")" s6
+                              return ((x1,x2,x3,x4,x5,x6,x7), s7))

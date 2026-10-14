@@ -271,6 +271,12 @@ package body Leander.Tests.Modules is
                    & "|IOResult|IOSuccess|IOFailure|unIO"  --  IO's result
                    & "|IOErrorKind|IOUserError|MkIOError"  --  abstract IOError
                    & "|thenCmp"          --  tuple Ord helper
+                   --  Read's lexer and readers; Data.Char's in the Report
+                   & "|lexFracExp|lexExp|lexString|lexStringItem"
+                   & "|lexLitChar|lexEscape|readLitChar|readEscape"
+                   & "|asciiEscape|asciiCode|readDecimal|startsWith"
+                   & "|isSpace|isAlpha|isAlphaNum"
+                   & "|readToken|readSigned|readDec|readComponent"
                    & "|";
 
       Context : Leander.Parser.Parse_Context;

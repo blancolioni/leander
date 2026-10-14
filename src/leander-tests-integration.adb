@@ -629,6 +629,10 @@ package body Leander.Tests.Integration is
          "runIO (ioError (userError ""uncaught""))",
          "user error (uncaught)");
       Test_Runtime_Error
+        ("runtime error: read with no parse",
+         "(read ""[1,"" ++ [0]) == [0]",
+         "Prelude.read: no parse");
+      Test_Runtime_Error
         ("runtime error: a Prelude error",
          "head []",
          "Prelude.head: empty list");
@@ -1700,6 +1704,49 @@ package body Leander.Tests.Integration is
         ("module: pattern binding: at top level",
          Test_Root & "test_42_pattern_bindings.hs",
          "pbTopLevel", "K",
+         Handle);
+
+      --  Read and its instances (issue #90)
+
+      Test_Module
+        ("module: read: Int, a list and a Char",
+         Test_Root & "test_44_read.hs",
+         "rdBasic", "K",
+         Handle);
+      Test_Module
+        ("module: read: a string with escapes",
+         Test_Root & "test_44_read.hs",
+         "rdStrings", "K",
+         Handle);
+      Test_Module
+        ("module: read: Maybe and Either",
+         Test_Root & "test_44_read.hs",
+         "rdNested", "K",
+         Handle);
+      Test_Module
+        ("module: read: a tuple",
+         Test_Root & "test_44_read.hs",
+         "rdTuples", "K",
+         Handle);
+      Test_Module
+        ("module: read: reads leaves the rest",
+         Test_Root & "test_44_read.hs",
+         "rdPartial", "K",
+         Handle);
+      Test_Module
+        ("module: read: lex",
+         Test_Root & "test_44_read.hs",
+         "rdLex", "K",
+         Handle);
+      Test_Module
+        ("module: read: a module's own instance, and readList",
+         Test_Root & "test_44_read.hs",
+         "rdOwn", "K",
+         Handle);
+      Test_Module
+        ("module: read: read after show",
+         Test_Root & "test_44_read.hs",
+         "rdRound", "K",
          Handle);
 
       --  Tuples larger than pairs (issue #80)

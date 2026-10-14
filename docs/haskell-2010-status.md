@@ -172,11 +172,11 @@ Item-by-item status against the Report's Prelude export list is tracked in [#97]
 | Miscellaneous | 🟡 | Have `id const (.) flip ($) ($!) seq not (&&) (\|\|) otherwise fst snd curry uncurry subtract error`. Missing `undefined`, `until`, `asTypeOf`, `(=<<)` (fixity declared, never defined). `subtract` is `Int`-only. |
 | `Maybe` | 🟡 | Type, `maybe`, derived `Eq`, `Show`, Functor/Applicative/Monad. Missing `fromMaybe`, `isJust`, `catMaybes`, `mapMaybe`, … |
 | `Either` | 🟡 | Type, `either`, derived `Eq` and `Show`. No Functor/Monad instances. |
-| Tuples | 🟡 | `Eq`, `Ord` and `Show` instances up to size 7 (the Report asks for 15, plus `Bounded` and `Read`). |
+| Tuples | 🟡 | `Eq`, `Ord`, `Show` and `Read` instances up to size 7 (the Report asks for 15, plus `Bounded`). |
 | `Eq`/`Ord`/`Enum`/`Bounded` | 🟡 | `Eq`: `Bool`, `Int`, `Char`, `[a]`, plus derived `Ordering`/`Maybe`/`Either`. `Ord`: `Int` and `Char` only, with `compare`/`max`/`min` defaults. `Enum`: `Int` and `Char`. `Bounded`: `Int` only. |
 | `Functor`/`Applicative`/`Monad` | 🟡 | Classes, with instances for `[]`, `Maybe` and `IO`. As in `base` rather than the Report, `Applicative` is `Monad`'s superclass and `return` defaults to `pure`, so a user's monad also needs `Functor` and `Applicative` instances. A constraint provides its superclasses, so a `Monad m =>` function can use `pure` and `<*>`, and an `Ord a =>` one can use `==`. No `*>`/`<*`/`liftA2`/`fail`. |
 | `Show` | ✅ | As in the Report: `showsPrec`, `show` and `showList`, with `ShowS`, `shows`, `showChar`, `showString` and `showParen`. Instances for `Bool`, `Int`, `Char` (with the Report's escapes, and strings through `showList`), `[a]`, `()`, `Ordering`, `Maybe`, `Either` and tuples up to size 7. No `deriving Show` yet. |
-| `Read` | ❌ | Absent. |
+| `Read` | 🟡 | As in the Report: `readsPrec` and `readList`, with `ReadS`, `reads`, `read`, `lex` and `readParen` (#90). Instances for `Int`, `Char` (with the Report's escapes, and strings through `readList`), `Bool`, `Ordering`, `()`, `[a]`, `Maybe`, `Either` and tuples up to size 7. No `deriving Read` yet, nor `Integer` or floating-point instances. |
 | `Monoid`/`Foldable`/`Traversable` | ❌ | Absent. |
 
 ---
