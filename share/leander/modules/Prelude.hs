@@ -313,6 +313,22 @@ instance Applicative [] where
 instance Monad [] where
     xs >>= f = concat (map f xs)
 
+-- A function from r is a functor, and the reader monad: each step is
+-- given the same r.  Not in the Haskell 2010 Prelude, but in base's, as
+-- are the instances for Either e and ((,) a) (#84).
+instance Functor ((->) r) where
+    fmap f g = \x -> f (g x)
+
+instance Applicative ((->) r) where
+    pure x  = \_ -> x
+    f <*> g = \x -> f x (g x)
+
+instance Monad ((->) r) where
+    m >>= k = \x -> k (m x) x
+
+instance Functor ((,) a) where
+    fmap f (a, x) = (a, f x)
+
 instance (Show a) => Show [a] where
     showsPrec _ = showList
 
@@ -674,6 +690,20 @@ data  Either a b  =  Left a | Right b   deriving (Eq)
 instance (Show a, Show b) => Show (Either a b) where
     showsPrec d (Left x)  = showParen (d > 10) (showString "Left " . showsPrec 11 x)
     showsPrec d (Right y) = showParen (d > 10) (showString "Right " . showsPrec 11 y)
+
+-- Left stops a computation, carrying its value through untouched.
+instance Functor (Either e) where
+    fmap _ (Left e)  = Left e
+    fmap f (Right x) = Right (f x)
+
+instance Applicative (Either e) where
+    pure = Right
+    Left e  <*> _ = Left e
+    Right f <*> r = fmap f r
+
+instance Monad (Either e) where
+    Left e  >>= _ = Left e
+    Right x >>= k = k x
 
 either               :: (a -> c) -> (b -> c) -> Either a b -> c  
 either f g (Left x)  =  f x  
