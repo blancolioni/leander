@@ -45,6 +45,12 @@ package Leander.Syntax.Bindings is
    --  what follows in the equation list; Leander.Syntax.Bindings.Guards
    --  binds it once the whole list is known.
 
+   function Binds
+     (This : Instance;
+      Name : String)
+      return Boolean;
+   --  True if This has an equation or a type signature for Name.
+
    procedure Add_Type
      (This      : in out Instance;
       Loc       : Source.Source_Location;

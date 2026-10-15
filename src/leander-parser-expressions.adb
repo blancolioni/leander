@@ -45,6 +45,12 @@ package body Leander.Parser.Expressions is
 
    function At_Atomic_Expression return Boolean;
 
+   function Parse_Plain_Atomic_Expression
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Expressions.Reference;
+   --  An atomic expression without any record construction or update
+   --  following it.
+
    function Parse_Left_Expression
      (Context : Parse_Context'Class)
       return Leander.Syntax.Expressions.Reference;
@@ -253,6 +259,100 @@ package body Leander.Parser.Expressions is
    -----------------------------
 
    function Parse_Atomic_Expression
+     (Context : Parse_Context'Class)
+      return Leander.Syntax.Expressions.Reference
+   is
+      use Leander.Syntax.Expressions;
+      Result : Reference := Parse_Plain_Atomic_Expression (Context);
+   begin
+      --  aexp { fbind, ... }: record construction when aexp is a
+      --  constructor, otherwise record update (Haskell 2010, sections
+      --  3.15.2 and 3.15.3).  It binds more tightly than application, and
+      --  may be repeated.
+      while Tok = Tok_Left_Brace loop
+         declare
+            package Field_Vectors is
+              new Ada.Containers.Vectors (Positive, Field_Expression);
+            Loc    : constant Source.Source_Location :=
+                       Current_Source_Location;
+            Fields : Field_Vectors.Vector;
+         begin
+            Scan;
+            while Tok /= Tok_Right_Brace loop
+               if Tok /= Tok_Identifier
+                 or else not Is_Alphanumeric_Identifier (Tok_Text)
+               then
+                  Error ("expected a field name");
+                  raise Parse_Error;
+               end if;
+
+               declare
+                  Label_Loc : constant Source.Source_Location :=
+                                Current_Source_Location;
+                  Written   : constant String := Scan_Qualified_Name;
+               begin
+                  if Is_Constructor (Last_Name_Component (Written)) then
+                     Error ("expected a field name");
+                     raise Parse_Error;
+                  end if;
+
+                  declare
+                     --  A label may be qualified, as in "G.px": resolved,
+                     --  it keeps the module's name, which an update needs
+                     --  to name the type's constructors.
+                     Label : constant Leander.Names.Leander_Name :=
+                               Leander.Names.To_Leander_Name
+                                 (Context.Resolve
+                                    (Written, Leander.Scopes.Value_Space,
+                                     Label_Loc));
+                  begin
+                     if Tok /= Tok_Equal then
+                        Error ("expected '='");
+                        raise Parse_Error;
+                     end if;
+                     Scan;
+                     Fields.Append
+                       (Field_Expression'
+                          (Label => Label,
+                           Value => Parse_Expression (Context)));
+                  end;
+               end;
+               exit when Tok /= Tok_Comma;
+               Scan;
+            end loop;
+
+            if Tok = Tok_Right_Brace then
+               Scan;
+            else
+               Error ("missing '}'");
+               raise Parse_Error;
+            end if;
+
+            declare
+               Con_Name : constant String := Constructor_Name (Result);
+               Field_Array : constant Field_Expression_Array :=
+                               [for Field of Fields => Field];
+            begin
+               if Con_Name /= "" then
+                  Result := Record_Construction
+                    (Loc, Con_Name, Field_Array, Context.Environment);
+               elsif Field_Array'Length = 0 then
+                  Error ("a record update needs at least one field");
+               else
+                  Result := Record_Update
+                    (Loc, Result, Field_Array, Context.Environment);
+               end if;
+            end;
+         end;
+      end loop;
+      return Result;
+   end Parse_Atomic_Expression;
+
+   -----------------------------------
+   -- Parse_Plain_Atomic_Expression --
+   -----------------------------------
+
+   function Parse_Plain_Atomic_Expression
      (Context : Parse_Context'Class)
       return Leander.Syntax.Expressions.Reference
    is
@@ -583,7 +683,7 @@ package body Leander.Parser.Expressions is
          Error ("expected an atomic expression");
          raise Parse_Error;
       end if;
-   end Parse_Atomic_Expression;
+   end Parse_Plain_Atomic_Expression;
 
    --------------------------
    -- Parse_Atomic_Pattern --

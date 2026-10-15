@@ -15,7 +15,10 @@ package Leander.Data_Types.Builder is
    procedure Add_Con
      (This   : in out Data_Type_Builder'Class;
       Name   : Leander.Core.Conid;
-      Scheme : Leander.Core.Schemes.Reference);
+      Scheme : Leander.Core.Schemes.Reference;
+      Labels : Leander.Names.Name_Array := []);
+   --  Labels names the constructor's fields in order, for a constructor
+   --  declared with field labels; otherwise it is empty.
 
    procedure Build
      (This   : in out Data_Type_Builder'Class);
@@ -33,6 +36,7 @@ private
       record
          Id     : Core.Conid;
          Scheme : Nullable_Scheme_Reference;
+         Labels : Label_Array;
       end record;
 
    package Con_Record_Vectors is

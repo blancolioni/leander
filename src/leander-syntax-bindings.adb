@@ -94,6 +94,23 @@ package body Leander.Syntax.Bindings is
       end;
    end Add_Binding;
 
+   -----------
+   -- Binds --
+   -----------
+
+   function Binds
+     (This : Instance;
+      Name : String)
+      return Boolean
+   is
+      use type Leander.Names.Leander_Name;
+      Key : constant Leander.Names.Leander_Name :=
+              Leander.Names.To_Leander_Name (Name);
+   begin
+      return (for some B of This.Bindings => B.Name = Key)
+        or else (for some T of This.Types => T.Name = Key);
+   end Binds;
+
    --------------
    -- Add_Type --
    --------------

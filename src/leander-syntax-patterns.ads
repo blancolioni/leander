@@ -1,4 +1,6 @@
 with Leander.Core.Patterns;
+with Leander.Environment;
+with Leander.Names;
 
 package Leander.Syntax.Patterns is
 
@@ -63,6 +65,25 @@ package Leander.Syntax.Patterns is
      (Location : Leander.Source.Source_Location;
       Image    : String)
       return Reference;
+
+   type Field_Pattern is
+      record
+         Label   : Leander.Names.Leander_Name;
+         Pattern : Reference;
+      end record;
+
+   type Field_Pattern_Array is array (Positive range <>) of Field_Pattern;
+
+   function Record_Pattern
+     (Location    : Leander.Source.Source_Location;
+      Constructor : String;
+      Fields      : Field_Pattern_Array;
+      Env         : Leander.Environment.Reference)
+      return Reference;
+   --  C { f1 = p1, ... } (Haskell 2010, section 3.17.1; #33): a
+   --  constructor pattern whose fields not named are wildcards.  Its
+   --  positions are worked out when they are asked for, from Env, so that
+   --  the type may be declared after the pattern.
 
    function To_Core (This : Instance) return Leander.Core.Patterns.Reference
                      is abstract;

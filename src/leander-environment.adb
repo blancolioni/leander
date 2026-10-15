@@ -157,6 +157,11 @@ package body Leander.Environment is
      (This   : in out Instance;
       DT     : Leander.Data_Types.Reference);
 
+   overriding function Label_Data_Type
+     (This  : Instance;
+      Label : String)
+      return Leander.Data_Types.Reference;
+
    overriding procedure Type_Class
      (This  : in out Instance;
       Class : Leander.Core.Type_Classes.Reference);
@@ -2087,5 +2092,23 @@ package body Leander.Environment is
       end if;
 
    end Type_Instance;
+
+   ---------------------
+   -- Label_Data_Type --
+   ---------------------
+
+   overriding function Label_Data_Type
+     (This  : Instance;
+      Label : String)
+      return Leander.Data_Types.Reference
+   is
+   begin
+      for DT of This.Tycons loop
+         if DT.Has_Label (Label) then
+            return DT;
+         end if;
+      end loop;
+      return null;
+   end Label_Data_Type;
 
 end Leander.Environment;

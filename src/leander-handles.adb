@@ -353,6 +353,9 @@ package body Leander.Handles is
       --  All types inferred here are transient (ADR 0001): the surviving
       --  artifact is the off-arena Calculus.Tree installed into the machine.
       Leander.Core.Types.Begin_Scratch;
+      --  The expression is parsed in the environment it is evaluated in:
+      --  record syntax in it asks that environment about field labels.
+      This.Context.New_Environment (This.Env);
       Do_Compile;
       Leander.Core.Types.End_Scratch;
    exception
@@ -828,6 +831,7 @@ package body Leander.Handles is
    begin
       --  Transient types only; the result is a formatted string (ADR 0001).
       Leander.Core.Types.Begin_Scratch;
+      This.Context.New_Environment (This.Env);
       return Result : constant String := Do_Infer_Type do
          Leander.Core.Types.End_Scratch;
       end return;

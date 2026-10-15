@@ -83,6 +83,14 @@ package Leander.Environment is
      with Pre'Class => This.Exists (Leander.Names.Leander_Name (Id),
                                     Type_Constructor);
 
+   function Label_Data_Type
+     (This  : Abstraction;
+      Label : String)
+      return Leander.Data_Types.Reference
+      is abstract;
+   --  The data type in scope that has a field labelled Label, or null
+   --  (Haskell 2010, section 4.2.1; #33).
+
    procedure Bindings
      (This   : in out Abstraction;
       Groups : Leander.Core.Binding_Groups.Reference)

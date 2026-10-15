@@ -2,6 +2,7 @@ with Leander.Calculus;
 with Leander.Core.Kinds;
 with Leander.Core.Schemes;
 with Leander.Core.Types;
+with Leander.Names;
 
 package Leander.Data_Types is
 
@@ -54,6 +55,32 @@ package Leander.Data_Types is
    --  to exactly this many fields, so a branch that fills this slot must
    --  bind exactly this many parameters.
 
+   function Constructor_Labels
+     (This  : Instance'Class;
+      Index : Positive)
+      return Leander.Names.Name_Array;
+   --  The field labels of constructor Index, in field order, or none for a
+   --  constructor declared positionally (Haskell 2010, section 4.2.1).
+
+   function Label_Position
+     (This  : Instance'Class;
+      Index : Positive;
+      Label : String)
+      return Natural;
+   --  Which field of constructor Index Label names, or 0 if it has no such
+   --  field.
+
+   function Has_Label
+     (This  : Instance'Class;
+      Label : String)
+      return Boolean;
+   --  Whether any constructor of the type has a field Label.
+
+   function Labels
+     (This : Instance'Class)
+      return Leander.Names.Name_Array;
+   --  Every field label of the type, each once, in the order declared.
+
    function Is_Newtype (This : Instance'Class) return Boolean;
    --  True for a type declared with 'newtype' rather than 'data'.  Such a
    --  type has exactly one constructor of exactly one field, and carries no
@@ -64,11 +91,15 @@ package Leander.Data_Types is
 
 private
 
+   type Label_Array is access constant Leander.Names.Name_Array;
+
    type Con_Record is
       record
          Con_Name : Core.Conid;
          Con_Type : Leander.Core.Schemes.Reference;
          Con_Defn : Leander.Calculus.Tree;
+         Labels   : Label_Array;
+         --  Null for a constructor without labels.
       end record;
 
    type Con_Array is array (Positive range <>) of Con_Record;
@@ -116,5 +147,12 @@ private
 
    function Is_Newtype (This : Instance'Class) return Boolean
    is (This.Is_Newtype);
+
+   function Constructor_Labels
+     (This  : Instance'Class;
+      Index : Positive)
+      return Leander.Names.Name_Array
+   is (if This.Cons (Index).Labels = null then []
+       else This.Cons (Index).Labels.all);
 
 end Leander.Data_Types;

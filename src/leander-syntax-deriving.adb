@@ -364,17 +364,49 @@ package body Leander.Syntax.Deriving is
       --  showsPrec d (C x1 .. xn) =
       --    showParen (d > 10)
       --      (showString "C " . showsPrec 11 x1 . showChar ' ' . ...)
+      --
+      --  and for a constructor declared with field labels,
+      --
+      --  showsPrec d (C x1 .. xn) =
+      --    showParen (d >= 11)
+      --      (showString "C {f1 = " . showsPrec 0 x1
+      --       . showString ", f2 = " . ... . showString "}")
       for I in 1 .. DT.Constructor_Count loop
          declare
             Name    : constant String := Con_Name (DT, I);
             X_Names : constant Name_List :=
                         Fresh_Names (DT.Constructor_Arity (I));
+            Labels  : constant Leander.Names.Name_Array :=
+                        DT.Constructor_Labels (I);
             D_Name  : constant String := Fresh;
             Body_E  : Expression;
+
+            function Show_String (Text : String) return Expression
+            is (App (Loc, Var_Expr (Loc, "showString"),
+                     String_Expr (Loc, Text)));
+
          begin
             if X_Names'Length = 0 then
-               Body_E := App (Loc, Var_Expr (Loc, "showString"),
-                              String_Expr (Loc, Name));
+               Body_E := Show_String (Name);
+            elsif Labels'Length > 0 then
+               Body_E := Show_String ("}");
+               for K in reverse X_Names'Range loop
+                  Body_E :=
+                    Op (Loc, ".",
+                        Show_String
+                          ((if K = X_Names'First then Name & " {"
+                            else ", ")
+                           & Leander.Names.To_String (Labels (K)) & " = "),
+                        Op (Loc, ".",
+                            Op (Loc, "showsPrec", Int_Expr (Loc, 0),
+                                Var_Expr (Loc, Image (X_Names (K)))),
+                            Body_E));
+               end loop;
+               Body_E :=
+                 Op (Loc, "showParen",
+                     Op (Loc, ">=", Var_Expr (Loc, D_Name),
+                         Int_Expr (Loc, 11)),
+                     Body_E);
             else
                Body_E :=
                  Op (Loc, "showsPrec", Int_Expr (Loc, 11),
@@ -600,6 +632,86 @@ package body Leander.Syntax.Deriving is
       -- Alternative --
       -----------------
 
+      function Record_Alternative (I : Positive) return Expression;
+      --  readParen (d > 11) (\r' -> ...) r for the I'th constructor, which
+      --  has field labels: lexing "C", "{", then for each field its label,
+      --  "=" and readsPrec 0 of its value, each followed by "," but the
+      --  last, which is followed by "}".
+
+      ------------------------
+      -- Record_Alternative --
+      ------------------------
+
+      function Record_Alternative (I : Positive) return Expression is
+         Name    : constant String := Con_Name (DT, I);
+         Labels  : constant Leander.Names.Name_Array :=
+                     DT.Constructor_Labels (I);
+         Arity   : constant Positive := Labels'Length;
+         Steps   : constant Positive := 2 + 4 * Arity;
+         Inner_R : constant String := Fresh;
+         S_Names : constant Name_List := Fresh_Names (Steps);
+         Value   : Expression := Con_Expr (Loc, Name);
+         Chain   : Expression;
+
+         function Field_Step (Step : Positive) return Natural
+         is (if Step > 2 and then (Step - 2) mod 4 = 3
+             then (Step - 2) / 4 + 1
+             else 0);
+         --  Which field's value Step reads, or 0 if it lexes a token.
+
+         function Token (Step : Positive) return String
+         is (if Step = 1 then Name
+             elsif Step = 2 then "{"
+             else (case (Step - 2) mod 4 is
+                      when 1 => Leander.Names.To_String
+                                  (Labels (Labels'First + (Step - 3) / 4)),
+                      when 2 => "=",
+                      when others =>
+                        (if Step = Steps then "}" else ",")));
+
+      begin
+         for Step in 1 .. Steps loop
+            if Field_Step (Step) > 0 then
+               Value :=
+                 App (Loc, Value, Field ("fst", Image (S_Names (Step))));
+            end if;
+         end loop;
+
+         Chain :=
+           App (Loc, Var_Expr (Loc, "return"),
+                App (Loc, App (Loc, Con_Expr (Loc, "(,)"), Value),
+                     Field ("snd", Image (S_Names (Steps)))));
+
+         for Step in reverse 1 .. Steps loop
+            declare
+               Input : constant Expression :=
+                         (if Step = 1 then Var_Expr (Loc, Inner_R)
+                          else Field ("snd", Image (S_Names (Step - 1))));
+               P_Name : constant String := Fresh;
+            begin
+               Chain :=
+                 Bind ((if Field_Step (Step) > 0
+                        then Op (Loc, "readsPrec", Int_Expr (Loc, 0), Input)
+                        else Op (Loc, "filter",
+                                 Lambda (P_Name,
+                                         Op (Loc, "==",
+                                             Field ("fst", P_Name),
+                                             String_Expr
+                                               (Loc, Token (Step)))),
+                                 App (Loc, Var_Expr (Loc, "lex"), Input))),
+                       Image (S_Names (Step)),
+                       Chain);
+            end;
+         end loop;
+
+         return App
+           (Loc,
+            Op (Loc, "readParen",
+                Op (Loc, ">", Var_Expr (Loc, D_Name), Int_Expr (Loc, 11)),
+                Lambda (Inner_R, Chain)),
+            Var_Expr (Loc, R_Name));
+      end Record_Alternative;
+
       function Alternative (I : Positive) return Expression is
          Name    : constant String := Con_Name (DT, I);
          Arity   : constant Natural := DT.Constructor_Arity (I);
@@ -610,6 +722,10 @@ package body Leander.Syntax.Deriving is
          Rest    : Expression;
          Chain   : Expression;
       begin
+         if Arity > 0 and then DT.Constructor_Labels (I)'Length > 0 then
+            return Record_Alternative (I);
+         end if;
+
          for K in 1 .. Arity loop
             Value := App (Loc, Value, Field ("fst", Image (Q_Names (K))));
          end loop;

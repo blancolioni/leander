@@ -718,6 +718,78 @@ package body Leander.Tests.Integration is
          Ada.Directories.Delete_File ("leander_test_50_files.txt");
       end if;
 
+      --  Records (issue #33)
+      Test_Output
+        ("output: records are built, selected, updated, matched and shown",
+         Test_Root & "test_51_records.hs",
+         "(3,0)" & ASCII.LF
+         & "20" & ASCII.LF
+         & "12" & ASCII.LF
+         & "(False,True)" & ASCII.LF
+         & "9" & ASCII.LF
+         & "5" & ASCII.LF
+         & "('x',3)" & ASCII.LF
+         & "10" & ASCII.LF
+         & "4" & ASCII.LF
+         & "True" & ASCII.LF
+         & "Point {px = 3, py = 0}" & ASCII.LF
+         & "Just (Rect {corner = Point {px = 3, py = 0}, "
+         & "width = 1, height = 2})" & ASCII.LF
+         & "Wrapped {unwrap = 5}" & ASCII.LF
+         & "True" & ASCII.LF
+         & "True" & ASCII.LF
+         & "True" & ASCII.LF);
+      Test_Runtime_Error
+        ("records: a selector of the wrong constructor fails",
+         "radius51 (Rect51 1 2)",
+         "No match in record selector radius51",
+         Test_Root & "test_51_record_runtime.hs");
+      Test_Runtime_Error
+        ("records: an update of the wrong constructor fails",
+         "radius51 ((Rect51 1 2) { radius51 = 3 })",
+         "No match in record update of radius51",
+         Test_Root & "test_51_record_runtime.hs");
+      Test_Runtime_Error
+        ("records: a field left out fails when used",
+         "radius51 (Circle51 { })",
+         "Missing field in record construction radius51",
+         Test_Root & "test_51_record_runtime.hs");
+      Test_Runtime_Error
+        ("records: one field left out of several fails when used",
+         "width51 (Rect51 { height51 = 1 })",
+         "Missing field in record construction width51",
+         Test_Root & "test_51_record_runtime.hs");
+      Test_Module_Reports
+        ("records: a field declared twice is reported",
+         Test_Root & "test_51_field_declared_twice.hs");
+      Test_Module_Reports
+        ("records: a shared field at different types is reported",
+         Test_Root & "test_51_field_types_differ.hs");
+      Test_Module_Reports
+        ("records: constructing with a missing field is reported",
+         Test_Root & "test_51_no_such_field.hs");
+      Test_Module_Reports
+        ("records: constructing with a field twice is reported",
+         Test_Root & "test_51_field_given_twice.hs");
+      Test_Module_Reports
+        ("records: updating fields of two types is reported",
+         Test_Root & "test_51_update_two_types.hs");
+      Test_Module_Reports
+        ("records: an update no constructor fits is reported",
+         Test_Root & "test_51_update_no_constructor.hs");
+      Test_Module_Reports
+        ("records: a label that is also a binding is reported",
+         Test_Root & "test_51_selector_clash.hs");
+      Test_Module_Reports
+        ("records: a pattern with a missing field is reported",
+         Test_Root & "test_51_pattern_field.hs");
+      Test_Module_Reports
+        ("records: updating a non-field is reported",
+         Test_Root & "test_51_update_not_field.hs");
+      Test_Module_Reports
+        ("records: a label two types declare is reported",
+         Test_Root & "test_51_label_two_types.hs");
+
       Test_Runtime_Error
         ("runtime error: an IOError nothing catches",
          "runIO (ioError (userError ""uncaught""))",
@@ -2146,6 +2218,18 @@ package body Leander.Tests.Integration is
          Handle);
 
       Test_Module
+        ("module: a record type's labels come with T(..)",
+         Modules_Root & "UseRecords.hs",
+         "recX recordsPoint", "1",
+         Handle);
+
+      Test_Module
+        ("module: an imported record is updated and matched",
+         Modules_Root & "UseRecords.hs",
+         "recordsMoved", "5",
+         Handle);
+
+      Test_Module
         ("module: a dotted module name is imported from a subdirectory",
          Modules_Root & "UseData.hs",
          "doubled", "42",
@@ -2368,6 +2452,14 @@ package body Leander.Tests.Integration is
       Test_Module_Fails
         ("module: a type the module does not export is rejected",
          Modules_Root & "bad/BadHiddenType.hs");
+
+      Test_Module_Fails
+        ("module: an abstract type's labels are not exported",
+         Modules_Root & "bad/BadHiddenLabel.hs");
+
+      Test_Module_Fails
+        ("module: exporting a constructor alone leaves out its labels",
+         Modules_Root & "bad/BadUnlistedLabel.hs");
 
       Test_Module_Fails
         ("module: a type an import hides is rejected",

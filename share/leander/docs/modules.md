@@ -98,9 +98,9 @@ declaration makes them visible:
 
 `T(..)` in an import or export list is expanded once the module is
 loaded — only the exporting module can say what it stands for, and what
-it stands for depends on what was named: a data type's constructors, or
-a class's methods. A class's methods can also be named individually, as
-`Eq((==), (/=))`.
+it stands for depends on what was named: a data type's constructors and
+field labels, or a class's methods. A class's methods can also be named
+individually, as `Eq((==), (/=))`.
 
 An import list speaks about the same two namespaces as an export list
 (#144). `Import` takes its names as two lists, `Types` and `Values`. A
