@@ -54,6 +54,34 @@ The encoding is built in `leander-data_types-builder.adb`, procedure
 constructor-selection (continuation) parameters, and as further letters
 continuing that same sequence for the field parameters.
 
+## Records
+
+Field labels (Haskell 2010, section 3.15; #33) are a front-end matter: each
+constructor's labels are kept with its data type, in field order, and
+everything written with them becomes positional before it reaches the core
+IR. Nothing about a record survives to the calculus.
+
+- A **selector** is an ordinary top-level function, one equation for each
+  constructor that has the field, plus one that raises
+  `No match in record selector f` when some constructor does not. They are
+  added once the module's declarations are all in, so a binding of the same
+  name anywhere in the module is reported as a clash.
+- **Construction** `C { f2 = e2, f1 = e1 }` is `C e1 e2`, with
+  `error "Missing field in record construction f"` for a field left out.
+- **Update** `e { f = v }` is `let u (C x1 .. xn) = C x1 .. v .. xn; ...
+  in u e`, an equation for each constructor having every field named, and
+  a final `No match in record update` one when some constructor does not.
+  The helper is monomorphic, so an update may change the type of a field
+  whose type is a parameter.
+- A **record pattern** `C { f = p }` is `C _ .. p .. _`.
+
+Construction, update and patterns are syntax nodes that keep the module's
+environment and ask it about labels only when they are made core, by which
+time every data type in the module is declared — a type may be used with
+labels above its declaration. The labels are part of a data type's `.skix`
+encoding, written after the constructors so that an older image still
+decodes, with none.
+
 ## Pattern matching compilation
 
 Pattern matching on constructors is compiled by the alts compiler

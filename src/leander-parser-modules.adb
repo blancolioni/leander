@@ -173,6 +173,9 @@ package body Leander.Parser.Modules is
                           (Leander.Core.To_String (DT.Constructor_Name (J)),
                            Value_Names);
                      end loop;
+                     for Label of DT.Labels loop
+                        Export (Leander.Names.To_String (Label), Value_Names);
+                     end loop;
                   end;
                elsif Env.Exists (Leander.Names.To_Leander_Name (Item),
                                  Leander.Environment.Class_Binding)
@@ -241,18 +244,18 @@ package body Leander.Parser.Modules is
             Leander.Environment.Type_Constructor)
          then
             declare
+               use type Leander.Names.Name_Array;
                DT : constant Leander.Data_Types.Reference :=
                       Imported.Data_Type (Id);
+               Constructors : Leander.Names.Name_Array
+                                (1 .. DT.Constructor_Count);
             begin
-               return R : Leander.Names.Name_Array
-                            (1 .. DT.Constructor_Count)
-               do
-                  for J in R'Range loop
-                     R (J) :=
-                       Leander.Names.To_Leander_Name
-                         (Leander.Core.To_String (DT.Constructor_Name (J)));
-                  end loop;
-               end return;
+               for J in Constructors'Range loop
+                  Constructors (J) :=
+                    Leander.Names.To_Leander_Name
+                      (Leander.Core.To_String (DT.Constructor_Name (J)));
+               end loop;
+               return Constructors & DT.Labels;
             end;
          elsif Imported.Exists
            (Leander.Names.To_Leander_Name (Name),

@@ -1,5 +1,6 @@
 with Leander.Syntax.Patterns.Constructors;
 with Leander.Syntax.Patterns.Literals;
+with Leander.Syntax.Patterns.Records;
 with Leander.Syntax.Patterns.Variables;
 
 package body Leander.Syntax.Patterns is
@@ -49,5 +50,13 @@ package body Leander.Syntax.Patterns is
      (Location : Leander.Source.Source_Location)
       return Reference
    is (Variables.Variable (Location, "_"));
+
+   function Record_Pattern
+     (Location    : Leander.Source.Source_Location;
+      Constructor : String;
+      Fields      : Field_Pattern_Array;
+      Env         : Leander.Environment.Reference)
+      return Reference
+   is (Records.Record_Pattern (Location, Constructor, Fields, Env));
 
 end Leander.Syntax.Patterns;

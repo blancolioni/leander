@@ -51,4 +51,81 @@ package body Leander.Data_Types is
       return 0;
    end Constructor_Index;
 
+   ---------------
+   -- Has_Label --
+   ---------------
+
+   function Has_Label
+     (This  : Instance'Class;
+      Label : String)
+      return Boolean
+   is (for some I in 1 .. This.Con_Count =>
+         This.Label_Position (I, Label) > 0);
+
+   ------------
+   -- Labels --
+   ------------
+
+   function Labels
+     (This : Instance'Class)
+      return Leander.Names.Name_Array
+   is
+      use type Leander.Names.Name_Array;
+
+      function From (Index : Positive) return Leander.Names.Name_Array;
+
+      ----------
+      -- From --
+      ----------
+
+      function From (Index : Positive) return Leander.Names.Name_Array is
+      begin
+         if Index > This.Con_Count then
+            return [];
+         end if;
+
+         declare
+            Own   : constant Leander.Names.Name_Array :=
+                      This.Constructor_Labels (Index);
+            Fresh : Leander.Names.Name_Array (1 .. Own'Length);
+            Count : Natural := 0;
+         begin
+            for Label of Own loop
+               if not (for some Earlier in 1 .. Index - 1 =>
+                         This.Label_Position
+                           (Earlier, Leander.Names.To_String (Label)) > 0)
+               then
+                  Count := Count + 1;
+                  Fresh (Count) := Label;
+               end if;
+            end loop;
+            return Fresh (1 .. Count) & From (Index + 1);
+         end;
+      end From;
+
+   begin
+      return From (1);
+   end Labels;
+
+   --------------------
+   -- Label_Position --
+   --------------------
+
+   function Label_Position
+     (This  : Instance'Class;
+      Index : Positive;
+      Label : String)
+      return Natural
+   is
+      Labels : constant Leander.Names.Name_Array :=
+                 This.Constructor_Labels (Index);
+   begin
+      for I in Labels'Range loop
+         if Leander.Names.To_String (Labels (I)) = Label then
+            return I - Labels'First + 1;
+         end if;
+      end loop;
+      return 0;
+   end Label_Position;
+
 end Leander.Data_Types;

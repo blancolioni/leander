@@ -10,12 +10,16 @@ package body Leander.Data_Types.Builder is
    procedure Add_Con
      (This   : in out Data_Type_Builder'Class;
       Name   : Leander.Core.Conid;
-      Scheme : Leander.Core.Schemes.Reference)
+      Scheme : Leander.Core.Schemes.Reference;
+      Labels : Leander.Names.Name_Array := [])
    is
    begin
       This.Cons.Append
         (Con_Scheme'
-           (Id => Name, Scheme => Nullable_Scheme_Reference (Scheme)));
+           (Id     => Name,
+            Scheme => Nullable_Scheme_Reference (Scheme),
+            Labels => (if Labels'Length = 0 then null
+                       else new Leander.Names.Name_Array'(Labels))));
    end Add_Con;
 
    -----------
@@ -82,7 +86,8 @@ package body Leander.Data_Types.Builder is
                Con_Defn =>
                  Calculus.Lambda
                    (Pat_Ids (Pat_Ids'First),
-                    Calculus.Symbol (Pat_Ids (Pat_Ids'First))));
+                    Calculus.Symbol (Pat_Ids (Pat_Ids'First))),
+               Labels   => CR.Labels);
          end if;
 
          for Id of Pat_Ids loop
@@ -97,7 +102,8 @@ package body Leander.Data_Types.Builder is
          return Con_Record'
            (Con_Name => Id,
             Con_Type => Scheme,
-            Con_Defn => E);
+            Con_Defn => E,
+            Labels   => This.Cons (Index).Labels);
       end Create_Con_Record;
 
    begin

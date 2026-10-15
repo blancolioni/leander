@@ -72,7 +72,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Type parameters (polymorphic data) | ✅ | |
 | `newtype` | ✅ | Compiles to its field with no wrapper; patterns bind the value itself. |
 | Type synonyms (`type`) | 🟡 | Parameterised aliases expand in `To_Core`. The table is process-global, so a synonym is visible in every module regardless of imports. |
-| Record syntax (fields, selectors, update) | ❌ | Positional atomic args only. |
+| Record syntax (fields, selectors, update) | ✅ | As in Haskell 2010 sections 3.15, 3.17.1 and 4.2.1 (#33): labelled declarations, for `newtype` too, selector functions, construction `C { f = e }` (a field left out is an error if used), update `e { f = e' }` (which may change the type), patterns `C { f = p }` and `C {}`, and record forms of derived `Show` and `Read`. `T(..)` exports and imports a type's labels. Labels may be written qualified, but an update through a qualified-only import fails, because qualified constructor patterns do (#176). Strictness flags are accepted and ignored. |
 | Strictness annotations `!` | ❌ | `data P = P !Int` fails with "expected an atomic expression". |
 | Infix / operator constructors in `data` | ❌ | Prefix constructors only. |
 
@@ -81,7 +81,7 @@ Last checked against `f17c29c` (2026-10-09), by running each form through
 | Feature | Status | Note |
 |---|---|---|
 | `deriving Eq` | ✅ | Nullary + parameterized; structural generator. |
-| `deriving (Ord, Show, Enum, Bounded, Read)` | ✅ | As in Haskell 2010 chapter 11 (#54, #154). `Ord` compares constructors in declaration order, then fields left to right. `Show` parenthesises a constructor with fields above precedence 10. `Enum` needs an enumeration, and `Bounded` an enumeration or a single constructor; anything else is reported. `Read` reads what `Show` writes, with the parentheses optional at precedence 10 or less. |
+| `deriving (Ord, Show, Enum, Bounded, Read)` | ✅ | As in Haskell 2010 chapter 11 (#54, #154). `Ord` compares constructors in declaration order, then fields left to right. `Show` parenthesises a constructor with fields above precedence 10, or a record at precedence 11 and above. `Enum` needs an enumeration, and `Bounded` an enumeration or a single constructor; anything else is reported. `Read` reads what `Show` writes, with the parentheses optional at precedence 10 or less. |
 | `deriving Ix` | ❌ | Rejected with "cannot derive …". There is no `Ix` class. |
 
 ## Type system

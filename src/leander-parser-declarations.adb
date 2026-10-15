@@ -1,3 +1,5 @@
+with Ada.Containers.Vectors;
+
 with Leander.Core.Binding_Groups;
 with Leander.Core.Kinds;
 with Leander.Core.Predicates;
@@ -18,9 +20,48 @@ with Leander.Source;
 with Leander.Syntax.Bindings;
 with Leander.Syntax.Classes;
 with Leander.Syntax.Deriving;
+with Leander.Syntax.Expressions;
+with Leander.Syntax.Patterns;
+with Leander.Syntax.Records;
 with Leander.Syntax.Types;
 
 package body Leander.Parser.Declarations is
+
+   --  A data type declared with field labels, whose selector functions
+   --  are added to its module's bindings once the module's declarations
+   --  are all in, so that a clash with a binding of the same name is seen
+   --  wherever in the module the binding is.
+   type Selector_Source is
+      record
+         Data_Type : Leander.Data_Types.Reference;
+         Location  : Leander.Source.Source_Location;
+      end record;
+
+   package Selector_Source_Vectors is
+     new Ada.Containers.Vectors (Positive, Selector_Source);
+
+   Pending_Selectors : Selector_Source_Vectors.Vector;
+
+   procedure Add_Selectors
+     (Bindings : Leander.Syntax.Bindings.Reference;
+      Source   : Selector_Source);
+   --  One function for each of Source's labels, selecting that field from
+   --  whichever of its constructors has it (Haskell 2010, section 3.15.1).
+
+   package Name_Vectors is
+     new Ada.Containers.Vectors
+       (Positive, Leander.Names.Leander_Name, Leander.Names."=");
+
+   package Syntax_Type_Vectors is
+     new Ada.Containers.Vectors
+       (Positive, Leander.Syntax.Types.Reference,
+        Leander.Syntax.Types."=");
+
+   type Nullable_Core_Type is
+     access constant Leander.Core.Types.Instance'Class;
+
+   package Core_Type_Vectors is
+     new Ada.Containers.Vectors (Positive, Nullable_Core_Type);
 
    procedure Parse_Class_Declaration
      (Context : in out Parse_Context'Class);
@@ -48,6 +89,74 @@ package body Leander.Parser.Declarations is
                    Variable_Name   : String));
 
    procedure Skip_Declaration;
+
+   -------------------
+   -- Add_Selectors --
+   -------------------
+
+   procedure Add_Selectors
+     (Bindings : Leander.Syntax.Bindings.Reference;
+      Source   : Selector_Source)
+   is
+      DT  : constant Leander.Data_Types.Reference := Source.Data_Type;
+      Loc : constant Leander.Source.Source_Location := Source.Location;
+   begin
+      for Index in 1 .. DT.Constructor_Count loop
+         for Label_Name of DT.Constructor_Labels (Index) loop
+            declare
+               Label : constant String :=
+                         Leander.Names.To_String (Label_Name);
+            begin
+               if (for some Earlier in 1 .. Index - 1 =>
+                     DT.Label_Position (Earlier, Label) > 0)
+               then
+                  null;
+               elsif Bindings.Binds (Label) then
+                  Leander.Syntax.Records.Report
+                    (Loc, "multiple declarations of " & Label);
+               else
+                  for Con in 1 .. DT.Constructor_Count loop
+                     declare
+                        Position : constant Natural :=
+                                     DT.Label_Position (Con, Label);
+                     begin
+                        if Position > 0 then
+                           Bindings.Add_Binding
+                             (Loc, Label,
+                              [Leander.Syntax.Patterns.Constructor
+                                 (Loc,
+                                  Leander.Core.To_String
+                                    (DT.Constructor_Name (Con)),
+                                  [for Arg in 1 .. DT.Constructor_Arity (Con)
+                                   => (if Arg = Position
+                                     then Leander.Syntax.Patterns.Variable
+                                       (Loc, "x")
+                                     else Leander.Syntax.Patterns.Wildcard
+                                       (Loc))])],
+                              Leander.Syntax.Expressions.Variable
+                                (Loc, "x"));
+                        end if;
+                     end;
+                  end loop;
+
+                  if (for some Con in 1 .. DT.Constructor_Count =>
+                        DT.Label_Position (Con, Label) = 0)
+                  then
+                     Bindings.Add_Binding
+                       (Loc, Label,
+                        [Leander.Syntax.Patterns.Wildcard (Loc)],
+                        Leander.Syntax.Expressions.Application
+                          (Loc,
+                           Leander.Syntax.Expressions.Variable
+                             (Loc, "error"),
+                           Leander.Syntax.Expressions.String_Literal
+                             (Loc, "No match in record selector " & Label)));
+                  end if;
+               end if;
+            end;
+         end loop;
+      end loop;
+   end Add_Selectors;
 
    --------------------
    -- At_Declaration --
@@ -255,6 +364,122 @@ package body Leander.Parser.Declarations is
       Keyword         : constant String :=
                           (if Is_Newtype then "newtype" else "data");
       Con_Count       : Natural := 0;
+      Declared_At     : constant Leander.Source.Source_Location :=
+                          Current_Source_Location;
+      Field_Labels    : Name_Vectors.Vector;
+      Field_Types     : Core_Type_Vectors.Vector;
+      Field_Error     : Boolean := False;
+      --  Set when the fields are declared wrongly, so that there are no
+      --  selectors to be wrong as well.
+
+      procedure Parse_Fields
+        (Con_Args : in out Syntax_Type_Vectors.Vector;
+         Labels   : in out Name_Vectors.Vector);
+      --  { f1, f2 :: t1, f3 :: t2, ... }: the constructor's fields, in
+      --  order, with the type of each.
+
+      procedure Check_Field_Type
+        (Label     : Leander.Names.Leander_Name;
+         Core_Type : Leander.Core.Types.Reference);
+      --  A label shared by several constructors has the same type in each
+      --  (Haskell 2010, section 4.2.1).
+
+      ----------------------
+      -- Check_Field_Type --
+      ----------------------
+
+      procedure Check_Field_Type
+        (Label     : Leander.Names.Leander_Name;
+         Core_Type : Leander.Core.Types.Reference)
+      is
+         Index : constant Name_Vectors.Extended_Index :=
+                   Field_Labels.Find_Index (Label);
+      begin
+         if Index = Name_Vectors.No_Index then
+            Field_Labels.Append (Label);
+            Field_Types.Append (Nullable_Core_Type (Core_Type));
+         elsif not Leander.Core.Types.Equivalent
+           (Field_Types (Index), Core_Type)
+         then
+            Error ("field " & Leander.Names.To_String (Label)
+                   & " has a different type in another constructor");
+            Field_Error := True;
+         end if;
+      end Check_Field_Type;
+
+      ------------------
+      -- Parse_Fields --
+      ------------------
+
+      procedure Parse_Fields
+        (Con_Args : in out Syntax_Type_Vectors.Vector;
+         Labels   : in out Name_Vectors.Vector)
+      is
+         Own_Labels : Name_Vectors.Vector;
+      begin
+         pragma Assert (Tok = Tok_Left_Brace);
+         Scan;
+         while Tok /= Tok_Right_Brace loop
+            declare
+               First : constant Positive := Natural (Labels.Length) + 1;
+            begin
+               loop
+                  if not At_Variable_Name then
+                     Error ("expected a field name");
+                     raise Parse_Error;
+                  end if;
+
+                  declare
+                     Label : constant Leander.Names.Leander_Name :=
+                               Leander.Names.To_Leander_Name (Tok_Text);
+                  begin
+                     if Own_Labels.Contains (Label) then
+                        Error ("field " & Tok_Text & " is declared twice");
+                        Field_Error := True;
+                     end if;
+                     Own_Labels.Append (Label);
+                     Labels.Append (Label);
+                  end;
+                  Scan;
+                  exit when Tok /= Tok_Comma;
+                  Scan;
+               end loop;
+
+               if Tok /= Tok_Colon_Colon then
+                  Error ("expected '::'");
+                  raise Parse_Error;
+               end if;
+               Scan;
+
+               --  A strictness flag is accepted, and has no effect.
+               if Tok = Tok_Identifier and then Tok_Text = "!" then
+                  Scan;
+               end if;
+
+               declare
+                  Field_Type : constant Leander.Syntax.Types.Reference :=
+                                 Parser.Types.Parse_Type_Expression (Context);
+                  Core_Type  : constant Leander.Core.Types.Reference :=
+                                 Field_Type.To_Core;
+               begin
+                  for I in First .. Natural (Labels.Length) loop
+                     Con_Args.Append (Field_Type);
+                     Check_Field_Type (Labels (I), Core_Type);
+                  end loop;
+               end;
+            end;
+            exit when Tok /= Tok_Comma;
+            Scan;
+         end loop;
+
+         if Tok = Tok_Right_Brace then
+            Scan;
+         else
+            Error ("missing '}'");
+            raise Parse_Error;
+         end if;
+      end Parse_Fields;
+
    begin
       pragma Assert (Tok = (if Is_Newtype then Tok_Newtype else Tok_Data));
       Scan;
@@ -303,19 +528,23 @@ package body Leander.Parser.Declarations is
             else
                declare
                   Con_Name : constant String := Tok_Text;
-                  Con_Args : array (1 .. 10) of Leander.Syntax.Types.Reference;
-                  Count    : Natural := 0;
+                  Con_Args : Syntax_Type_Vectors.Vector;
+                  Labels   : Name_Vectors.Vector;
                   Indent   : constant Positive := Tok_Indent;
                begin
                   Scan;
-                  while Tok_Indent > Indent
-                    and then Parser.Types.At_Atomic_Type loop
-                     Count := Count + 1;
-                     Con_Args (Count) :=
-                       Parser.Types.Parse_Atomic_Type (Context);
-                  end loop;
+                  if Tok = Tok_Left_Brace then
+                     Parse_Fields (Con_Args, Labels);
+                  else
+                     while Tok_Indent > Indent
+                       and then Parser.Types.At_Atomic_Type loop
+                        Con_Args.Append
+                          (Parser.Types.Parse_Atomic_Type (Context));
+                     end loop;
+                  end if;
 
                   declare
+                     Count    : constant Natural := Natural (Con_Args.Length);
                      Con_Type : Leander.Core.Types.Reference := Data;
                   begin
                      Con_Count := Con_Count + 1;
@@ -329,13 +558,14 @@ package body Leander.Parser.Declarations is
                      for I in reverse 1 .. Count loop
                         Con_Type :=
                           Leander.Core.Types.Fn
-                            (Con_Args (I).To_Core, Con_Type);
+                            (Con_Args.Element (I).To_Core, Con_Type);
                      end loop;
 
                      Builder.Add_Con
                        (Leander.Core.To_Conid (Con_Name),
                         Leander.Core.Schemes.Quantify
-                          (Con_Type.Get_Tyvars, [], Con_Type));
+                          (Con_Type.Get_Tyvars, [], Con_Type),
+                        Labels => [for Label of Labels => Label]);
                   end;
                end;
             end if;
@@ -402,6 +632,11 @@ package body Leander.Parser.Declarations is
          Builder.Build;
 
          Context.Environment.Data_Type (Builder.Data_Type);
+
+         if not Field_Labels.Is_Empty and then not Field_Error then
+            Pending_Selectors.Append
+              (Selector_Source'(Builder.Data_Type, Declared_At));
+         end if;
 
          for I in 1 .. Derived_Count loop
             declare
@@ -530,6 +765,26 @@ package body Leander.Parser.Declarations is
    is
       Bindings : constant Leander.Syntax.Bindings.Reference :=
                    Leander.Syntax.Bindings.Empty;
+      Selectors_From : constant Positive :=
+                         Natural (Pending_Selectors.Length) + 1;
+
+      procedure Take_Selectors;
+      --  Add the selectors of this module's labelled data types to its
+      --  bindings, and forget them.
+
+      --------------------
+      -- Take_Selectors --
+      --------------------
+
+      procedure Take_Selectors is
+      begin
+         for I in Selectors_From .. Natural (Pending_Selectors.Length) loop
+            Add_Selectors (Bindings, Pending_Selectors (I));
+         end loop;
+         Pending_Selectors.Set_Length
+           (Ada.Containers.Count_Type (Selectors_From - 1));
+      end Take_Selectors;
+
    begin
       while At_Declaration loop
          if Leander.Parser.Bindings.At_Binding then
@@ -617,10 +872,12 @@ package body Leander.Parser.Declarations is
             Skip_Declaration;
          end if;
       end loop;
+      Take_Selectors;
       Context.Environment.Bindings (Bindings.To_Core);
 
    exception
       when Parse_Error =>
+         Take_Selectors;
          --  The error has been reported, and the module counts as failed,
          --  but the environment still needs its bindings: elaborating it,
          --  and anything importing it, looks them up (issue #113).  It

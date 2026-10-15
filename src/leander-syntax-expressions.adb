@@ -3,6 +3,7 @@ with Leander.Syntax.Expressions.Constructors;
 with Leander.Syntax.Expressions.Lambdas;
 with Leander.Syntax.Expressions.Lets;
 with Leander.Syntax.Expressions.Literals;
+with Leander.Syntax.Expressions.Records;
 with Leander.Syntax.Expressions.Variables;
 
 package body Leander.Syntax.Expressions is
@@ -24,6 +25,19 @@ package body Leander.Syntax.Expressions is
          return [];
       end if;
    end Arguments;
+
+   ----------------------
+   -- Constructor_Name --
+   ----------------------
+
+   function Constructor_Name (This : not null Reference) return String is
+   begin
+      if This.all in Constructors.Instance'Class then
+         return Core.To_String (Constructors.Instance'Class (This.all).Conid);
+      else
+         return "";
+      end if;
+   end Constructor_Name;
 
    -------------------
    -- Head_Variable --
@@ -96,5 +110,21 @@ package body Leander.Syntax.Expressions is
       Expr        : Reference)
       return Reference
    is (Lets.Let (Location, Bindings, Expr));
+
+   function Record_Construction
+     (Location    : Leander.Source.Source_Location;
+      Constructor : String;
+      Fields      : Field_Expression_Array;
+      Env         : Leander.Environment.Reference)
+      return Reference
+   is (Records.Construction (Location, Constructor, Fields, Env));
+
+   function Record_Update
+     (Location : Leander.Source.Source_Location;
+      Value    : Reference;
+      Fields   : Field_Expression_Array;
+      Env      : Leander.Environment.Reference)
+      return Reference
+   is (Records.Update (Location, Value, Fields, Env));
 
 end Leander.Syntax.Expressions;

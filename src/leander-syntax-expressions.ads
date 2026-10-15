@@ -1,4 +1,6 @@
 with Leander.Core.Expressions;
+with Leander.Environment;
+with Leander.Names;
 with Leander.Syntax.Bindings;
 with Leander.Syntax.Patterns;
 
@@ -73,6 +75,42 @@ package Leander.Syntax.Expressions is
    function Arguments (This : not null Reference) return Reference_Array;
    --  The arguments This applies its head to, in order: "x" and "y" for
    --  "f x y". Empty when This is not an application.
+
+   function Constructor_Name (This : not null Reference) return String;
+   --  The constructor This is, when it is one on its own; otherwise empty.
+
+   --  Field labels (Haskell 2010, section 3.15; #33).  Both forms are
+   --  turned into positional ones only when they are made core, by when
+   --  every data type in the module has been declared: Env is the
+   --  module's environment, asked then.
+
+   type Field_Expression is
+      record
+         Label : Leander.Names.Leander_Name;
+         Value : Reference;
+      end record;
+
+   type Field_Expression_Array is
+     array (Positive range <>) of Field_Expression;
+
+   function Record_Construction
+     (Location    : Leander.Source.Source_Location;
+      Constructor : String;
+      Fields      : Field_Expression_Array;
+      Env         : Leander.Environment.Reference)
+      return Reference;
+   --  C { f1 = e1, ... }: C applied to its fields in their positions, a
+   --  missing one being an error when it is used.  As a pattern, it is a
+   --  record pattern.
+
+   function Record_Update
+     (Location : Leander.Source.Source_Location;
+      Value    : Reference;
+      Fields   : Field_Expression_Array;
+      Env      : Leander.Environment.Reference)
+      return Reference;
+   --  e { f1 = e1, ... }: e with those fields replaced, by whichever of its
+   --  type's constructors it was built with.
 
 private
 

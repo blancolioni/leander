@@ -180,6 +180,83 @@ package body Leander.Tests.Images is
          end if;
       end;
 
+      --  A data type's field labels (#33) are what record construction,
+      --  update and patterns in an importing module work from, so they
+      --  have to survive the image too.
+      declare
+         Rec_Path   : constant String := "test_records.skix";
+         Labels_Ok  : Boolean := False;
+         Plain_Ok   : Boolean := False;
+
+         procedure On_Data_Type
+           (Export_Name : String;
+            Bytes       : Ada.Streams.Stream_Element_Array);
+
+         -------------------
+         -- On_Data_Type --
+         -------------------
+
+         procedure On_Data_Type
+           (Export_Name : String;
+            Bytes       : Ada.Streams.Stream_Element_Array)
+         is
+            Prefix : constant String := "datatype:";
+         begin
+            if Export_Name'Length > Prefix'Length
+              and then Export_Name (Export_Name'First
+                                     .. Export_Name'First + Prefix'Length - 1)
+                       = Prefix
+            then
+               declare
+                  DT : constant Leander.Data_Types.Reference :=
+                         Leander.Data_Types.Serialize.Decode (Bytes);
+                  Name : constant String :=
+                           Leander.Core.To_String (DT.Id);
+               begin
+                  if Name = "Shape" then
+                     --  Circle {centre, radius} | Rect {corner, width,
+                     --  height} | Dot Point
+                     Labels_Ok :=
+                       DT.Label_Position (1, "radius") = 2
+                       and then DT.Label_Position (2, "height") = 3
+                       and then DT.Label_Position (2, "radius") = 0
+                       and then DT.Has_Label ("corner");
+                     Plain_Ok := DT.Constructor_Labels (3)'Length = 0;
+                  end if;
+               end;
+            end if;
+         end On_Data_Type;
+
+      begin
+         declare
+            H : Leander.Handle := Leander.Create;
+         begin
+            H.Load_Module
+              ("./share/leander/tests/integration/test_51_records.hs");
+            H.Dump_Module (Rec_Path, "test_51_records");
+            H.Close;
+         end;
+
+         declare
+            Hr : constant Skit.Handles.Handle :=
+                   Skit.Handles.New_Handle (Core_Size => 512 * 1024);
+         begin
+            Leander.Primitives.Load_Primitives (Hr);
+            Hr.Bind ("#error", Skit.Combinators.I);
+            Hr.Bind ("#errorChar", Skit.Combinators.I);
+            Hr.Bind ("#errorRaise", Skit.Combinators.I);
+            Skit.Handles.Images.Read (Hr, Rec_Path, On_Data_Type'Access);
+         end;
+
+         Test ("records.skix: field labels survive the image", Labels_Ok);
+         Test ("records.skix: a positional constructor has no labels",
+               Plain_Ok);
+
+         if Ada.Directories.Exists (Rec_Path) then
+            Ada.Directories.Delete_File (Rec_Path);
+         end if;
+      end;
+
       --  Phase 4 integration: Leander.Create looks for a sibling .skix next
       --  to the real Prelude.hs it loads and, if it is fresh and carries the
       --  full declarative-metadata marker (see issue #65), builds Env
